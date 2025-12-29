@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Aqui você pode adicionar CSS customizado se o Tailwind não resolver, 
+   mas tente evitar ao máximo para manter o padrão. */
