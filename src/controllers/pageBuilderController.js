@@ -82,3 +82,35 @@ exports.renderPublishedPage = async (req, res) => {
         res.send('Erro ao carregar página: ' + error.message);
     }
 };
+
+// 5. NOVA: Listar todas as páginas
+exports.listPages = async (req, res) => {
+    try {
+        // Busca apenas os dados essenciais para a lista
+        const paginas = await db('paginas_personalizadas')
+            .select('id', 'titulo', 'slug', 'criado_em', 'visualizacoes')
+            .orderBy('criado_em', 'desc');
+
+        res.render('pages/builder/list', {
+            title: 'Gerenciar Páginas - DataCare',
+            layout: 'layouts/main',
+            user: req.user || { name: 'Admin', role: 'TI' },
+            paginas: paginas
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Erro ao buscar páginas');
+    }
+};
+
+// 6. NOVA: Excluir página
+exports.deletePage = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await db('paginas_personalizadas').where({ id }).del();
+        res.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, error: 'Erro ao excluir página.' });
+    }
+};

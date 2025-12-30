@@ -12,4 +12,10 @@ router.post('/page-builder/save', pageBuilderController.savePage);
 // Rota para ACESSAR a página que você criou (ex: localhost:3000/p/meu-relatorio)
 router.get('/p/:slug', pageBuilderController.renderPublishedPage);
 
+// Rota para ver a LISTA de páginas
+router.get('/pages', pageBuilderController.listPages);
+
+// Rota para EXCLUIR uma página (usaremos DELETE via fetch no front)
+router.delete('/pages/:id', pageBuilderController.deletePage);
+
 module.exports = router;
