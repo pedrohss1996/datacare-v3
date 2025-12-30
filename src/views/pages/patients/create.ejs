@@ -1,0 +1,90 @@
+<div class="max-w-5xl mx-auto">
+    
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                Cadastro de Paciente
+            </h1>
+            <p class="text-slate-500 mt-1">Preencha os dados obrigatórios para abertura de prontuário.</p>
+        </div>
+        <a href="/main" class="text-slate-500 hover:text-slate-700 font-medium text-sm flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            Voltar ao Menu
+        </a>
+    </div>
+
+    <form action="/patients" method="POST" class="space-y-6">
+        
+        <% if (locals.success) { %>
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
+                <strong class="font-bold">Sucesso!</strong>
+                <span class="block sm:inline">Paciente cadastrado corretamente.</span>
+            </div>
+        <% } %>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+             <div class="p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+                <div class="md:col-span-8">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nome Completo *</label>
+                    <input type="text" name="name" required class="w-full rounded-lg border-slate-300..." placeholder="Ex: Maria...">
+                </div>
+
+                <div class="md:col-span-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nome Social</label>
+                    <input type="text" name="social_name" class="w-full rounded-lg border-slate-300...">
+                </div>
+
+                <div class="md:col-span-3">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">CPF *</label>
+                    <input type="text" name="cpf" required class="w-full rounded-lg border-slate-300..." placeholder="000.000.000-00">
+                </div>
+
+                <div class="md:col-span-3">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Cartão SUS</label>
+                    <input type="text" name="cns" class="w-full rounded-lg border-slate-300...">
+                </div>
+
+                <div class="md:col-span-3">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Data de Nascimento *</label>
+                    <input type="date" name="birth_date" required class="w-full rounded-lg border-slate-300...">
+                </div>
+
+                <div class="md:col-span-3">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Sexo *</label>
+                    <select name="sex" required class="w-full rounded-lg border-slate-300...">
+                        <option value="">Selecione...</option>
+                        <option value="M">Masculino</option>
+                        <option value="F">Feminino</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-12">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nome da Mãe *</label>
+                    <input type="text" name="mother_name" required class="w-full rounded-lg border-slate-300...">
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Celular *</label>
+                    <input type="tel" name="phone" required class="w-full rounded-lg border-slate-300...">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                    <input type="email" name="email" class="w-full rounded-lg border-slate-300...">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-4 pt-4">
+            <button type="button" class="px-6 py-3 rounded-lg border border-slate-300 text-slate-700">Cancelar</button>
+            <button type="submit" class="px-6 py-3 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                Salvar Cadastro
+            </button>
+        </div>
+    </form>
+</div>

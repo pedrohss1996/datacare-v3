@@ -25,8 +25,8 @@ app.use(compression()); // Compacta o HTML/CSS enviado (Gzip)
 app.use(cors());
 
 // 3. Middlewares de Parser e Log
+app.use(express.urlencoded({ extended: true })); // <--- ISSO É OBRIGATÓRIO PARA FORMULÁRIOS
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // Para ler forms HTML
 app.use(morgan('dev')); // Log de requisições
 
 // 4. Arquivos Estáticos (CSS, Imagens, JS do cliente)
@@ -36,9 +36,11 @@ app.use(express.static(path.join(__dirname, '../public')));
 const indexRoutes = require('./routes/index.routes');
 const authRoutes = require('./routes/auth.routes');
 const pageBuilderRoutes = require('./routes/pageBuilder.routes');
+const patientRoutes = require('./routes/patient.routes');
 app.use('/', indexRoutes);
 app.use('/', authRoutes);
 app.use('/', pageBuilderRoutes);
+app.use('/', patientRoutes);
 
 // 6. Handler de Erro Global (Sempre o último)
 app.use((req, res, next) => {

@@ -22,11 +22,17 @@
 
                 <div class="flex items-center gap-4">
                     <div class="hidden md:flex flex-col items-end mr-2">
-                        <span class="text-sm font-semibold text-slate-700"><%= user.name %></span>
-                        <span class="text-xs text-slate-500"><%= user.role %></span>
+                        <span class="text-sm font-semibold text-slate-700">
+                            <%= (typeof user !== 'undefined' && user) ? user.name : 'Visitante' %>
+                        </span>
+                        
+                        <span class="text-xs text-slate-500">
+                            <%= (typeof user !== 'undefined' && user) ? user.role : '' %>
+                        </span>
                     </div>
+
                     <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold border border-blue-200">
-                        <%= user.name.charAt(0) %>
+                        <%= (typeof user !== 'undefined' && user) ? user.name.charAt(0) : 'D' %>
                     </div>
                     <a href="/login" class="text-slate-400 hover:text-red-500 transition-colors" title="Sair">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>

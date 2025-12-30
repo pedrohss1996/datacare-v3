@@ -1,7 +1,7 @@
 {
-  "name": "app",
+  "name": "datacare-system",
   "version": "1.0.0",
-  "description": "",
+  "description": "Sistema de Gestão Hospitalar DataCare",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -23,7 +23,9 @@
     "express": "^5.2.1",
     "express-ejs-layouts": "^2.5.1",
     "helmet": "^8.1.0",
-    "morgan": "^1.10.1"
+    "knex": "^3.1.0",
+    "morgan": "^1.10.1",
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
