@@ -37,6 +37,7 @@ const indexRoutes = require('./routes/index.routes');
 const authRoutes = require('./routes/auth.routes');
 const pageBuilderRoutes = require('./routes/pageBuilder.routes');
 const patientRoutes = require('./routes/patient.routes');
+
 app.use('/', indexRoutes);
 app.use('/', authRoutes);
 app.use('/', pageBuilderRoutes);

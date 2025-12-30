@@ -1,33 +1,84 @@
 // src/controllers/pageBuilderController.js
-const aiService = require('../services/aiService');
 
-// Renderiza a tela principal do construtor
+const aiService = require('../services/aiService');
+const db = require('../infra/database/connection'); // <--- NÃO ESQUEÇA DISSO!
+
+// 1. Renderiza a tela do Construtor
 exports.renderBuilder = (req, res) => {
-    res.render('pages/page-builder', {
-        title: 'Criador de Páginas IA - Hospital Core',
+    res.render('pages/builder/editor', { 
+        title: 'Construtor de Páginas - DataCare',
         layout: 'layouts/main',
-        user: { 
-            name: 'Marlon Braga', 
-            role: 'Administrador TI' 
-        }
+        user: req.user || { name: 'Admin', role: 'TI' }
     });
 };
 
-// Recebe o POST via fetch (AJAX) e devolve JSON
+// 2. Gera o código via IA (Chamado pelo Chat)
 exports.generateCode = async (req, res) => {
     try {
         const { prompt } = req.body;
-
-        if (!prompt) {
-            return res.status(400).json({ error: 'O prompt é obrigatório.' });
-        }
+        if (!prompt) return res.status(400).json({ error: 'Prompt vazio' });
 
         const html = await aiService.generateComponent(prompt);
-        
-        // Retorna o HTML gerado para o front-end
         res.json({ success: true, html });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, error: 'Erro no servidor' });
+    }
+};
+
+// 3. Salva a página no banco (Chamado pelo botão Salvar)
+exports.savePage = async (req, res) => {
+    try {
+        // Agora usando os nomes em PORTUGUÊS da tabela nova
+        const { title, slug, html } = req.body; 
+
+        if (!title || !slug || !html) {
+            return res.status(400).json({ success: false, error: 'Dados incompletos.' });
+        }
+
+        const paginaExistente = await db('paginas_personalizadas').where({ slug }).first();
+
+        if (paginaExistente) {
+            await db('paginas_personalizadas').where({ slug }).update({ 
+                titulo: title,
+                conteudo_html: html
+                // atualizado_em é automático pelo trigger
+            });
+        } else {
+            await db('paginas_personalizadas').insert({ 
+                titulo: title, 
+                slug: slug, 
+                conteudo_html: html,
+                publicada: true
+            });
+        }
+
+        res.json({ success: true, link: `/p/${slug}` });
 
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Erro ao comunicar com a IA.' });
+        console.error(error);
+        res.status(500).json({ success: false, error: 'Erro ao salvar.' });
+    }
+};
+
+// 4. AQUI ESTÁ ELE: Renderiza a página pronta para o usuário ver
+exports.renderPublishedPage = async (req, res) => {
+    try {
+        const { slug } = req.params;
+        
+        const pagina = await db('paginas_personalizadas').where({ slug }).first();
+
+        if (!pagina) return res.status(404).send('Página não encontrada');
+
+        // AGORA SIM: Renderiza a 'view.ejs' passando o HTML do banco
+        res.render('pages/builder/view', {
+            title: pagina.titulo,
+            layout: 'layouts/main', // Usa o layout padrão do sistema
+            html: pagina.conteudo_html, // Manda o HTML para a moldura
+            user: req.user || { name: 'Visitante', role: 'Viewer' }
+        });
+
+    } catch (error) {
+        res.send('Erro ao carregar página: ' + error.message);
     }
 };

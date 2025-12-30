@@ -1,0 +1,218 @@
+<div class="flex flex-col h-[calc(100vh-7rem)] -m-6 overflow-hidden">
+
+    <div class="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200 shrink-0 z-10">
+        <div>
+            <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <span class="p-1 bg-blue-100 rounded text-blue-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                </span>
+                Construtor IA
+            </h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <button class="text-slate-500 hover:text-slate-700 font-medium text-sm">Visualizar</button>
+            <div class="h-4 w-px bg-slate-300"></div>
+            <button id="btn-exportar" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2 shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                Salvar & Exportar
+            </button>
+        </div>
+    </div>
+
+    <div class="flex flex-1 overflow-hidden">
+
+        <div class="w-96 bg-white border-r border-slate-200 flex flex-col shrink-0 relative z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+            <div class="p-4 border-b border-slate-200 bg-slate-50/50">
+                <h2 class="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    Assistente DataCare
+                </h2>
+            </div>
+
+            <div id="chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                    <div class="bg-white p-3 rounded-2xl rounded-tl-none border border-slate-200 shadow-sm text-sm text-slate-600">
+                        Olá, <strong><%= user.name %></strong>! O que vamos construir hoje? Posso criar tabelas, formulários ou dashboards.
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-200 bg-white">
+                <form id="ai-form" class="relative">
+                    <input type="text" id="ai-prompt" 
+                           placeholder="Ex: Crie um formulário de cadastro de médicos..." 
+                           class="w-full rounded-xl border-slate-300 pr-12 pl-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all">
+                    <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="flex-1 bg-slate-100/50 p-8 overflow-y-auto flex justify-center">
+            
+            <div class="w-full max-w-5xl bg-white min-h-full rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                
+                <div class="px-6 py-3 border-b border-slate-100 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-red-400"></span>
+                        <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
+                        <span class="w-3 h-3 rounded-full bg-green-400"></span>
+                    </div>
+                    <span class="text-xs font-mono text-slate-400">Preview Mode: Desktop</span>
+                </div>
+
+                <div id="canvas-area" class="p-8 flex-1">
+                    
+                    <div id="empty-state" class="h-full flex flex-col items-center justify-center text-slate-400">
+                        <svg class="w-16 h-16 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <p>Sua página está vazia.</p>
+                        <p class="text-sm">Use o chat para gerar componentes.</p>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const form = document.getElementById('ai-form');
+    const input = document.getElementById('ai-prompt');
+    const chatHistory = document.getElementById('chat-history');
+    const canvasArea = document.getElementById('canvas-area');
+    const emptyState = document.getElementById('empty-state');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = input.value;
+        if(!text) return;
+
+        // 1. Adiciona mensagem do usuário no chat
+        addMessage('user', text);
+        input.value = '';
+
+        // 2. Mostra "Digitando..."
+        const loadingId = addLoading();
+
+        try {
+            // 3. Chama o SEU Controller (generateCode)
+            const response = await fetch('/page-builder/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: text })
+            });
+
+            const data = await response.json();
+            removeLoading(loadingId);
+
+            if(data.success) {
+                // 4. Sucesso: Adiciona o HTML no Canvas
+                if(emptyState) emptyState.remove(); // Remove o placeholder
+                
+                // Cria um container para o novo elemento
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = data.html; // O HTML que a IA gerou
+                wrapper.className = "mb-6 hover:ring-2 ring-blue-500 ring-offset-4 rounded transition-all cursor-pointer relative group";
+                
+                canvasArea.appendChild(wrapper);
+                
+                addMessage('ai', 'Gerei o componente para você! O que achou?');
+            } else {
+                addMessage('ai', 'Desculpe, tive um erro: ' + data.error);
+            }
+
+        } catch (error) {
+            removeLoading(loadingId);
+            addMessage('ai', 'Erro de conexão.');
+        }
+    });
+
+    // Funções auxiliares de UI (Mensagens e Loading)
+    function addMessage(type, text) {
+        const div = document.createElement('div');
+        div.className = type === 'user' ? 'flex justify-end' : 'flex items-start gap-3';
+        
+        if(type === 'user') {
+            div.innerHTML = `<div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none text-sm max-w-[85%] shadow-md">${text}</div>`;
+        } else {
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <div class="bg-white p-3 rounded-2xl rounded-tl-none border border-slate-200 shadow-sm text-sm text-slate-600">${text}</div>
+            `;
+        }
+        chatHistory.appendChild(div);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    function addLoading() {
+        const id = 'loading-' + Date.now();
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = 'flex items-start gap-3';
+        div.innerHTML = `
+             <div class="w-8 h-8 rounded-full bg-slate-200 animate-pulse"></div>
+             <div class="bg-slate-100 p-3 rounded-2xl rounded-tl-none text-xs text-slate-400 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-75"></span>
+                <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-150"></span>
+             </div>
+        `;
+        chatHistory.appendChild(div);
+        return id;
+    }
+
+    function removeLoading(id) {
+        const el = document.getElementById(id);
+        if(el) el.remove();
+    }
+
+    // Lógica do Botão Salvar & Exportar
+    const btnExport = document.getElementById('btn-exportar');
+
+    btnExport.addEventListener('click', async () => {
+        // 1. Pergunta o nome da página
+        const title = prompt("Qual o título da página?");
+        if (!title) return;
+
+        // 2. Cria um 'slug' (link amigável) automaticamente
+        // Ex: "Meu Relatório" vira "meu-relatorio"
+        const slug = title.toLowerCase()
+            .replace(/ /g, '-')
+            .replace(/[^\w-]+/g, '');
+
+        // 3. Pega todo o HTML que está dentro do Canvas
+        const htmlContent = document.getElementById('canvas-area').innerHTML;
+
+        try {
+            const response = await fetch('/page-builder/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: title,
+                    slug: slug,
+                    html: htmlContent
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Página salva com sucesso!');
+                // Abre a página criada em outra aba
+                window.open(data.link, '_blank');
+            } else {
+                alert('Erro ao salvar: ' + data.error);
+            }
+        } catch (error) {
+            alert('Erro de conexão ao salvar.');
+        }
+    });
+</script>
