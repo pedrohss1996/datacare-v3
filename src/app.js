@@ -38,6 +38,7 @@ const authRoutes = require('./routes/auth.routes');
 const pageBuilderRoutes = require('./routes/pageBuilder.routes');
 const patientRoutes = require('./routes/patient.routes');
 const rotasPessoas = require('./routes/pessoas.routes');
+const rotaIndicadores = require('./routes/indicadores.routes');
 
 
 
@@ -46,6 +47,7 @@ app.use('/', authRoutes);
 app.use('/', pageBuilderRoutes);
 app.use('/', patientRoutes);
 app.use('/', rotasPessoas);
+app.use('/', rotaIndicadores);
 
 // 6. Handler de Erro Global (Sempre o último)
 app.use((req, res, next) => {

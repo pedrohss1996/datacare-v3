@@ -1,4 +1,4 @@
-const db = require('../infra/database/connection');
+const { dbApp: db } = require('../infra/database/connection');
 
 module.exports = {
     renderizarCadastro: (req, res) => {

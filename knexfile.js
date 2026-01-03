@@ -28,5 +28,15 @@ module.exports = {
       directory: './src/infra/database/migrations',
       tableName: 'knex_migrations'
     }
+  },
+
+  oracleConnection: {
+    client: 'oracledb',
+    connection: {
+      user: process.env.ORACLE_USER,
+      password: process.env.ORACLE_PASSWORD,
+      connectString: process.env.ORACLE_CONN_STR // ex: "192.168.0.1:1521/TASY"
+    },
+    pool: { min: 0, max: 5 } // Pool controlado para não travar o Tasy
   }
 };

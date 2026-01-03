@@ -1,7 +1,7 @@
 // src/controllers/pageBuilderController.js
 
 const aiService = require('../services/aiService');
-const db = require('../infra/database/connection'); // <--- NÃO ESQUEÇA DISSO!
+const { dbApp: db } = require('../infra/database/connection'); // <--- NÃO ESQUEÇA DISSO!
 
 // 1. Renderiza a tela do Construtor
 exports.renderBuilder = (req, res) => {
