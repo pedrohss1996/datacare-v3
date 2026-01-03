@@ -1,0 +1,121 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="container mx-auto px-4 py-8">
+
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+        <div class="flex items-center">
+            <a href="/indicadores" class="mr-4 p-2 rounded-full hover:bg-gray-200 transition-colors text-gray-600">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800"><%= indicador.config.titulo %></h1>
+                <p class="text-sm text-gray-500">Visualizando dados estratégicos</p>
+            </div>
+        </div>
+
+        <form method="GET" action="/indicadores/<%= indicador.config.slug %>" class="flex flex-col sm:flex-row gap-2 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+            
+            <div class="flex items-center border rounded px-2 bg-gray-50">
+                <span class="text-xs text-gray-500 mr-2 font-bold">DE:</span>
+                <input type="date" name="data_inicio" value="<%= filtros.data_inicio %>" class="bg-transparent border-none text-sm focus:ring-0 text-gray-700 py-1">
+            </div>
+
+            <div class="flex items-center border rounded px-2 bg-gray-50">
+                <span class="text-xs text-gray-500 mr-2 font-bold">ATÉ:</span>
+                <input type="date" name="data_fim" value="<%= filtros.data_fim %>" class="bg-transparent border-none text-sm focus:ring-0 text-gray-700 py-1">
+            </div>
+
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm font-medium transition-colors flex items-center justify-center">
+                <svg class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                Filtrar
+            </button>
+        </form>
+    </div>
+
+    <% if (indicador.config.tipo_grafico && indicador.config.tipo_grafico !== 'table') { %>
+        <div class="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 mb-8 relative">
+            
+            <div class="absolute top-4 right-6 bg-blue-50 text-blue-700 text-xs font-bold px-2 py-1 rounded">
+                Período: <%= filtros.data_inicio.split('-').reverse().join('/') %> à <%= filtros.data_fim.split('-').reverse().join('/') %>
+            </div>
+
+            <div class="relative h-80 w-full">
+                <canvas id="myChart"></canvas>
+            </div>
+        </div>
+    <% } %>
+
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-gray-700">Detalhamento</h3>
+            <span class="text-xs font-mono text-gray-400 bg-white px-2 py-1 rounded border">
+                <%= indicador.config.tipo_grafico.toUpperCase() %>
+            </span>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <% if (indicador.dados.length > 0) { %>
+                            <% Object.keys(indicador.dados[0]).forEach(key => { %>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <%= key %>
+                                </th>
+                            <% }) %>
+                        <% } %>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <% indicador.dados.forEach((row, i) => { %>
+                        <tr class="<%= i % 2 === 0 ? 'bg-white' : 'bg-gray-50' %> hover:bg-blue-50 transition-colors">
+                            <% Object.values(row).forEach(val => { %>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    <%= val %>
+                                </td>
+                            <% }) %>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<% if (indicador.config.tipo_grafico && indicador.config.tipo_grafico !== 'table') { %>
+<script>
+    const ctx = document.getElementById('myChart').getContext('2d');
+    const labels = <%- JSON.stringify(indicador.chartData.labels) %>;
+    const dataValues = <%- JSON.stringify(indicador.chartData.values) %>;
+    const tipoGrafico = '<%= indicador.config.tipo_grafico %>';
+
+    const backgroundColors = [
+        'rgba(59, 130, 246, 0.6)', 'rgba(16, 185, 129, 0.6)', 
+        'rgba(245, 158, 11, 0.6)', 'rgba(239, 68, 68, 0.6)', 'rgba(139, 92, 246, 0.6)'
+    ];
+
+    new Chart(ctx, {
+        type: tipoGrafico,
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '<%= indicador.config.titulo %>',
+                data: dataValues,
+                backgroundColor: backgroundColors,
+                borderColor: backgroundColors.map(c => c.replace('0.6', '1')),
+                borderWidth: 1,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } },
+            scales: {
+                y: { beginAtZero: true, display: tipoGrafico !== 'pie' },
+                x: { display: tipoGrafico !== 'pie' }
+            }
+        }
+    });
+</script>
+<% } %>
