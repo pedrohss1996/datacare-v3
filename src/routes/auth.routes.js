@@ -1,9 +1,14 @@
-// src/routes/auth.routes.js
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/authController.js');
+const authController = require('../controllers/authController');
 
-router.get('/login', authController.renderLogin);
-router.post('/login', authController.handleLogin);
+// Rota GET: Tela de Login
+router.get('/login', authController.renderizarLogin);
+
+// Rota POST: Processar Login
+router.post('/login', authController.login);
+
+// Rota GET: Logout
+router.get('/logout', authController.logout);
 
 module.exports = router;

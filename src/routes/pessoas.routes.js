@@ -1,17 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const pessoaController = require('../controllers/pessoaController');
+const loginRequired = require('../middlewares/loginRequired'); // <--- 1. Importe o Guardião
 
-// Formulário de Cadastro
-router.get('/pessoas/nova', pessoaController.renderizarCadastro);
+// Rota GET: Listagem (PROTEGIDA)
+// Adicionamos o 'loginRequired' antes do controller
+router.get('/pessoas', loginRequired, pessoaController.listar); 
 
-// Ação de Salvar (POST)
-router.post('/pessoas/cadastrar', pessoaController.cadastrar);
+// Rota GET: Formulário (PROTEGIDA)
+router.get('/pessoas/cadastro', loginRequired, pessoaController.renderizarCadastro);
 
-// Listagem Simples (Placeholder para teste)
-router.get('/pessoas', (req, res) => {
-    const msg = req.query.sucesso ? '<div style="color:green; font-weight:bold">Cadastro realizado com sucesso!</div>' : '';
-    res.send(`${msg} <h1>Módulo de Pessoas</h1><br><a href="/pessoas/nova">Cadastrar Nova Pessoa</a>`);
-});
+// Rota POST: Salvar (PROTEGIDA)
+// Importante proteger o POST também para ninguém mandar dados via Postman/Curl
+router.post('/pessoas/cadastrar', loginRequired, pessoaController.cadastrar);
 
 module.exports = router;

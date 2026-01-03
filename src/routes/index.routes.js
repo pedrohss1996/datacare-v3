@@ -1,16 +1,11 @@
+// src/routes/index.routes.js
 const express = require('express');
 const router = express.Router();
 
 router.get('/', (req, res) => {
-    res.redirect('/login');
-});
-
-// ALTERADO: Rota agora chama-se '/main'
-router.get('/main', (req, res) => {
-    res.render('pages/main', { 
-        title: 'Menu Principal - Hospital Core',
-        user: { name: 'Marlon Braga', role: 'Administrador TI' },
-        layout: 'layouts/main' // Usa o layout com Navbar
+    res.render('pages/index', {
+        title: 'Home - DataCare',
+        user: req.user // Passa o usuário (ou undefined se não tiver)
     });
 });
 

@@ -2,15 +2,22 @@
 const knex = require('knex');
 const configuration = require('../../../knexfile'); 
 
-// Detecta se está na Railway (production) ou no seu PC (development)
+// Detecta ambiente
 const environment = process.env.NODE_ENV === 'production' ? 'production' : 'development';
 
-// 1. Conexão da Aplicação (Postgres - Usuários, Configs, Dashboards)
-const dbApp = knex(configuration[environment]);
+// 1. Inicializa a Conexão Principal (Postgres)
+const connection = knex(configuration[environment]);
 
-// 2. Conexão do Hospital (Oracle - Dados do Tasy)
-// Nota: Se não tiver configurado no .env ainda, ele vai dar erro só quando tentar usar.
-const dbOracle = knex(configuration.oracleConnection);
+// 2. Inicializa a Conexão Oracle (Opcional por enquanto)
+// Verificamos se existe a config para não dar erro se você ainda não configurou o Oracle
+let dbOracle = null;
+if (configuration.oracleConnection) {
+    dbOracle = knex(configuration.oracleConnection);
+}
 
-// Exporta as duas conexões de forma nomeada
-module.exports = { dbApp, dbOracle };
+// --- O PULO DO GATO ---
+// Exportamos a conexão principal DIRETAMENTE para funcionar com "const db = require(...)"
+// E penduramos o Oracle nela para usar depois como "db.oracle"
+connection.oracle = dbOracle;
+
+module.exports = connection;
