@@ -33,10 +33,28 @@ module.exports = {
   oracleConnection: {
     client: 'oracledb',
     connection: {
-      user: process.env.ORACLE_USER,
-      password: process.env.ORACLE_PASSWORD,
-      connectString: process.env.ORACLE_CONN_STR // ex: "192.168.0.1:1521/TASY"
+      host: process.env.ORACLE_HOST || 'seu_ip_oracle',
+      user: process.env.ORACLE_USER || 'seu_usuario',
+      password: process.env.ORACLE_PASSWORD || 'sua_senha',
+      database: process.env.ORACLE_DATABASE || 'xe', // SID ou Service Name
+      // Se precisar de String de Conexão completa (comum no Tasy/Oracle):
+      connectString: `${process.env.ORACLE_HOST}:${process.env.ORACLE_PORT}/${process.env.ORACLE_DATABASE}`
     },
-    pool: { min: 0, max: 5 } // Pool controlado para não travar o Tasy
+    pool: {
+      min: 0, // <--- O SEGREDO: Permite esvaziar a piscina se estiver ocioso
+      max: 7, 
+      // Tempo (ms) antes de destruir uma conexão ociosa (ex: 60 segundos)
+      // Se o firewall corta em 10min, coloque isso em 5min.
+      idleTimeoutMillis: 180000, 
+      
+      // (Opcional) Validação extra: Testa a conexão antes de emprestar
+      // Isso garante que nunca entregamos uma conexão quebrada pro usuário
+      validate: (conn) => {
+        return conn.execute('SELECT 1 FROM DUAL')
+          .then(() => true)
+          .catch(() => false);
+      }
+    },
+    fetchAsString: ['number', 'clob'], 
   }
 };

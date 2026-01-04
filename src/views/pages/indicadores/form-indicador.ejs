@@ -23,7 +23,7 @@
 
                     <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                         
-                        <div class="sm:col-span-4">
+                        <div class="sm:col-span-3">
                             <label for="titulo" class="block text-sm font-medium text-gray-700">Título do Indicador</label>
                             <div class="mt-1">
                                 <input type="text" name="titulo" id="titulo" required
@@ -33,7 +33,17 @@
                             </div>
                         </div>
 
-                        <div class="sm:col-span-2">
+                        <div class="sm:col-span-1.5"> 
+                            <label for="fonte_dados" class="block text-sm font-medium text-gray-700">Fonte</label>
+                            <div class="mt-1">
+                                <select id="fonte_dados" name="fonte_dados" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border bg-white">
+                                    <option value="mock" <%= (indicador && indicador.fonte_dados === 'mock') ? 'selected' : '' %>>Simulado (Mock)</option>
+                                    <option value="oracle" <%= (indicador && indicador.fonte_dados === 'oracle') ? 'selected' : '' %>>Tasy (Oracle)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="sm:col-span-1.5">
                             <label for="tipo_grafico" class="block text-sm font-medium text-gray-700">Visualização</label>
                             <div class="mt-1">
                                 <select id="tipo_grafico" name="tipo_grafico" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border bg-white">
