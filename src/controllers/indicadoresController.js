@@ -79,13 +79,15 @@ module.exports = {
                 .andWhere('p.ativo', true)
                 .select('p.id', 'p.nome', 'p.descricao', 'p.icone', 'p.cor_hex')
                 .orderBy('p.ordem', 'asc');
-
+    
             // 3. Renderiza a View (Visualização Clean)
+            const isAdmin = (usuario.grupo_id === 1);
             return res.render('pages/indicadores/visualizar', {
                 title: 'Central de Indicadores',
                 layout: 'layouts/main',
                 user: req.user,
-                pastas: pastas 
+                pastas: pastas,
+                isAdmin: isAdmin
             });
 
         } catch (erro) {
@@ -105,33 +107,41 @@ module.exports = {
     // =========================================================================
     getIndicadoresDaPasta: async (req, res) => {
         const { pastaId } = req.params;
-        const userId = req.user.id;
+        
+        // Ajuste aqui: Tenta pegar cd_usuario OU id (para garantir compatibilidade)
+        const userId = req.user.cd_usuario || req.user.id; 
 
         try {
-            // Verificação de segurança dupla
-            const usuario = await db('usuarios').where('id', userId).first();
+            // 1. Busca grupo do usuário (usando cd_usuario)
+            const usuario = await db('usuarios')
+                .where('cd_usuario', userId) 
+                .select('grupo_id')
+                .first();
+
+            if (!usuario) return res.status(401).json({ error: 'Usuário não encontrado.' });
+            
+            // 2. Verifica permissão (Admin Grupo 1 sempre passa)
             const permissao = await db('indicadores_permissoes')
                 .where({ pasta_id: pastaId, grupo_id: usuario.grupo_id })
                 .first();
 
-            if (!permissao) {
-                return res.status(403).json({ error: 'Sem permissão.' });
+            if (!permissao && usuario.grupo_id !== 1) {
+                return res.status(403).json({ error: 'Você não tem permissão nesta pasta.' });
             }
 
-            // Busca indicadores da pasta
+            // 3. Busca indicadores (AGORA COM A COLUNA RESPONSAVEL EXISTINDO)
             const indicadores = await db('config_indicadores')
                 .where({ pasta_id: pastaId, ativo: true })
-                .select('id', 'titulo', 'descricao', 'tipo_grafico', 'responsavel', 'slug')
+                .select('id', 'titulo', 'descricao', 'tipo_grafico', 'responsavel', 'slug') // <--- Essa coluna agora existe!
                 .orderBy('titulo');
 
             return res.json(indicadores);
 
         } catch (erro) {
-            console.error(erro);
-            return res.status(500).json({ error: 'Erro interno' });
+            console.error('Erro API Pasta:', erro);
+            return res.status(500).json({ error: 'Erro ao buscar indicadores.' });
         }
     },
-
     // =========================================================================
     // 3. API: DADOS DO INDICADOR (Lógica Oracle/Mock portada)
     // =========================================================================
@@ -238,29 +248,37 @@ module.exports = {
     },
 
     salvar: async (req, res) => {
-        // Adicionei pasta_id e responsavel
         const { titulo, descricao, tipo_grafico, query_sql, fonte_dados, pasta_id, responsavel } = req.body;
 
         try {
-            const slug = gerarSlug(titulo);
+            // CORREÇÃO: Slug Único (Nome + 4 números aleatórios de tempo)
+            // Isso evita o erro "duplicate key" se você repetir nomes.
+            const timestamp = new Date().getTime().toString().slice(-4);
+            const slug = `${gerarSlug(titulo)}-${timestamp}`;
 
             await db('config_indicadores').insert({
                 titulo,
                 descricao,
-                slug,
+                slug, // Agora o slug é blindado (ex: faturamento-9821)
                 tipo_grafico,
                 query_sql,
-                pasta_id: pasta_id || null, // Salva a pasta
-                responsavel,
+                pasta_id: pasta_id ? parseInt(pasta_id) : null, 
+                responsavel: responsavel || 'Não informado',
                 ativo: true,
                 fonte_dados: fonte_dados || 'mock'
             });
 
-            return res.redirect('/indicadores/visualizar'); // Redireciona para o dashboard novo
+            return res.redirect('/indicadores/visualizar'); 
 
         } catch (erro) {
-            console.error(erro);
-            res.render('pages/500', { error: erro, user: req.user });
+            console.error('Erro ao salvar indicador:', erro);
+            
+            return res.render('pages/500', { 
+                title: 'Erro ao Salvar', 
+                error: erro, 
+                layout: 'layouts/main', 
+                user: req.user 
+            });
         }
     },
 
@@ -289,7 +307,8 @@ module.exports = {
         const { titulo, descricao, tipo_grafico, query_sql, fonte_dados, pasta_id, responsavel } = req.body;
 
         try {
-            const slug = gerarSlug(titulo);
+            const timestamp = new Date().getTime().toString().slice(-4); // Pega os 4 últimos dígitos do tempo
+            const slug = `${gerarSlug(titulo)}-${timestamp}`;
 
             await db('config_indicadores')
                 .where({ id })
