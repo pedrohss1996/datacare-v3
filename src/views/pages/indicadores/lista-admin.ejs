@@ -1,0 +1,97 @@
+<div class="w-full max-w-7xl mx-auto p-6">
+    
+    <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">Gestão de Indicadores</h1>
+            <p class="text-sm text-slate-500">Cadastre, edite ou remova métricas do sistema.</p>
+        </div>
+        <div class="flex gap-3">
+            <a href="/indicadores/visualizar" class="px-4 py-2 text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium">
+                <i class="fa-solid fa-eye mr-2"></i> Ver Dashboard
+            </a>
+            <a href="/indicadores/novo" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm">
+                <i class="fa-solid fa-plus mr-2"></i> Novo Indicador
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                    <tr>
+                        <th class="px-6 py-4">ID</th>
+                        <th class="px-6 py-4">Título / Descrição</th>
+                        <th class="px-6 py-4">Pasta</th>
+                        <th class="px-6 py-4">Tipo</th>
+                        <th class="px-6 py-4">Fonte</th>
+                        <th class="px-6 py-4 text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    <% if (indicadores.length > 0) { %>
+                        <% indicadores.forEach(ind => { %>
+                            <tr class="hover:bg-slate-50 transition-colors group">
+                                <td class="px-6 py-4 text-slate-400 font-mono text-xs">#<%= ind.id %></td>
+                                
+                                <td class="px-6 py-4">
+                                    <div class="font-bold text-slate-800"><%= ind.titulo %></div>
+                                    <div class="text-xs text-slate-500 truncate max-w-xs"><%= ind.descricao || 'Sem descrição' %></div>
+                                </td>
+
+                                <td class="px-6 py-4">
+                                    <% if (ind.pasta_nome) { %>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                                            <span class="w-2 h-2 rounded-full mr-1.5" style="background-color: <%= ind.pasta_cor || '#cbd5e1' %>"></span>
+                                            <%= ind.pasta_nome %>
+                                        </span>
+                                    <% } else { %>
+                                        <span class="text-slate-400 italic text-xs">Sem pasta</span>
+                                    <% } %>
+                                </td>
+
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-2 text-slate-600 capitalize">
+                                        <% if(ind.tipo_grafico === 'table') { %> <i class="fa-solid fa-table"></i>
+                                        <% } else if(ind.tipo_grafico === 'pie') { %> <i class="fa-solid fa-chart-pie"></i>
+                                        <% } else { %> <i class="fa-solid fa-chart-column"></i> <% } %>
+                                        <%= ind.tipo_grafico %>
+                                    </div>
+                                </td>
+
+                                <td class="px-6 py-4">
+                                    <% if (ind.fonte_dados === 'oracle') { %>
+                                        <span class="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded border border-red-100">TASY/ORACLE</span>
+                                    <% } else { %>
+                                        <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100">MOCK</span>
+                                    <% } %>
+                                </td>
+
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <a href="/indicadores/editar/<%= ind.id %>" class="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Editar">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </a>
+                                        
+                                        <form action="/indicadores/excluir/<%= ind.id %>" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este indicador?');" class="inline">
+                                            <button type="submit" class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Excluir">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="6" class="px-6 py-12 text-center text-slate-500">
+                                <div class="mb-2 text-2xl opacity-20"><i class="fa-solid fa-inbox"></i></div>
+                                Nenhum indicador cadastrado ainda.
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

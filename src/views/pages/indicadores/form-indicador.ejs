@@ -7,11 +7,11 @@
                     <%= indicador ? 'Editar Indicador' : 'Novo Indicador' %>
                 </h1>
                 <p class="mt-1 text-sm text-gray-500">
-                    <%= indicador ? 'Altere as configurações e a query SQL.' : 'Configure um novo KPI para o dashboard.' %>
+                    <%= indicador ? 'Altere as configurações e a organização.' : 'Configure um novo KPI para o dashboard.' %>
                 </p>
             </div>
             
-            <a href="/indicadores" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
+            <a href="/indicadores/visualizar" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors">
                 Cancelar
             </a>
         </div>
@@ -33,6 +33,34 @@
                             </div>
                         </div>
 
+                        <div class="sm:col-span-3">
+                            <label for="pasta_id" class="block text-sm font-medium text-gray-700">Pasta / Área</label>
+                            <div class="mt-1">
+                                <select id="pasta_id" name="pasta_id" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border bg-white">
+                                    <option value="">Selecione uma pasta...</option>
+                                    <% if (typeof pastas !== 'undefined' && pastas.length > 0) { %>
+                                        <% pastas.forEach(p => { %>
+                                            <option value="<%= p.id %>" <%= (indicador && indicador.pasta_id == p.id) ? 'selected' : '' %>>
+                                                <%= p.nome %>
+                                            </option>
+                                        <% }) %>
+                                    <% } else { %>
+                                        <option value="" disabled>Nenhuma pasta cadastrada</option>
+                                    <% } %>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="sm:col-span-3">
+                            <label for="responsavel" class="block text-sm font-medium text-gray-700">Responsável / Cargo</label>
+                            <div class="mt-1">
+                                <input type="text" name="responsavel" id="responsavel"
+                                    value="<%= indicador ? indicador.responsavel : '' %>"
+                                    class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
+                                    placeholder="Ex: Coord. Financeiro">
+                            </div>
+                        </div>
+
                         <div class="sm:col-span-1.5"> 
                             <label for="fonte_dados" class="block text-sm font-medium text-gray-700">Fonte</label>
                             <div class="mt-1">
@@ -47,10 +75,11 @@
                             <label for="tipo_grafico" class="block text-sm font-medium text-gray-700">Visualização</label>
                             <div class="mt-1">
                                 <select id="tipo_grafico" name="tipo_grafico" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border bg-white">
-                                    <option value="table" <%= (indicador && indicador.tipo_grafico === 'table') ? 'selected' : '' %>>Tabela (Padrão)</option>
                                     <option value="bar" <%= (indicador && indicador.tipo_grafico === 'bar') ? 'selected' : '' %>>Gráfico de Barras</option>
-                                    <option value="pie" <%= (indicador && indicador.tipo_grafico === 'pie') ? 'selected' : '' %>>Gráfico de Pizza</option>
                                     <option value="line" <%= (indicador && indicador.tipo_grafico === 'line') ? 'selected' : '' %>>Gráfico de Linha</option>
+                                    <option value="pie" <%= (indicador && indicador.tipo_grafico === 'pie') ? 'selected' : '' %>>Gráfico de Pizza</option>
+                                    <option value="doughnut" <%= (indicador && indicador.tipo_grafico === 'doughnut') ? 'selected' : '' %>>Rosca</option>
+                                    <option value="table" <%= (indicador && indicador.tipo_grafico === 'table') ? 'selected' : '' %>>Tabela</option>
                                 </select>
                             </div>
                         </div>
@@ -67,10 +96,10 @@
                         <label for="query_sql" class="block text-sm font-medium text-gray-700">
                             Query SQL (Oracle/Tasy)
                         </label>
-                        <p class="text-xs text-gray-500 mb-2">Cole aqui o SELECT que trará os dados. Use <code>:data_inicio</code> e <code>:data_fim</code> para filtros.</p>
+                        <p class="text-xs text-gray-500 mb-2">Cole aqui o SELECT. A primeira coluna será o Eixo X (Nome) e a segunda o Eixo Y (Valor).</p>
                         <div class="mt-1">
-                            <textarea id="query_sql" name="query_sql" rows="10" required
-                                class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-3 border font-mono bg-gray-900 text-green-400 text-xs leading-5"
+                            <textarea id="query_sql" name="query_sql" rows="10" 
+                                class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-3 border font-mono bg-slate-900 text-emerald-400 text-xs leading-5"
                                 placeholder="SELECT setor, count(*) as total FROM ..."><%= indicador ? indicador.query_sql : '' %></textarea>
                         </div>
                     </div>
@@ -79,10 +108,8 @@
 
                 <div class="px-4 py-3 bg-gray-50 text-right sm:px-6 border-t border-gray-200">
                     <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                        <svg class="w-5 h-5 mr-2 -ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                        </svg>
-                        <%= indicador ? 'Atualizar Dados' : 'Salvar Indicador' %>
+                        <i class="fa-solid fa-save mr-2 mt-0.5"></i>
+                        <%= indicador ? 'Salvar Alterações' : 'Criar Indicador' %>
                     </button>
                 </div>
 
@@ -97,7 +124,7 @@
                         <p class="text-sm text-gray-500">Essa ação não pode ser desfeita.</p>
                     </div>
                     <form action="/indicadores/excluir/<%= indicador.id %>" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este indicador?');">
-                        <button type="submit" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2 px-4 rounded transition-colors text-sm">
+                        <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-medium py-2 px-4 rounded transition-colors text-sm">
                             Excluir Definitivamente
                         </button>
                     </form>
