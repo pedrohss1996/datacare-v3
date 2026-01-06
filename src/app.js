@@ -15,6 +15,8 @@ const indexRoutes = require('./routes/index.routes');
 const authRoutes = require('./routes/auth.routes');
 const rotasPessoas = require('./routes/pessoas.routes');
 const rotaIndicadores = require('./routes/indicadores.routes');
+const rotaIndicadoresIA = require('./routes/ia.routes');
+const rotaQuerisIA = require('./routes/queries.routes');
 
 // Inicializa o app
 const app = express();
@@ -67,7 +69,9 @@ app.use((req, res, next) => {
 app.use('/', authRoutes);      
 app.use('/', rotasPessoas);    
 app.use('/', rotaIndicadores);
-app.use('/', indexRoutes);     
+app.use('/', indexRoutes); 
+app.use('/', rotaIndicadoresIA)
+app.use('/', rotaQuerisIA)   
 
 // 6. Tratamento de Erros
 app.use((req, res, next) => {

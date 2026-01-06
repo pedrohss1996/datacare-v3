@@ -1,0 +1,180 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+<div class="w-full max-w-6xl mx-auto p-6">
+    
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">Gerenciar Queries</h1>
+            <p class="text-sm text-slate-500">Defina as fontes de dados que a IA poderá consultar.</p>
+        </div>
+        <button onclick="abrirModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-bold shadow-sm flex items-center gap-2 transition-all">
+            <i class="fa-solid fa-plus"></i> Criar Nova Query
+        </button>
+    </div>
+
+    <div class="bg-white p-2 rounded-xl border border-slate-200 shadow-sm mb-6 flex gap-2">
+        <div class="flex-1 relative">
+            <i class="fa-solid fa-search absolute left-4 top-3.5 text-slate-400"></i>
+            <input type="text" placeholder="Buscar por nome ou descrição..." class="w-full pl-10 pr-4 py-3 rounded-lg border-none focus:ring-0 text-slate-600 placeholder:text-slate-300">
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4">
+        <% if (queries.length > 0) { %>
+            <% queries.forEach(q => { %>
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all group relative">
+                    <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-xl <%= q.tipo_banco === 'oracle' ? 'bg-red-500' : 'bg-blue-500' %>"></div>
+                    
+                    <div class="flex justify-between items-start pl-4">
+                        <div>
+                            <div class="flex items-center gap-3 mb-1">
+                                <h3 class="text-lg font-bold text-slate-800 font-mono"><%= q.titulo %></h3>
+                                <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded border <%= q.tipo_banco === 'oracle' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-blue-50 text-blue-600 border-blue-100' %>">
+                                    <%= q.tipo_banco %>
+                                </span>
+                            </div>
+                            <p class="text-slate-500 text-sm max-w-2xl"><%= q.descricao || 'Sem descrição definida.' %></p>
+                            
+                            <div class="mt-3 flex items-center gap-4 text-xs text-slate-400">
+                                <span><i class="fa-solid fa-code mr-1"></i> ID: <%= q.id.toString().substring(0,8) %>...</span>
+                                <span><i class="fa-regular fa-clock mr-1"></i> Atualizado em: <%= new Date(q.atualizado_em).toLocaleDateString() %></span>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            <button onclick="editarQuery(<%= q.id %>)" class="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-100 transition-colors">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="excluirQuery(<%= q.id %>)" class="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-100 transition-colors">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        <% } else { %>
+            <div class="text-center py-20 text-slate-400">
+                <i class="fa-solid fa-database text-4xl mb-4 opacity-30"></i>
+                <p>Nenhuma query cadastrada ainda.</p>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<div id="modalQuery" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="fecharModal()"></div>
+    
+    <div class="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl flex flex-col animate-slide-in">
+        
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+            <h2 class="text-xl font-bold text-slate-800" id="modalTitulo">Nova Query</h2>
+            <button onclick="fecharModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-times text-xl"></i></button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-8 space-y-6">
+            <form id="formQuery" onsubmit="salvarQuery(event)">
+                <input type="hidden" name="id" id="inputId">
+                
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Nome da Query *</label>
+                        <input type="text" name="titulo" id="inputTitulo" required 
+                            class="w-full rounded-lg border-slate-300 text-sm focus:ring-indigo-500 focus:border-indigo-500 uppercase font-mono"
+                            placeholder="PAINEL_ITEM_PENDENTE">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Banco de Dados *</label>
+                        <div class="flex gap-4 mt-1">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="tipo_banco" value="oracle" checked class="text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700"><i class="fa-solid fa-server text-red-500 mr-1"></i> Oracle</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="tipo_banco" value="mysql" class="text-indigo-600 focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700"><i class="fa-solid fa-database text-blue-500 mr-1"></i> MySQL</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Descrição (Para a IA entender)</label>
+                    <textarea name="descricao" id="inputDescricao" rows="2" 
+                        class="w-full rounded-lg border-slate-300 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Ex: Retorna a lista de pendências financeiras agrupadas por paciente..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">SQL da Query *</label>
+                    <p class="text-xs text-slate-400 mb-2">Use variáveis entre chaves se necessário, ex: {CD_PACIENTE}</p>
+                    <textarea name="query_sql" id="inputSql" rows="10" required
+                        class="w-full rounded-lg border-slate-300 font-mono text-xs bg-slate-50 text-slate-800 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="SELECT ... FROM ..."></textarea>
+                </div>
+            </form>
+        </div>
+
+        <div class="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+            <button onclick="fecharModal()" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-lg font-bold hover:bg-slate-50 transition">Cancelar</button>
+            <button onclick="document.getElementById('formQuery').requestSubmit()" class="px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-md hover:shadow-lg transition">
+                <i class="fa-solid fa-save mr-2"></i> Salvar Alterações
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    .animate-slide-in { animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+</style>
+
+<script>
+    function abrirModal() {
+        document.getElementById('formQuery').reset();
+        document.getElementById('inputId').value = '';
+        document.getElementById('modalTitulo').innerText = 'Nova Query';
+        document.getElementById('modalQuery').classList.remove('hidden');
+    }
+
+    function fecharModal() {
+        document.getElementById('modalQuery').classList.add('hidden');
+    }
+
+    async function editarQuery(id) {
+        const res = await fetch('/queries/buscar/' + id);
+        const data = await res.json();
+        
+        document.getElementById('inputId').value = data.id;
+        document.getElementById('inputTitulo').value = data.titulo;
+        document.getElementById('inputDescricao').value = data.descricao;
+        document.getElementById('inputSql').value = data.query_sql;
+        // Seleciona o radio button correto
+        document.querySelector(`input[name="tipo_banco"][value="${data.tipo_banco}"]`).checked = true;
+        
+        document.getElementById('modalTitulo').innerText = 'Editar Query';
+        document.getElementById('modalQuery').classList.remove('hidden');
+    }
+
+    async function salvarQuery(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        const res = await fetch('/queries/salvar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        if(res.ok) window.location.reload();
+        else alert('Erro ao salvar');
+    }
+
+    async function excluirQuery(id) {
+        if(confirm('Tem certeza? Essa ação pode quebrar indicadores que usam essa query.')) {
+            await fetch('/queries/excluir/' + id, { method: 'POST' });
+            window.location.reload();
+        }
+    }
+</script>
