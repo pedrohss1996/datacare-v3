@@ -2,7 +2,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
-// Carregamento resiliente do banco
+// Carregamento resiliente do Banco
 let db;
 try {
     db = require('../infra/database/connection');
@@ -12,130 +12,132 @@ try {
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+const STYLE_GUIDE = `
+ESTILO VISUAL (BOOTSTRAP 5):
+- Framework: Bootstrap 5.3 (CDN) + FontAwesome 6 (CDN).
+- Layout: Container fluido, Cards (.card), Gráficos (Chart.js).
+- Cores: Use classes bootstrap (bg-primary, text-success, etc).
+- IMPORTANTE: O script JS deve ler 'window.DADOS_DB' (array de objetos) para montar a tela.
+`;
+
 module.exports = {
 
-    // 1. CARREGA A TELA COM A LISTA DE QUERIES NO DROPDOWN
     index: async (req, res) => {
         try {
-            // Buscamos apenas ID e Título para preencher o select
-            const queriesDisponiveis = await db('gerenciador_queries')
-                .select('id', 'titulo')
-                .orderBy('titulo', 'asc');
-
+            const queries = await db('gerenciador_queries').select('id', 'titulo').orderBy('titulo', 'asc');
             res.render('pages/ia-builder/index', {
                 title: 'IA Page Builder',
                 layout: 'layouts/main',
                 user: req.user,
-                datasets: queriesDisponiveis // <--- Enviamos para a View
+                datasets: queries
             });
-        } catch (error) {
-            console.error(error);
-            res.redirect('/');
-        }
+        } catch (error) { res.redirect('/'); }
     },
 
-    // 2. GERA O INDICADOR (COM FILTRO DE QUERY)
     gerar: async (req, res) => {
         const { promptUsuario, queryId } = req.body;
 
         try {
-            // 1. LÓGICA DE FILTRAGEM (Mantém igual)
+            // 1. Busca Contexto
             let queryBuilder = db('gerenciador_queries').select('titulo', 'descricao', 'query_sql');
-            if (queryId && queryId !== "") {
-                queryBuilder.where('id', queryId);
-            }
+            if (queryId) queryBuilder.where('id', queryId);
             const queriesDisponiveis = await queryBuilder;
 
             let schemaContext = "";
             if (queriesDisponiveis.length === 0) {
-                schemaContext = "AVISO: Nenhuma fonte de dados encontrada. Tente inferir ou peça nomes reais.";
+                schemaContext = "AVISO: Sem datasets. Tente inferir SQL genérico.";
             } else {
-                schemaContext = "VOCÊ TEM ACESSO AOS SEGUINTES DATASETS:\n\n";
+                schemaContext = "DATASETS DISPONÍVEIS:\n";
                 queriesDisponiveis.forEach(q => {
-                    schemaContext += `--- DATASET: "${q.titulo}" ---\n`;
-                    schemaContext += `DESCRIÇÃO: ${q.descricao || 'Sem descrição'}\n`;
-                    schemaContext += `SQL BASE: \n${q.query_sql}\n\n`;
+                    schemaContext += `DATASET: "${q.titulo}"\nDESC: ${q.descricao}\nSQL BASE: ${q.query_sql}\n---\n`;
                 });
             }
 
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            // 2. Modelo Universal (gemini-pro)
+            const model = genAI.getGenerativeModel({ model: "gemini-pro-latest" });
 
+            // 3. O PULO DO GATO: NÃO PEDIMOS MAIS JSON
+            // Pedimos blocos de texto delimitados por tags únicas.
             const promptFinal = `
                 ${schemaContext}
+                ${STYLE_GUIDE}
+                
                 PEDIDO DO USUÁRIO: "${promptUsuario}"
+                ${queryId ? "NOTA: Use o dataset selecionado obrigatoriamente." : ""}
+
+                VOCÊ É UM DESENVOLVEDOR FULLSTACK.
+                Gere dois blocos de código separados:
                 
-                ${queryId ? "NOTA: O usuário selecionou explicitamente o dataset acima. Use-o obrigatoriamente." : ""}
-
-                VOCÊ É UM ENGENHEIRO DE DADOS ORACLE SÊNIOR.
+                1. SQL ORACLE:
+                   - Use CTE (WITH dataset AS...) baseada no dataset escolhido.
+                   - Use TO_CHAR para formatar datas se necessário.
                 
-                CRÍTICO - ANÁLISE DE COLUNAS:
-                1. Se o SQL BASE tiver "SELECT *", assuma nomes padrões (CD_STATUS, DS_NOME) ou avise.
-                2. Se tiver colunas explícitas, USE EXATAMENTE ELAS.
+                2. HTML5 COMPLETO:
+                   - Single Page Application.
+                   - Deve conter <script> que pega 'window.DADOS_DB' e monta gráficos/tabelas.
+                   - Use Bootstrap 5 e Chart.js.
 
-                REGRAS DE ORACLE (ANTI-ERRO):
-                - JAMAIS use "CAST(x AS VARCHAR)". Use "TO_CHAR(x)".
-                - Para nulos: "NVL(coluna, 'Valor')".
-                - NÃO coloque ponto e vírgula ";" no final.
+                3. GERACAO DE PAGINAS:
+                    - Qualquer ajuste solicitado não deve refazer a pagina, a pagina ela vai ser construida somente uma unica vez e você só vai aplicar as mudanças solicitadas
 
-                JSON ESPERADO (PURO):
-                {
-                    "sql": "WITH dataset_selecionado AS (...SQL BASE...) SELECT ...",
-                    "layout": { "tituloPagina": "...", "tituloKpi": "...", "tipoGrafico": "bar", "filtrosSugeridos": [] }
-                }
+                FORMATO DE RESPOSTA OBRIGATÓRIO (TXT):
+                
+                [[SQL_START]]
+                ...escreva o sql aqui...
+                [[SQL_END]]
+
+                [[HTML_START]]
+                <!DOCTYPE html>
+                ...escreva o html aqui...
+                [[HTML_END]]
             `;
 
+            console.log("Enviando prompt (Modo Blocos)...");
             const result = await model.generateContent(promptFinal);
             const response = await result.response;
-            let text = response.text();
+            const text = response.text();
 
-            console.log("IA Respondeu (Bruto):", text); // Debug essencial
+            // 4. PARSER MANUAL (EXTRAÇÃO VIA REGEX)
+            // Isso evita erro de JSON inválido com aspas
+            const sqlMatch = text.match(/\[\[SQL_START\]\]([\s\S]*?)\[\[SQL_END\]\]/);
+            const htmlMatch = text.match(/\[\[HTML_START\]\]([\s\S]*?)\[\[HTML_END\]\]/);
 
-            // --- NOVA LÓGICA DE LIMPEZA INTELIGENTE ---
-            // 1. Remove Markdown básico
-            text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
-            // 2. Extrai apenas o PRIMEIRO objeto JSON válido (Contagem de Chaves)
-            const firstBrace = text.indexOf('{');
-            if (firstBrace !== -1) {
-                let balance = 0;
-                let endIndex = -1;
-                // Percorre o texto a partir da primeira chave
-                for (let i = firstBrace; i < text.length; i++) {
-                    if (text[i] === '{') balance++;
-                    else if (text[i] === '}') balance--;
-
-                    // Se o saldo voltar a zero, encontramos o fechamento do objeto principal
-                    if (balance === 0) {
-                        endIndex = i;
-                        break;
-                    }
-                }
-
-                if (endIndex !== -1) {
-                    text = text.substring(firstBrace, endIndex + 1);
-                }
+            if (!sqlMatch || !htmlMatch) {
+                throw new Error("A IA não retornou os blocos no formato correto. Tente novamente.");
             }
-            // -------------------------------------------
 
-            const jsonFinal = JSON.parse(text);
+            const sqlExtraido = sqlMatch[1].trim();
+            const htmlExtraido = htmlMatch[1].trim();
 
-            return res.json({ success: true, data: jsonFinal });
+            return res.json({ 
+                success: true, 
+                data: { 
+                    sql: sqlExtraido, 
+                    html: htmlExtraido 
+                } 
+            });
 
         } catch (erro) {
-            console.error('Erro IA Detalhado:', erro);
-            // Retorna o erro no JSON para você ver no console do navegador tbm
-            return res.status(500).json({ success: false, error: 'Erro ao processar IA: ' + erro.message });
+            console.error('Erro IA:', erro);
+            return res.status(500).json({ success: false, error: 'Erro ao processar: ' + erro.message });
         }
     },
 
     testar: async (req, res) => {
-        // ... (MANTÉM IGUAL AO QUE JÁ FUNCIONA) ...
         const { sql } = req.body;
         try {
             if (!db.oracle) return res.status(500).json({ error: 'Erro conexão Oracle' });
-            const resultados = await db.oracle.raw(sql);
+            
+            // Remove ; final se houver
+            const sqlLimpo = sql.replace(/;$/, ''); 
+            // Limita linhas para evitar crash no front
+            const sqlFinal = `SELECT * FROM (${sqlLimpo}) WHERE ROWNUM <= 500`;
+            
+            console.log("Executando SQL:", sqlFinal);
+            const resultados = await db.oracle.raw(sqlFinal);
             return res.json({ success: true, dados: resultados });
         } catch (erro) {
+            console.error("Erro Oracle:", erro.message);
             return res.status(500).json({ success: false, error: erro.message });
         }
     }
