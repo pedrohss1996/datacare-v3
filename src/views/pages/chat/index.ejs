@@ -1,0 +1,223 @@
+<script src="/socket.io/socket.io.js"></script>
+
+<div class="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden">
+    
+    <aside class="w-96 bg-white border-r border-slate-200 flex flex-col">
+        
+        <div class="p-4 bg-slate-50 border-b flex justify-between items-center">
+            <h2 class="font-bold text-slate-700">Atendimentos</h2>
+            <div class="flex gap-2 text-xs bg-slate-200 p-1 rounded-lg">
+                <button onclick="mudarAba('meus')" id="tab-meus" class="px-3 py-1 bg-white shadow rounded text-slate-800 font-bold transition">Meus</button>
+                <button onclick="mudarAba('fila')" id="tab-fila" class="px-3 py-1 text-slate-500 hover:text-slate-800 transition">Fila (<span id="count-fila"><%= fila.length %></span>)</button>
+            </div>
+        </div>
+
+        <div id="lista-meus" class="flex-1 overflow-y-auto">
+            <% if(meus.length === 0) { %>
+                <div class="p-8 text-center text-slate-400 text-sm">Nenhum atendimento ativo.</div>
+            <% } %>
+            <% meus.forEach(ticket => { %>
+                <div onclick="abrirChat(<%= ticket.id %>)" class="ticket-card cursor-pointer p-4 border-b border-slate-50 hover:bg-slate-50 transition flex gap-3 items-center group relative" data-id="<%= ticket.id %>">
+                    <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg shrink-0">
+                        <%= ticket.nome_contato.charAt(0) %>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between">
+                            <h3 class="font-bold text-slate-800 text-sm truncate"><%= ticket.nome_contato %></h3>
+                            <span class="text-[10px] text-slate-400">10:05</span>
+                        </div>
+                        <p class="text-xs text-slate-500 truncate last-msg">Clique para continuar...</p>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+
+        <div id="lista-fila" class="flex-1 overflow-y-auto hidden bg-slate-50/50">
+            <% fila.forEach(ticket => { %>
+                <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-white mb-1">
+                    <div>
+                        <h3 class="font-bold text-slate-700 text-sm"><%= ticket.nome_contato %></h3>
+                        <p class="text-xs text-slate-400"><%= ticket.numero_whatsapp %></p>
+                    </div>
+                    <button class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm">
+                        Atender
+                    </button>
+                </div>
+            <% }) %>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col bg-[#efeae2] relative">
+        
+        <div id="chat-empty" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-100 z-10">
+            <div class="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center text-slate-400 mb-4">
+                <i class="fa-brands fa-whatsapp text-4xl"></i>
+            </div>
+            <h3 class="text-slate-600 font-bold">DataCare Chat</h3>
+            <p class="text-slate-400 text-sm">Selecione um atendimento para começar.</p>
+        </div>
+
+        <header id="chat-header" class="h-16 bg-white border-b flex items-center px-4 justify-between hidden">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold" id="chat-avatar">?</div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-sm" id="chat-nome">Nome do Contato</h3>
+                    <p class="text-xs text-slate-500">Online</p>
+                </div>
+            </div>
+            <button class="text-red-500 hover:bg-red-50 px-3 py-1 rounded text-xs font-bold border border-red-200">
+                Finalizar
+            </button>
+        </header>
+
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-2 hidden custom-scrollbar">
+            </div>
+
+        <footer id="chat-input" class="p-3 bg-slate-100 border-t hidden">
+            <div class="flex gap-2">
+                <button class="p-2 text-slate-500 hover:bg-slate-200 rounded-full"><i class="fa-solid fa-paperclip"></i></button>
+                <input type="text" id="input-msg" class="flex-1 border-none rounded-lg px-4 py-2 focus:ring-0 text-sm" placeholder="Digite uma mensagem..." onkeypress="handleEnter(event)">
+                <button onclick="enviarMensagem()" class="p-2 bg-indigo-600 text-white rounded-full w-10 h-10 hover:bg-indigo-700 flex items-center justify-center shadow-sm">
+                    <i class="fa-solid fa-paper-plane text-xs"></i>
+                </button>
+            </div>
+        </footer>
+
+    </main>
+</div>
+
+<script>
+    const socket = io(); // Conecta ao servidor
+    let activeTicketId = null;
+
+    // --- SOCKET LISTENERS ---
+    
+    socket.on('connect', () => {
+        console.log('🟢 Conectado ao Socket:', socket.id);
+    });
+
+    // Quando chega mensagem nova
+    socket.on('nova_mensagem', (msg) => {
+        console.log('📩 Nova mensagem:', msg);
+        
+        // Se eu estiver com esse chat aberto, adiciona na tela
+        if (activeTicketId && (msg.ticket_id == activeTicketId || msg.ticketId == activeTicketId)) {
+            renderizarMensagem(msg);
+            scrollParaBaixo();
+        } else {
+            // Se não, deveria colocar uma bolinha vermelha na lista (implementar depois)
+            alert('Nova mensagem de outro contato!');
+        }
+    });
+
+    // --- FUNÇÕES DE UI ---
+
+    function mudarAba(aba) {
+        if(aba === 'meus') {
+            document.getElementById('lista-meus').classList.remove('hidden');
+            document.getElementById('lista-fila').classList.add('hidden');
+            document.getElementById('tab-meus').classList.add('bg-white', 'shadow');
+            document.getElementById('tab-meus').classList.remove('text-slate-500');
+            document.getElementById('tab-fila').classList.remove('bg-white', 'shadow');
+            document.getElementById('tab-fila').classList.add('text-slate-500');
+        } else {
+            document.getElementById('lista-meus').classList.add('hidden');
+            document.getElementById('lista-fila').classList.remove('hidden');
+            document.getElementById('tab-fila').classList.add('bg-white', 'shadow');
+            document.getElementById('tab-fila').classList.remove('text-slate-500');
+            document.getElementById('tab-meus').classList.remove('bg-white', 'shadow');
+            document.getElementById('tab-meus').classList.add('text-slate-500');
+        }
+    }
+
+    async function abrirChat(ticketId) {
+        activeTicketId = ticketId;
+        
+        // UI Updates
+        document.getElementById('chat-empty').classList.add('hidden');
+        document.getElementById('chat-header').classList.remove('hidden');
+        document.getElementById('chat-messages').classList.remove('hidden');
+        document.getElementById('chat-input').classList.remove('hidden');
+        document.getElementById('chat-messages').innerHTML = '<div class="text-center text-xs text-slate-400 mt-4">Carregando histórico...</div>';
+
+        // Avisa o servidor que estou nessa sala (importante para o socket)
+        socket.emit('join_ticket', ticketId);
+
+        // Busca dados do ticket (nome) - Aqui fiz simples pegando do card clicado
+        // O ideal seria vir do banco, mas vamos pegar do DOM pra ser rapido
+        const card = document.querySelector(`.ticket-card[data-id="${ticketId}"]`);
+        if(card) {
+            const nome = card.querySelector('h3').innerText;
+            document.getElementById('chat-nome').innerText = nome;
+            document.getElementById('chat-avatar').innerText = nome.charAt(0);
+        }
+
+        // Busca histórico via API
+        const res = await fetch(`/api/chat/mensagens/${ticketId}`);
+        const mensagens = await res.json();
+        
+        document.getElementById('chat-messages').innerHTML = ''; // Limpa loading
+        mensagens.forEach(m => renderizarMensagem(m));
+        scrollParaBaixo();
+    }
+
+    function renderizarMensagem(msg) {
+        const area = document.getElementById('chat-messages');
+        const isMe = msg.remetente === 'ATENDENTE';
+        
+        const html = `
+            <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+                <div class="max-w-[70%] p-3 rounded-lg text-sm shadow-sm ${isMe ? 'bg-green-100 text-slate-800 rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none'}">
+                    <p>${msg.conteudo || msg.texto}</p>
+                    <span class="text-[10px] opacity-50 block text-right mt-1">Agora</span>
+                </div>
+            </div>
+        `;
+        area.innerHTML += html;
+    }
+
+    async function enviarMensagem() {
+        const input = document.getElementById('input-msg');
+        const texto = input.value.trim();
+        if(!texto || !activeTicketId) return;
+
+        // Limpa input
+        input.value = '';
+
+        // Renderiza imediatamente (otimismo)
+        renderizarMensagem({ remetente: 'ATENDENTE', conteudo: texto });
+        scrollParaBaixo();
+
+        // Envia para API
+        try {
+            await fetch('/api/whatsapp/enviar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    ticketId: activeTicketId,
+                    conteudo: texto
+                })
+            });
+        } catch (e) {
+            console.error('Erro ao enviar', e);
+            alert('Falha no envio');
+        }
+    }
+
+    function handleEnter(e) {
+        if(e.key === 'Enter') enviarMensagem();
+    }
+
+    function scrollParaBaixo() {
+        const div = document.getElementById('chat-messages');
+        div.scrollTop = div.scrollHeight;
+    }
+</script>
+
+<style>
+    /* Custom Scrollbar para ficar elegante */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>

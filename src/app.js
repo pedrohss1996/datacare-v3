@@ -17,6 +17,8 @@ const rotasPessoas = require('./routes/pessoas.routes');
 const rotaIndicadores = require('./routes/indicadores.routes');
 const rotaIndicadoresIA = require('./routes/ia.routes');
 const rotaQuerisIA = require('./routes/queries.routes');
+//const whatsappRoutes = require('./routes/whatsapp.routes');
+const rotaChat = require('./routes/chat.routes');
 
 // Inicializa o app
 const app = express();
@@ -42,36 +44,40 @@ app.use(express.urlencoded({ extended: true }));
 // 4. Arquivos Estáticos
 app.use(express.static(path.join(__dirname, '../public')));
 
-// --- TODO: FUTURO ---
-// Aqui entrará o middleware de Sessão (express-session) para o Login funcionar.
-// Por enquanto, seguimos sem ele.
-
 // 4.1 Configuração de Sessão (Login)
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'segredo-super-secreto-mudar-em-prod', // Chave para assinar o cookie
+    secret: process.env.SESSION_SECRET || 'segredo-super-secreto-mudar-em-prod', 
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: false, // Em localhost deve ser false. Em HTTPS (produção) deve ser true.
-        maxAge: 1000 * 60 * 60 * 24 // 1 dia de duração
+        secure: false, 
+        maxAge: 1000 * 60 * 60 * 24 
     }
 }));
 
 // 4.2 Middleware para disponibilizar o 'user' em todas as views
 app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
-    req.user = req.session.user || null; // Compatibilidade com suas rotas antigas
+    req.user = req.session.user || null; 
+    next();
+});
+
+// [NOVO] 4.3 Middleware do Socket.io 
+// Recupera o 'io' que salvamos no server.js e coloca na requisição
+app.use((req, res, next) => {
+    req.io = req.app.get('io');
     next();
 });
 
 // 5. Rotas
-// A ordem aqui está PERFEITA (Específico -> Genérico)
 app.use('/', authRoutes);      
 app.use('/', rotasPessoas);    
 app.use('/', rotaIndicadores);
 app.use('/', indexRoutes); 
-app.use('/', rotaIndicadoresIA)
-app.use('/', rotaQuerisIA)   
+app.use('/', rotaIndicadoresIA);
+app.use('/', rotaQuerisIA);
+//app.use('/', whatsappRoutes);
+app.use('/', rotaChat);
 
 // 6. Tratamento de Erros
 app.use((req, res, next) => {
