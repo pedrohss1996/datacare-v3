@@ -1,131 +1,119 @@
 <script src="/socket.io/socket.io.js"></script>
 
-<div class="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden">
+<div class="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden font-sans">
     
-    <aside class="w-96 bg-white border-r border-slate-200 flex flex-col">
+    <aside class="w-[320px] bg-white border-r border-slate-200 flex flex-col z-10 shrink-0">
+        <%- include('./partials/lista-chats') %> 
+    </aside>
+
+    <main class="flex-1 flex flex-col bg-[#efeae2] relative min-w-[400px] border-r border-slate-300">
+        <%- include('./partials/area-chat') %> 
+    </main>
+
+    <aside class="w-[400px] bg-white flex flex-col shadow-xl z-20 border-l border-slate-200">
         
-        <div class="p-4 bg-slate-50 border-b flex justify-between items-center">
-            <h2 class="font-bold text-slate-700">Atendimentos</h2>
-            <div class="flex gap-2 text-xs bg-slate-200 p-1 rounded-lg">
-                <button onclick="mudarAba('meus')" id="tab-meus" class="px-3 py-1 bg-white shadow rounded text-slate-800 font-bold transition">Meus</button>
-                <button onclick="mudarAba('fila')" id="tab-fila" class="px-3 py-1 text-slate-500 hover:text-slate-800 transition">Fila (<span id="count-fila"><%= fila.length %></span>)</button>
+        <div class="h-14 bg-slate-800 text-white flex items-center px-4 gap-2 shadow-sm shrink-0">
+            <i class="fa-solid fa-hospital-user"></i>
+            <h2 class="font-bold text-sm tracking-wide">Integração Agenda</h2>
+        </div>
+
+        <div class="p-4 bg-slate-50 border-b border-slate-200 space-y-3 shrink-0">
+            
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tipo de Agenda</label>
+                <select id="tasy-unidade" class="w-full text-xs border border-slate-300 rounded h-9 px-2 bg-white text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none" onchange="carregarRecursos()">
+                    <option value="">Carregando Agendas...</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">AGENDA</label>
+                <select id="tasy-recurso" class="w-full text-xs border border-slate-300 rounded h-9 px-2 bg-white text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none">
+                    <option value="">Selecione a Agenda primeiro</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">DATA</label>
+                <div class="flex gap-2">
+                    <input type="date" id="tasy-data" class="flex-1 text-xs border border-slate-300 rounded h-9 px-2 text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none">
+                    <button onclick="buscarAgenda()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded h-9 text-xs font-bold flex items-center gap-2 transition">
+                        <i class="fa-solid fa-rotate"></i> Listar
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div id="lista-meus" class="flex-1 overflow-y-auto">
-            <% if(meus.length === 0) { %>
-                <div class="p-8 text-center text-slate-400 text-sm">Nenhum atendimento ativo.</div>
-            <% } %>
-            <% meus.forEach(ticket => { %>
-                <div onclick="abrirChat(<%= ticket.id %>)" class="ticket-card cursor-pointer p-4 border-b border-slate-50 hover:bg-slate-50 transition flex gap-3 items-center group relative" data-id="<%= ticket.id %>">
-                    <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg shrink-0">
-                        <%= ticket.nome_contato.charAt(0) %>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex justify-between">
-                            <h3 class="font-bold text-slate-800 text-sm truncate"><%= ticket.nome_contato %></h3>
-                            <span class="text-[10px] text-slate-400">10:05</span>
-                        </div>
-                        <p class="text-xs text-slate-500 truncate last-msg">Clique para continuar...</p>
-                    </div>
-                </div>
-            <% }) %>
+        <div class="bg-slate-100 py-1 px-4 border-b border-slate-200 text-center">
+            <p class="text-[10px] text-slate-500"><i class="fa-solid fa-mouse-pointer mr-1"></i> Botão direito p/ ações</p>
         </div>
 
-        <div id="lista-fila" class="flex-1 overflow-y-auto hidden bg-slate-50/50">
-            <% fila.forEach(ticket => { %>
-                <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-white mb-1">
-                    <div>
-                        <h3 class="font-bold text-slate-700 text-sm"><%= ticket.nome_contato %></h3>
-                        <p class="text-xs text-slate-400"><%= ticket.numero_whatsapp %></p>
-                    </div>
-                    <button class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm">
-                        Atender
-                    </button>
+        <div class="flex-1 overflow-y-auto bg-white relative">
+            <div class="sticky top-0 bg-slate-100 border-b border-slate-200 flex px-4 py-2 text-xs font-bold text-slate-600 z-10">
+                <div class="w-16">Hora</div>
+                <div class="flex-1">Paciente / Status</div>
+            </div>
+            <div id="lista-agenda" class="divide-y divide-slate-100">
+                <div class="flex flex-col items-center justify-center h-40 text-slate-400">
+                    <i class="fa-regular fa-calendar text-2xl mb-2"></i>
+                    <span class="text-xs">Selecione os filtros</span>
                 </div>
-            <% }) %>
+            </div>
         </div>
     </aside>
 
-    <main class="flex-1 flex flex-col bg-[#efeae2] relative">
-        
-        <div id="chat-empty" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-100 z-10">
-            <div class="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center text-slate-400 mb-4">
-                <i class="fa-brands fa-whatsapp text-4xl"></i>
-            </div>
-            <h3 class="text-slate-600 font-bold">DataCare Chat</h3>
-            <p class="text-slate-400 text-sm">Selecione um atendimento para começar.</p>
-        </div>
-
-        <header id="chat-header" class="h-16 bg-white border-b flex items-center px-4 justify-between hidden">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold" id="chat-avatar">?</div>
-                <div>
-                    <h3 class="font-bold text-slate-800 text-sm" id="chat-nome">Nome do Contato</h3>
-                    <p class="text-xs text-slate-500">Online</p>
-                </div>
-            </div>
-            <button class="text-red-500 hover:bg-red-50 px-3 py-1 rounded text-xs font-bold border border-red-200">
-                Finalizar
-            </button>
-        </header>
-
-        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-2 hidden custom-scrollbar">
-            </div>
-
-        <footer id="chat-input" class="p-3 bg-slate-100 border-t hidden">
-            <div class="flex gap-2">
-                <button class="p-2 text-slate-500 hover:bg-slate-200 rounded-full"><i class="fa-solid fa-paperclip"></i></button>
-                <input type="text" id="input-msg" class="flex-1 border-none rounded-lg px-4 py-2 focus:ring-0 text-sm" placeholder="Digite uma mensagem..." onkeypress="handleEnter(event)">
-                <button onclick="enviarMensagem()" class="p-2 bg-indigo-600 text-white rounded-full w-10 h-10 hover:bg-indigo-700 flex items-center justify-center shadow-sm">
-                    <i class="fa-solid fa-paper-plane text-xs"></i>
-                </button>
-            </div>
-        </footer>
-
-    </main>
+    <div id="context-menu" class="fixed hidden bg-white border border-slate-200 shadow-xl rounded-lg w-48 py-1 z-50 text-sm">
+        <button onclick="acaoAgenda('agendar')" class="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2">
+            <i class="fa-regular fa-calendar-plus text-green-600"></i> Agendar Paciente
+        </button>
+        <button onclick="acaoAgenda('ver_paciente')" class="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2">
+            <i class="fa-solid fa-user-doctor text-blue-600"></i> Ver Prontuário
+        </button>
+        <div class="border-t border-slate-100 my-1"></div>
+        <button onclick="acaoAgenda('bloquear')" class="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2">
+            <i class="fa-solid fa-ban text-red-500"></i> Bloquear Horário
+        </button>
+    </div>
 </div>
 
 <script>
-    const socket = io(); // Conecta ao servidor
+    // --- 1. CONFIGURAÇÃO GERAL E SOCKET ---
+    const socket = io(); 
     let activeTicketId = null;
 
-    // --- SOCKET LISTENERS ---
-    
-    socket.on('connect', () => {
-        console.log('🟢 Conectado ao Socket:', socket.id);
-    });
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('tasy-data').valueAsDate = new Date();
+        carregarUnidades();
 
-    // Quando chega mensagem nova
-    socket.on('nova_mensagem', (msg) => {
-        console.log('📩 Nova mensagem:', msg);
+        socket.on('connect', () => console.log('🟢 Socket Conectado:', socket.id));
         
-        // Se eu estiver com esse chat aberto, adiciona na tela
-        if (activeTicketId && (msg.ticket_id == activeTicketId || msg.ticketId == activeTicketId)) {
-            renderizarMensagem(msg);
-            scrollParaBaixo();
-        } else {
-            // Se não, deveria colocar uma bolinha vermelha na lista (implementar depois)
-            alert('Nova mensagem de outro contato!');
-        }
+        socket.on('nova_mensagem', (msg) => {
+            if (activeTicketId && (msg.ticket_id == activeTicketId || msg.ticketId == activeTicketId)) {
+                renderizarMensagem(msg);
+                scrollParaBaixo();
+            } else {
+                console.log('Nova mensagem em outro ticket:', msg);
+                // Dica: Adicione uma classe visual no card da lista para indicar msg nova
+            }
+        });
     });
 
-    // --- FUNÇÕES DE UI ---
+    // --- 2. FUNÇÕES DO CHAT ---
 
     function mudarAba(aba) {
         if(aba === 'meus') {
             document.getElementById('lista-meus').classList.remove('hidden');
             document.getElementById('lista-fila').classList.add('hidden');
-            document.getElementById('tab-meus').classList.add('bg-white', 'shadow');
+            document.getElementById('tab-meus').classList.add('bg-white', 'shadow', 'text-slate-800');
             document.getElementById('tab-meus').classList.remove('text-slate-500');
-            document.getElementById('tab-fila').classList.remove('bg-white', 'shadow');
+            document.getElementById('tab-fila').classList.remove('bg-white', 'shadow', 'text-slate-800');
             document.getElementById('tab-fila').classList.add('text-slate-500');
         } else {
             document.getElementById('lista-meus').classList.add('hidden');
             document.getElementById('lista-fila').classList.remove('hidden');
-            document.getElementById('tab-fila').classList.add('bg-white', 'shadow');
+            document.getElementById('tab-fila').classList.add('bg-white', 'shadow', 'text-slate-800');
             document.getElementById('tab-fila').classList.remove('text-slate-500');
-            document.getElementById('tab-meus').classList.remove('bg-white', 'shadow');
+            document.getElementById('tab-meus').classList.remove('bg-white', 'shadow', 'text-slate-800');
             document.getElementById('tab-meus').classList.add('text-slate-500');
         }
     }
@@ -133,18 +121,16 @@
     async function abrirChat(ticketId) {
         activeTicketId = ticketId;
         
-        // UI Updates
         document.getElementById('chat-empty').classList.add('hidden');
         document.getElementById('chat-header').classList.remove('hidden');
         document.getElementById('chat-messages').classList.remove('hidden');
         document.getElementById('chat-input').classList.remove('hidden');
-        document.getElementById('chat-messages').innerHTML = '<div class="text-center text-xs text-slate-400 mt-4">Carregando histórico...</div>';
+        
+        const areaMsg = document.getElementById('chat-messages');
+        areaMsg.innerHTML = '<div class="text-center text-xs text-slate-400 mt-4"><i class="fa-solid fa-spinner fa-spin"></i> Carregando histórico...</div>';
 
-        // Avisa o servidor que estou nessa sala (importante para o socket)
         socket.emit('join_ticket', ticketId);
 
-        // Busca dados do ticket (nome) - Aqui fiz simples pegando do card clicado
-        // O ideal seria vir do banco, mas vamos pegar do DOM pra ser rapido
         const card = document.querySelector(`.ticket-card[data-id="${ticketId}"]`);
         if(card) {
             const nome = card.querySelector('h3').innerText;
@@ -152,13 +138,21 @@
             document.getElementById('chat-avatar').innerText = nome.charAt(0);
         }
 
-        // Busca histórico via API
-        const res = await fetch(`/api/chat/mensagens/${ticketId}`);
-        const mensagens = await res.json();
-        
-        document.getElementById('chat-messages').innerHTML = ''; // Limpa loading
-        mensagens.forEach(m => renderizarMensagem(m));
-        scrollParaBaixo();
+        try {
+            const res = await fetch(`/api/chat/mensagens/${ticketId}`);
+            const mensagens = await res.json();
+            
+            areaMsg.innerHTML = ''; 
+            
+            if(mensagens.length === 0) {
+                areaMsg.innerHTML = '<div class="text-center text-xs text-slate-400 mt-4">Inicie a conversa...</div>';
+            }
+
+            mensagens.forEach(m => renderizarMensagem(m));
+            scrollParaBaixo();
+        } catch (e) {
+            areaMsg.innerHTML = '<div class="text-center text-xs text-red-400 mt-4">Erro ao carregar mensagens.</div>';
+        }
     }
 
     function renderizarMensagem(msg) {
@@ -167,9 +161,12 @@
         
         const html = `
             <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
-                <div class="max-w-[70%] p-3 rounded-lg text-sm shadow-sm ${isMe ? 'bg-green-100 text-slate-800 rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none'}">
-                    <p>${msg.conteudo || msg.texto}</p>
-                    <span class="text-[10px] opacity-50 block text-right mt-1">Agora</span>
+                <div class="max-w-[75%] p-2 px-3 rounded-lg text-sm shadow-sm relative ${isMe ? 'bg-[#d9fdd3] text-slate-800 rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none'}">
+                    <p class="mb-1">${msg.conteudo || msg.texto}</p>
+                    <span class="text-[9px] opacity-60 block text-right float-right ml-2 mt-1">
+                        ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
+                        ${isMe ? '<i class="fa-solid fa-check-double text-blue-400 ml-1"></i>' : ''}
+                    </span>
                 </div>
             </div>
         `;
@@ -181,26 +178,52 @@
         const texto = input.value.trim();
         if(!texto || !activeTicketId) return;
 
-        // Limpa input
-        input.value = '';
+        input.value = ''; 
+        input.focus();
 
-        // Renderiza imediatamente (otimismo)
         renderizarMensagem({ remetente: 'ATENDENTE', conteudo: texto });
         scrollParaBaixo();
 
-        // Envia para API
         try {
             await fetch('/api/whatsapp/enviar', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    ticketId: activeTicketId,
-                    conteudo: texto
-                })
+                body: JSON.stringify({ ticketId: activeTicketId, conteudo: texto })
             });
         } catch (e) {
-            console.error('Erro ao enviar', e);
-            alert('Falha no envio');
+            alert('Erro ao enviar mensagem');
+        }
+    }
+
+    // --- NOVA FUNÇÃO: FINALIZAR ATENDIMENTO ---
+    async function finalizarAtendimento() {
+        if(!activeTicketId) return;
+        if(!confirm('Deseja finalizar este atendimento? O ticket será fechado.')) return;
+
+        try {
+            const res = await fetch('/api/chat/finalizar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ ticketId: activeTicketId })
+            });
+            const data = await res.json();
+
+            if(data.success) {
+                // 1. Limpa a tela
+                document.getElementById('chat-empty').classList.remove('hidden');
+                document.getElementById('chat-header').classList.add('hidden');
+                document.getElementById('chat-messages').classList.add('hidden');
+                document.getElementById('chat-input').classList.add('hidden');
+                
+                // 2. Remove o card da lista lateral (Visualmente)
+                const card = document.querySelector(`.ticket-card[data-id="${activeTicketId}"]`);
+                if(card) card.remove();
+
+                activeTicketId = null;
+                alert('Atendimento finalizado com sucesso!');
+            }
+        } catch (e) {
+            alert('Erro ao finalizar');
         }
     }
 
@@ -212,12 +235,104 @@
         const div = document.getElementById('chat-messages');
         div.scrollTop = div.scrollHeight;
     }
-</script>
 
-<style>
-    /* Custom Scrollbar para ficar elegante */
-    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-</style>
+    // --- 3. FUNÇÕES DO TASY ---
+    
+    // (Mantive igual ao seu código anterior)
+    async function carregarUnidades() {
+        const select = document.getElementById('tasy-unidade');
+        try {
+            const res = await fetch('/api/tasy/unidades');
+            const unidades = await res.json();
+            
+            select.innerHTML = '<option value="">Selecione...</option>';
+            unidades.forEach(u => {
+                select.innerHTML += `<option value="${u.CD_UNIDADE}">${u.DS_UNIDADE}</option>`;
+            });
+        } catch (e) { 
+            console.error('Erro ao carregar unidades Tasy');
+            select.innerHTML = '<option value="">Erro ao carregar</option>';
+        }
+    }
+
+    async function carregarRecursos() {
+        const unidadeId = document.getElementById('tasy-unidade').value;
+        const select = document.getElementById('tasy-recurso');
+        
+        if(!unidadeId) {
+            select.innerHTML = '<option value="">Selecione Unidade</option>';
+            return;
+        }
+
+        try {
+            select.innerHTML = '<option>Carregando...</option>';
+            const res = await fetch(`/api/tasy/recursos/${unidadeId}`);
+            const recursos = await res.json();
+            
+            select.innerHTML = '';
+            recursos.forEach(r => {
+                select.innerHTML += `<option value="${r.CD_RECURSO}">${r.DS_RECURSO}</option>`;
+            });
+        } catch (e) { console.error('Erro recursos Tasy', e); }
+    }
+
+    async function buscarAgenda() {
+        const recurso = document.getElementById('tasy-recurso').value;
+        const data = document.getElementById('tasy-data').value;
+        const container = document.getElementById('lista-agenda');
+
+        if(!recurso || !data) return alert('Preencha os filtros da agenda');
+
+        container.innerHTML = '<div class="p-4 text-center text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin"></i> Consultando Oracle...</div>';
+
+        try {
+            const res = await fetch('/api/tasy/agenda', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ recurso, data })
+            });
+            const agenda = await res.json();
+
+            container.innerHTML = ''; 
+
+            if(!agenda || agenda.length === 0) {
+                container.innerHTML = '<div class="p-4 text-center text-xs text-slate-400">Nenhum horário encontrado.</div>';
+                return;
+            }
+
+            agenda.forEach(slot => {
+                let bgClass = '', statusClass = '', statusTexto = slot.STATUS_DESC || slot.IE_STATUS;
+
+                if(slot.IE_STATUS === 'L') { 
+                    bgClass = 'hover:bg-slate-50'; statusClass = 'bg-green-100 text-green-700'; 
+                } else if (slot.IE_STATUS === 'A') { 
+                    bgClass = 'bg-blue-50/50 hover:bg-blue-50'; statusClass = 'bg-blue-100 text-blue-700'; 
+                } else if (slot.IE_STATUS === 'C') {
+                    bgClass = 'bg-green-50/30'; statusClass = 'bg-green-600 text-white';
+                } else {
+                    bgClass = 'bg-slate-50 opacity-70'; statusClass = 'bg-red-100 text-red-700';
+                }
+
+                const html = `
+                    <div class="flex items-center px-4 py-3 border-b border-slate-50 cursor-pointer ${bgClass} group transition">
+                        <div class="w-14 font-bold text-slate-600 text-xs">${slot.HORA}</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center mb-0.5">
+                                <span class="font-bold text-slate-800 text-xs truncate">
+                                    ${slot.PACIENTE || 'Livre'}
+                                </span>
+                                <span class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${statusClass}">
+                                    ${statusTexto}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+
+        } catch (e) {
+            container.innerHTML = '<div class="p-4 text-center text-xs text-red-500">Erro na consulta.</div>';
+        }
+    }
+</script>

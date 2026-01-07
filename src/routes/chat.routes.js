@@ -9,4 +9,6 @@ router.get('/chat', loginRequired, chatController.index);
 // API para buscar mensagens de um ticket específico (usaremos no AJAX)
 router.get('/api/chat/mensagens/:ticketId', loginRequired, chatController.listarMensagens);
 
+router.post('/api/chat/finalizar', loginRequired, chatController.finalizar);
+
 module.exports = router;

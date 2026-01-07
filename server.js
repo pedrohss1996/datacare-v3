@@ -23,19 +23,16 @@ app.set('io', io);
 
 // 4. Eventos Globais do Socket (Para debug)
 io.on('connection', (socket) => {
-    console.log('🔌 Cliente conectado via Socket:', socket.id);
     
     socket.on('disconnect', () => {
-        console.log('❌ Cliente desconectou:', socket.id);
     });
 });
 
 // 5. Inicia o servidor
 // ATENÇÃO: Usamos server.listen aqui, e não app.listen
 server.listen(PORT, () => {
-    console.log(`🚀 Servidor DataCare rodando em http://localhost:${PORT}`);
-    console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`💬 Módulo Socket.io ativo`);
+    //console.log(`🚀 Servidor DataCare rodando em http://localhost:${PORT}`);
+    //console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
 });
 
 // --- ALTERAÇÃO CIRÚRGICA: Proteção contra quedas inesperadas ---

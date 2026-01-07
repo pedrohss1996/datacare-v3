@@ -41,5 +41,27 @@ module.exports = {
         } catch (error) {
             res.status(500).json({ error: 'Erro ao buscar mensagens' });
         }
+    },
+
+    finalizar: async (req, res) => {
+        const { ticketId } = req.body;
+        try {
+            // 1. Atualiza status no banco
+            await db('chat_tickets')
+                .where({ id: ticketId })
+                .update({ 
+                    status: 'FINALIZADO',
+                    atualizado_em: new Date()
+                    // aqui poderia ter: finalizado_em: new Date()
+                });
+
+            // 2. Avisa front (opcional, se quiser remover da tela dos outros em tempo real)
+            // req.io.emit('ticket_finalizado', { ticketId });
+
+            res.json({ success: true });
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: 'Erro ao finalizar' });
+        }
     }
 };
