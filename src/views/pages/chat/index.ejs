@@ -62,18 +62,62 @@
         </div>
     </aside>
 
-    <div id="context-menu" class="fixed hidden bg-white border border-slate-200 shadow-xl rounded-lg w-48 py-1 z-50 text-sm">
-        <button onclick="acaoAgenda('agendar')" class="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2">
-            <i class="fa-regular fa-calendar-plus text-green-600"></i> Agendar Paciente
+    <div id="context-menu" class="fixed hidden bg-white border border-slate-200 shadow-xl rounded-lg w-56 py-2 z-50 text-sm flex flex-col">
+        
+        <button onclick="acaoAgenda('agendar')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
+            <div class="w-5 text-center"><i class="fa-regular fa-calendar-plus text-blue-600"></i></div>
+            <span>Agendar</span>
         </button>
-        <button onclick="acaoAgenda('ver_paciente')" class="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2">
-            <i class="fa-solid fa-user-doctor text-blue-600"></i> Ver Prontuário
+
+        <button onclick="acaoAgenda('confirmar')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
+            <div class="w-5 text-center"><i class="fa-solid fa-check-double text-green-600"></i></div>
+            <span>Confirmar</span>
         </button>
+
+        <button onclick="acaoAgenda('transferir')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
+            <div class="w-5 text-center"><i class="fa-solid fa-arrow-right-arrow-left text-orange-500"></i></div>
+            <span>Transferir</span>
+        </button>
+
         <div class="border-t border-slate-100 my-1"></div>
-        <button onclick="acaoAgenda('bloquear')" class="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2">
-            <i class="fa-solid fa-ban text-red-500"></i> Bloquear Horário
+
+        <button onclick="acaoAgenda('bloquear')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
+            <div class="w-5 text-center"><i class="fa-solid fa-ban text-red-500"></i></div>
+            <span>Bloquear</span>
+        </button>
+
+        <button onclick="acaoAgenda('cancelar')" class="text-left px-4 py-2 hover:bg-red-50 text-red-600 flex items-center gap-3 transition">
+            <div class="w-5 text-center"><i class="fa-regular fa-calendar-xmark"></i></div>
+            <span>Cancelar</span>
         </button>
     </div>
+
+    <div id="modal-agendamento" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-lg shadow-2xl w-[400px] overflow-hidden transform transition-all scale-100">
+            <div class="bg-slate-800 text-white px-4 py-3 flex justify-between items-center">
+                <h3 class="font-bold text-sm"><i class="fa-regular fa-calendar-check mr-2"></i> Confirmar Agendamento</h3>
+                <button onclick="fecharModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="modal-agenda-id">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Paciente</label>
+                    <input type="text" id="modal-paciente-nome" class="w-full border border-slate-300 rounded px-3 py-2 text-sm bg-slate-50 font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Digite o nome do paciente...">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Observação / Convênio</label>
+                    <textarea id="modal-obs" rows="3" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: Particular, Unimed..."></textarea>
+                </div>
+            </div>
+            <div class="bg-slate-50 px-6 py-3 flex justify-end gap-2 border-t border-slate-200">
+                <button onclick="fecharModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded">Cancelar</button>
+                <button onclick="confirmarAgendamento()" id="btn-confirmar" class="px-4 py-2 text-xs font-bold text-white bg-green-600 hover:bg-green-700 rounded shadow-sm flex items-center gap-2">
+                    <i class="fa-solid fa-check"></i> Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -93,7 +137,6 @@
                 scrollParaBaixo();
             } else {
                 console.log('Nova mensagem em outro ticket:', msg);
-                // Dica: Adicione uma classe visual no card da lista para indicar msg nova
             }
         });
     });
@@ -195,7 +238,6 @@
         }
     }
 
-    // --- NOVA FUNÇÃO: FINALIZAR ATENDIMENTO ---
     async function finalizarAtendimento() {
         if(!activeTicketId) return;
         if(!confirm('Deseja finalizar este atendimento? O ticket será fechado.')) return;
@@ -209,13 +251,11 @@
             const data = await res.json();
 
             if(data.success) {
-                // 1. Limpa a tela
                 document.getElementById('chat-empty').classList.remove('hidden');
                 document.getElementById('chat-header').classList.add('hidden');
                 document.getElementById('chat-messages').classList.add('hidden');
                 document.getElementById('chat-input').classList.add('hidden');
                 
-                // 2. Remove o card da lista lateral (Visualmente)
                 const card = document.querySelector(`.ticket-card[data-id="${activeTicketId}"]`);
                 if(card) card.remove();
 
@@ -236,9 +276,8 @@
         div.scrollTop = div.scrollHeight;
     }
 
-    // --- 3. FUNÇÕES DO TASY ---
+    // --- 3. FUNÇÕES DO TASY (Agenda) ---
     
-    // (Mantive igual ao seu código anterior)
     async function carregarUnidades() {
         const select = document.getElementById('tasy-unidade');
         try {
@@ -247,7 +286,7 @@
             
             select.innerHTML = '<option value="">Selecione...</option>';
             unidades.forEach(u => {
-                select.innerHTML += `<option value="${u.CD_UNIDADE}">${u.DS_UNIDADE}</option>`;
+                select.innerHTML += `<option value="${u.CD_TIPO}">${u.DS_TIPO}</option>`;
             });
         } catch (e) { 
             console.error('Erro ao carregar unidades Tasy');
@@ -271,7 +310,7 @@
             
             select.innerHTML = '';
             recursos.forEach(r => {
-                select.innerHTML += `<option value="${r.CD_RECURSO}">${r.DS_RECURSO}</option>`;
+                select.innerHTML += `<option value="${r.CD_AGENDA}">${r.DS_AGENDA}</option>`;
             });
         } catch (e) { console.error('Erro recursos Tasy', e); }
     }
@@ -313,8 +352,9 @@
                     bgClass = 'bg-slate-50 opacity-70'; statusClass = 'bg-red-100 text-red-700';
                 }
 
+                // AQUI FOI ADICIONADO O ONCONTEXTMENU
                 const html = `
-                    <div class="flex items-center px-4 py-3 border-b border-slate-50 cursor-pointer ${bgClass} group transition">
+                    <div class="flex items-center px-4 py-3 border-b border-slate-50 cursor-pointer ${bgClass} group transition" oncontextmenu="abrirMenuContexto(event, ${slot.ID})">
                         <div class="w-14 font-bold text-slate-600 text-xs">${slot.HORA}</div>
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-center mb-0.5">
@@ -333,6 +373,135 @@
 
         } catch (e) {
             container.innerHTML = '<div class="p-4 text-center text-xs text-red-500">Erro na consulta.</div>';
+        }
+    }
+
+    // --- 4. MENU DE CONTEXTO E MODAL ---
+
+    let agendaIdSelecionado = null; // Guarda o ID do horário clicado
+
+    // Fecha o menu se clicar fora
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#context-menu')) {
+            document.getElementById('context-menu').classList.add('hidden');
+        }
+    });
+
+    function abrirMenuContexto(e, idAgenda) {
+        e.preventDefault(); 
+        agendaIdSelecionado = idAgenda;
+        const menu = document.getElementById('context-menu');
+        menu.style.top = `${e.clientY}px`;
+        menu.style.left = `${e.clientX}px`;
+        menu.classList.remove('hidden');
+    }
+
+    async function acaoAgenda(acao) {
+        document.getElementById('context-menu').classList.add('hidden'); // Fecha menu
+        
+        // 1. AGENDAR (Abre o Modal que já fizemos)
+        if(acao === 'agendar') {
+            abrirModalAgendamento();
+            return;
+        }
+
+        // Para as outras ações, vamos confirmar antes
+        let endpoint = '';
+        let body = { agendaId: agendaIdSelecionado };
+        let confirmText = '';
+
+        switch(acao) {
+            case 'confirmar':
+                confirmText = 'Deseja CONFIRMAR este agendamento?';
+                endpoint = '/api/tasy/confirmar';
+                break;
+            case 'cancelar':
+                confirmText = 'Tem certeza que deseja CANCELAR este agendamento?';
+                endpoint = '/api/tasy/cancelar';
+                break;
+            case 'bloquear':
+                confirmText = 'Deseja BLOQUEAR este horário?';
+                endpoint = '/api/tasy/bloquear';
+                break;
+            case 'transferir':
+                // Lógica simplificada de transferência
+                const novoId = prompt("Digite o ID da Agenda de DESTINO (Para onde vai o paciente):");
+                if(!novoId) return;
+                confirmText = `Confirma transferir do ID ${agendaIdSelecionado} para o ID ${novoId}?`;
+                endpoint = '/api/tasy/transferir';
+                body.novoId = novoId; // Envia o destino
+                break;
+        }
+
+        if(!confirm(confirmText)) return;
+
+        // Executa a requisição
+        try {
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            
+            if(data.success) {
+                alert('Ação realizada com sucesso!');
+                buscarAgenda(); // Atualiza a lista
+            } else {
+                alert('Erro: ' + (data.error || 'Erro desconhecido'));
+            }
+        } catch (e) {
+            alert('Erro de comunicação com o servidor.');
+        }
+    }
+
+    function abrirModalAgendamento() {
+        document.getElementById('modal-paciente-nome').value = '';
+        document.getElementById('modal-obs').value = '';
+        document.getElementById('modal-agenda-id').value = agendaIdSelecionado;
+        document.getElementById('modal-agendamento').classList.remove('hidden');
+        document.getElementById('modal-paciente-nome').focus();
+    }
+
+    function fecharModal() {
+        document.getElementById('modal-agendamento').classList.add('hidden');
+    }
+
+    async function confirmarAgendamento() {
+        const id = document.getElementById('modal-agenda-id').value;
+        const paciente = document.getElementById('modal-paciente-nome').value;
+        const obs = document.getElementById('modal-obs').value;
+        const btn = document.getElementById('btn-confirmar');
+
+        if(!paciente) return alert('Digite o nome do paciente.');
+
+        const textoOriginal = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/tasy/agendar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ agendaId: id, pacienteNome: paciente, obs: obs })
+            });
+
+            const data = await res.json();
+
+            if(data.success) {
+                fecharModal();
+                buscarAgenda(); // Atualiza a lista
+                alert('Agendamento realizado com sucesso!');
+            } else {
+                alert('Erro ao agendar: ' + (data.error || 'Desconhecido'));
+            }
+
+        } catch (e) {
+            console.error(e);
+            alert('Erro de comunicação.');
+        } finally {
+            btn.innerHTML = textoOriginal;
+            btn.disabled = false;
         }
     }
 </script>

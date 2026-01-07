@@ -8,8 +8,8 @@ module.exports = {
             // Sua query ajustada que já funcionou
             const sql = `
                 SELECT DISTINCT 
-                    CD_TIPO AS CD_UNIDADE, 
-                    DS_TIPO AS DS_UNIDADE 
+                    CD_TIPO AS CD_TIPO, 
+                    DS_TIPO AS DS_TIPO 
                 FROM DC_CHAT_AGENDAS 
             `;
             const dados = await db.oracle.raw(sql);
@@ -29,8 +29,8 @@ module.exports = {
             // Exemplo: Buscar os médicos/recursos que atendem esse tipo de agenda
             const sql = `
                 SELECT DISTINCT
-                    CD_AGENDA AS CD_RECURSO,
-                    DS_AGENDA AS DS_RECURSO
+                    CD_AGENDA AS CD_AGENDA,
+                    DS_AGENDA AS DS_AGENDA
                 FROM DC_CHAT_AGENDAS
                 WHERE CD_TIPO = :unidadeId
             `;
@@ -72,5 +72,158 @@ module.exports = {
             console.error("Erro Agenda:", e.message);
             res.status(500).json({ error: e.message }); 
         }
+    },
+
+    // 4. REALIZAR AGENDAMENTO (Botão Direito -> Modal)
+    // 1. CONFIRMAR AGENDAMENTO (Status -> CN)
+    confirmar: async (req, res) => {
+        const { agendaId, obs } = req.body;
+
+        if (!agendaId) return res.status(400).json({ error: 'ID da agenda obrigatório' });
+
+        try {
+            const params = {
+                cd_tipo: 1, // 1=Médico, 2=Exame. (Ajuste se precisar vir do front)
+                observacao: obs || 'Confirmado via Painel Web', // Texto padrão caso não venha obs
+                IdSequencia: agendaId
+            };
+
+            const sql = `
+                BEGIN
+                    -- Tipo 1: Agenda Consulta (Médicos)
+                    IF :cd_tipo = 1 THEN
+                        UPDATE agenda_consulta
+                           SET ie_status_agenda   = 'CN',
+                               dt_confirmacao     = SYSDATE,
+                               nm_usuario_confirm = 'DATA',
+                               ds_confirmacao     = :observacao
+                         WHERE nr_sequencia       = :IdSequencia;
+
+                    -- Tipo 2: Agenda Paciente (Exames/SADT)
+                    ELSIF :cd_tipo = 2 THEN
+                        UPDATE agenda_paciente
+                           SET ie_status_agenda   = 'CN',
+                               dt_confirmacao     = SYSDATE,
+                               nm_usuario_confirm = 'DATA',
+                               ds_confirmacao     = :observacao
+                         WHERE nr_sequencia       = :IdSequencia;
+                    END IF;
+
+                    COMMIT;
+                END;
+            `;
+
+            await db.oracle.raw(sql, params);
+            res.json({ success: true });
+
+        } catch (e) {
+            console.error("Erro ao Confirmar:", e.message);
+            res.status(500).json({ error: 'Erro ao confirmar no banco.' });
+        }
+    },
+
+    // 2. CANCELAR AGENDAMENTO
+    cancelar: async (req, res) => {
+        const { agendaId } = req.body;
+
+        if (!agendaId) return res.status(400).json({ error: 'ID da agenda obrigatório' });
+
+        try {
+            const params = {
+                cd_tipo: 1, // 1=Médico, 2=Exame
+                IdSequencia: agendaId
+            };
+
+            const sql = `
+                BEGIN
+                    -- Tipo 1: Agenda Consulta (Médicos)
+                    IF :cd_tipo = 1 THEN
+                        UPDATE agenda_consulta
+                           SET cd_motivo_cancelamento  = 302,
+                               IE_STATUS_AGENDA        = 'C',
+                               dt_cancelamento         = SYSDATE,
+                               nm_usuario_cancelamento = 'DATA'
+                         WHERE nr_sequencia            = :IdSequencia;
+
+                    -- Tipo 2: Agenda Paciente (Exames/SADT)
+                    ELSIF :cd_tipo = 2 THEN
+                        UPDATE agenda_paciente
+                           SET cd_motivo_cancelamento = 302,
+                               IE_STATUS_AGENDA       = 'C',
+                               dt_cancelamento        = SYSDATE,
+                               nm_usuario_cancel      = 'DATA' -- Se der erro ORA-00904, tente NM_USUARIO_CANCELAMENTO
+                         WHERE nr_sequencia           = :IdSequencia;
+                    END IF;
+
+                    COMMIT;
+                END;
+            `;
+
+            await db.oracle.raw(sql, params);
+            res.json({ success: true });
+
+        } catch (e) {
+            console.error("Erro ao Cancelar:", e.message);
+            res.status(500).json({ error: 'Erro ao cancelar no banco.' });
+        }
+    },
+
+    // 3. BLOQUEAR AGENDA
+    bloquear: async (req, res) => {
+        const { agendaId } = req.body;
+
+        if (!agendaId) return res.status(400).json({ error: 'ID da agenda obrigatório' });
+
+        try {
+            const params = {
+                cd_tipo: 1, // 1=Médico, 2=Exame (Pode ajustar para vir do req.body)
+                IdSequencia: agendaId
+            };
+
+            const sql = `
+                BEGIN
+                    -- Tipo 1: Agenda Consulta (Médicos)
+                    IF :cd_tipo = 1 THEN
+                        UPDATE agenda_consulta
+                           SET ie_status_agenda   = 'B',
+                               nr_seq_motivo_bloq = 5,
+                               dt_atualizacao     = SYSDATE
+                         WHERE nr_sequencia       = :IdSequencia;
+
+                    -- Tipo 2: Agenda Paciente (Exames/SADT)
+                    ELSIF :cd_tipo = 2 THEN
+                        UPDATE agenda_paciente
+                           SET ie_status_agenda   = 'B',
+                               nr_seq_motivo_bloq = 5,
+                               dt_bloqueio        = SYSDATE,
+                               nm_usuario_bloq    = 'DATA',
+                               dt_atualizacao     = SYSDATE
+                         WHERE nr_sequencia       = :IdSequencia;
+                    END IF;
+
+                    COMMIT;
+                END;
+            `;
+
+            await db.oracle.raw(sql, params);
+            res.json({ success: true });
+
+        } catch (e) {
+            console.error("Erro ao Bloquear:", e.message);
+            res.status(500).json({ error: 'Erro ao bloquear no banco.' });
+        }
+    },
+
+    // 4. TRANSFERIR (TROCAR DE HORÁRIO)
+    // 4. TRANSFERIR AGENDA
+    transferir: async (req, res) => {
+        console.log("Rota transferir chamada - Implementar amanhã");
+        res.status(501).json({ error: 'Em desenvolvimento' });
+    },
+
+    // 5. AGENDAR NOVO PACIENTE
+    agendarNovo: async (req, res) => {
+        console.log("Rota agendar novo chamada - Implementar amanhã");
+        res.status(501).json({ error: 'Em desenvolvimento' });
     }
 };
