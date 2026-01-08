@@ -561,4 +561,71 @@
             btn.disabled = false;
         }
     }
+
+    async function assumirTicket(ticketId) {
+        try {
+            const response = await fetch('/api/chat/assumir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticketId })
+            });
+            
+            const data = await response.json();
+
+            if (data.success) {
+                // Recarrega para mover o card da 'Fila' para 'Meus' e abrir o chat
+                window.location.reload(); 
+            } else {
+                Swal.fire('Ops!', data.error, 'warning');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Erro', 'Não foi possível assumir este atendimento.', 'error');
+        }
+    }
+
+    socket.on('novo_ticket_fila', (ticket) => {
+    
+        // 1. Atualiza o contador na aba FILA (HTML que você mandou antes)
+        const countBadge = document.getElementById('count-fila');
+        if (countBadge) {
+            let atual = parseInt(countBadge.innerText) || 0;
+            countBadge.innerText = atual + 1;
+        }
+
+        // 2. Injeta o Card na lista de Fila (lista-chat.ejs)
+        const containerFila = document.getElementById('lista-fila');
+        if (containerFila) {
+            // Limpa a mensagem de "Fila vazia" se existir
+            if (containerFila.innerText.includes('Fila vazia')) {
+                containerFila.innerHTML = '';
+            }
+
+            // Template do card conforme seu estilo
+            const cardHtml = `
+                <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-white mb-1 animate-in fade-in slide-in-from-left duration-500">
+                    <div>
+                        <h3 class="font-bold text-slate-700 text-sm">${ticket.nome_contato}</h3>
+                        <p class="text-xs text-slate-400">${ticket.numero_whatsapp}</p>
+                    </div>
+                    <button onclick="assumirTicket(${ticket.id})" class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm transition transform active:scale-95">
+                        Atender
+                    </button>
+                </div>
+            `;
+            
+            containerFila.insertAdjacentHTML('afterbegin', cardHtml);
+        }
+
+        // 3. Notificação Visual (SweetAlert)
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'info',
+            title: 'Novo Paciente na Fila',
+            text: ticket.nome_contato,
+            showConfirmButton: false,
+            timer: 4000
+        });
+    });
 </script>

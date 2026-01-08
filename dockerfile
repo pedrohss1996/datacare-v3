@@ -3,8 +3,8 @@ FROM node:18-bullseye-slim
 RUN apt-get update && apt-get install -y \
     curl \
     libaio1 \
-    socat \
-    netcat-openbsd \   <-- ADICIONE ISSO AQUI
+    socat \ 
+    netcat-openbsd \ 
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 

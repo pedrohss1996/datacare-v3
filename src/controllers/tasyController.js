@@ -214,16 +214,52 @@ module.exports = {
         }
     },
 
-    // 4. TRANSFERIR (TROCAR DE HORÁRIO)
-    // 4. TRANSFERIR AGENDA
-    transferir: async (req, res) => {
-        console.log("Rota transferir chamada - Implementar amanhã");
-        res.status(501).json({ error: 'Em desenvolvimento' });
+    // --- NOVA FUNÇÃO: AGENDAR PACIENTE (Do Modal do Index.ejs) ---
+    agendarNovo: async (req, res) => {
+        const { agendaId, pacienteNome, obs } = req.body;
+
+        if (!agendaId || !pacienteNome) {
+            return res.status(400).json({ error: 'Dados incompletos.' });
+        }
+
+        try {
+            // Assumindo tipo 1 (Médico) por padrão, mas idealmente viria do front
+            const cd_tipo = 1; 
+            
+            const params = {
+                pacienteNome: pacienteNome.toUpperCase(), // Padronizar caixa alta
+                obs: obs || 'Agendado via Chat',
+                agendaId: agendaId
+            };
+
+            const sql = `
+                BEGIN
+                    IF ${cd_tipo} = 1 THEN
+                        UPDATE agenda_consulta
+                           SET nm_paciente        = :pacienteNome,
+                               ie_status_agenda   = 'A', -- A = Agendado
+                               ds_observacao      = :obs,
+                               dt_atualizacao     = SYSDATE,
+                               nm_usuario_agendou = 'DATACARE'
+                         WHERE nr_sequencia       = :agendaId;
+                    END IF;
+                    COMMIT;
+                END;
+            `;
+
+            await db.oracle.raw(sql, params);
+            res.json({ success: true });
+
+        } catch (e) {
+            console.error("Erro ao Agendar Tasy:", e.message);
+            res.status(500).json({ error: 'Erro ao gravar agendamento no Tasy.' });
+        }
     },
 
-    // 5. AGENDAR NOVO PACIENTE
-    agendarNovo: async (req, res) => {
-        console.log("Rota agendar novo chamada - Implementar amanhã");
-        res.status(501).json({ error: 'Em desenvolvimento' });
+    // --- STUB: TRANSFERIR AGENDA TASY (Futuro) ---
+    transferir: async (req, res) => {
+        // Esse é complexo no Tasy (Envolve Procedure de Troca). 
+        // Vamos deixar travado por enquanto para evitar corromper agenda.
+        res.status(501).json({ error: 'Transferência de horário via Tasy ainda não implementada.' });
     }
 };

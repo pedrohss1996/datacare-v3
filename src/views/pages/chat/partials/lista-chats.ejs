@@ -36,7 +36,7 @@
                 <h3 class="font-bold text-slate-700 text-sm"><%= ticket.nome_contato %></h3>
                 <p class="text-xs text-slate-400"><%= ticket.numero_whatsapp %></p>
             </div>
-            <button class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm">
+            <button onclick="assumirTicket(<%= ticket.id %>)" class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm">
                 Atender
             </button>
         </div>
