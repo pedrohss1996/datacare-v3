@@ -1,30 +1,25 @@
 #!/bin/bash
 
-echo "🚀 Iniciando configuração do Tailscale..."
-
-# 1. Iniciar o daemon do Tailscale em modo userspace
-# --tun=userspace-networking: Essencial para Railway
-# --socks5-server=localhost:1055: Cria o proxy SOCKS local
+echo "🚀 [1/4] Iniciando Daemon do Tailscale..."
+# Inicia o daemon em background
 tailscaled --tun=userspace-networking --socks5-server=localhost:1055 &
+sleep 3
 
-# 2. Aguardar o daemon iniciar (breve pausa)
-sleep 2
+echo "🔑 [2/4] Autenticando no Tailscale..."
+tailscale up --authkey=${TAILSCALE_AUTH_KEY} --hostname=railway-app
 
-# 3. Autenticar na rede Tailscale
-# Usa a chave definida nas variáveis de ambiente do Railway
-tailscale up --authkey=${TAILSCALE_AUTH_KEY} --hostname=railway-app-${RAILWAY_GIT_COMMIT_SHA::7}
+echo "🔗 [3/4] Subindo túnel Socat (Local 1521 -> Remoto 10.0.10.222:1521)..."
+# -d -d: Ativa logs de debug para vermos se o socat falhar
+# 10.0.10.222: É o IP do seu banco Oracle na rede interna
+socat -d -d TCP-LISTEN:1521,fork,bind=127.0.0.1 SOCKS5:127.0.0.1:10.0.10.222:1521,socksport=1055 &
 
-echo "✅ Tailscale conectado!"
+echo "⏳ [WAIT] Aguardando a porta 1521 abrir..."
+# Loop: Tenta conectar na porta 1521 a cada 1 segundo. Só sai daqui quando conseguir.
+# Se ficar preso aqui no log, significa que o socat não conseguiu subir.
+while ! nc -z 127.0.0.1 1521; do   
+  sleep 1
+  echo "zzz... esperando túnel..."
+done
 
-# 4. (O PULO DO GATO) Criar túnel para o Oracle via Socat
-# Isso faz com que 'localhost:1521' no container aponte para o IP do seu PC remoto
-# Substitua as variáveis ou deixe fixo se preferir.
-# REMOTE_DB_IP: O IP do seu computador na rede Tailscale (ex: 100.x.y.z)
-if [ -n "$REMOTE_DB_IP" ]; then
-    echo "🔗 Criando túnel para Oracle: localhost:1521 -> $REMOTE_DB_IP:1521"
-    socat TCP-LISTEN:1521,fork,bind=127.0.0.1 SOCKS5:127.0.0.1:$REMOTE_DB_IP:1521,socksport=1055 &
-fi
-
-# 5. Iniciar sua aplicação
-echo "🟢 Iniciando aplicação Node.js..."
+echo "✅ [4/4] Túnel pronto! Iniciando aplicação..."
 exec npm start
