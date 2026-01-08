@@ -1,4 +1,5 @@
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <div class="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden font-sans">
     
@@ -299,7 +300,7 @@
         const select = document.getElementById('tasy-recurso');
         
         if(!unidadeId) {
-            select.innerHTML = '<option value="">Selecione Unidade</option>';
+            select.innerHTML = '<option value="">Selecione a tipo da agenda</option>';
             return;
         }
 
@@ -312,7 +313,7 @@
             recursos.forEach(r => {
                 select.innerHTML += `<option value="${r.CD_AGENDA}">${r.DS_AGENDA}</option>`;
             });
-        } catch (e) { console.error('Erro recursos Tasy', e); }
+        } catch (e) { console.error('Erro ao selecionar a Agenda no Tasy', e); }
     }
 
     async function buscarAgenda() {
@@ -322,7 +323,7 @@
 
         if(!recurso || !data) return alert('Preencha os filtros da agenda');
 
-        container.innerHTML = '<div class="p-4 text-center text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin"></i> Consultando Oracle...</div>';
+        container.innerHTML = '<div class="p-4 text-center text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin"></i> Carregando Horários...</div>';
 
         try {
             const res = await fetch('/api/tasy/agenda', {
@@ -399,59 +400,115 @@
     async function acaoAgenda(acao) {
         document.getElementById('context-menu').classList.add('hidden'); // Fecha menu
         
-        // 1. AGENDAR (Abre o Modal que já fizemos)
+        // 1. AGENDAR (Abre o Modal HTML que já fizemos - Esse continua igual)
         if(acao === 'agendar') {
             abrirModalAgendamento();
             return;
         }
 
-        // Para as outras ações, vamos confirmar antes
+        // Configurações visuais para cada tipo de ação
+        let titulo = '';
+        let texto = '';
+        let corBotao = '';
+        let icone = '';
+        let inputType = null; // Para o caso de Transferir
         let endpoint = '';
         let body = { agendaId: agendaIdSelecionado };
-        let confirmText = '';
 
         switch(acao) {
             case 'confirmar':
-                confirmText = 'Deseja CONFIRMAR este agendamento?';
+                titulo = 'Confirmar Agendamento?';
+                texto = 'O status mudará para Confirmado.';
+                corBotao = '#16a34a'; // Green-600
+                icone = 'question';
                 endpoint = '/api/tasy/confirmar';
                 break;
+
             case 'cancelar':
-                confirmText = 'Tem certeza que deseja CANCELAR este agendamento?';
+                titulo = 'Cancelar Agendamento?';
+                texto = 'O horário ficará livre e o histórico será guardado.';
+                corBotao = '#dc2626'; // Red-600
+                icone = 'warning';
                 endpoint = '/api/tasy/cancelar';
                 break;
+
             case 'bloquear':
-                confirmText = 'Deseja BLOQUEAR este horário?';
+                titulo = 'Bloquear Horário?';
+                texto = 'Ninguém poderá agendar neste horário.';
+                corBotao = '#ea580c'; // Orange-600
+                icone = 'error'; // X vermelho
                 endpoint = '/api/tasy/bloquear';
                 break;
+
             case 'transferir':
-                // Lógica simplificada de transferência
-                const novoId = prompt("Digite o ID da Agenda de DESTINO (Para onde vai o paciente):");
-                if(!novoId) return;
-                confirmText = `Confirma transferir do ID ${agendaIdSelecionado} para o ID ${novoId}?`;
+                titulo = 'Transferir Paciente';
+                texto = 'Digite o ID da Agenda de DESTINO:';
+                corBotao = '#2563eb'; // Blue-600
+                icone = 'info';
+                inputType = 'text'; // Habilita o campo de digitação
                 endpoint = '/api/tasy/transferir';
-                body.novoId = novoId; // Envia o destino
                 break;
         }
 
-        if(!confirm(confirmText)) return;
+        // --- 2. MOSTRA O MODAL DE CONFIRMAÇÃO (SweetAlert) ---
+        const result = await Swal.fire({
+            title: titulo,
+            text: inputType ? texto : texto, 
+            icon: icone,
+            input: inputType, // Só aparece se for 'transferir'
+            inputPlaceholder: inputType ? 'Ex: 123456' : '',
+            showCancelButton: true,
+            confirmButtonColor: corBotao,
+            cancelButtonColor: '#64748b', // Slate-500
+            confirmButtonText: 'Sim, confirmar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true, // Botão de cancelar na esquerda (UX melhor)
+            showLoaderOnConfirm: true, // Mostra spinner ao clicar
+            preConfirm: async (inputValue) => {
+                // Se for Transferir, valida se digitou algo
+                if (acao === 'transferir') {
+                    if (!inputValue) {
+                        Swal.showValidationMessage('Você precisa digitar o ID de destino!');
+                        return false;
+                    }
+                    body.novoId = inputValue;
+                }
 
-        // Executa a requisição
-        try {
-            const res = await fetch(endpoint, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(body)
+                // --- 3. EXECUTA A REQUISIÇÃO DENTRO DO MODAL ---
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(body)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.error || 'Erro desconhecido');
+                    }
+                    
+                    return data;
+
+                } catch (error) {
+                    Swal.showValidationMessage(`Erro: ${error.message}`);
+                }
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        });
+
+        // --- 4. FEEDBACK FINAL ---
+        if (result.isConfirmed) {
+            await Swal.fire({
+                title: 'Sucesso!',
+                text: 'Ação realizada com sucesso.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
             });
-            const data = await res.json();
             
-            if(data.success) {
-                alert('Ação realizada com sucesso!');
-                buscarAgenda(); // Atualiza a lista
-            } else {
-                alert('Erro: ' + (data.error || 'Erro desconhecido'));
-            }
-        } catch (e) {
-            alert('Erro de comunicação com o servidor.');
+            // Atualiza a lista do Tasy
+            buscarAgenda();
         }
     }
 
