@@ -190,5 +190,41 @@ module.exports = {
             console.error("Erro na simulação:", error);
             res.status(500).json({ error: error.message });
         }
+    },
+
+    assumir: async (req, res) => {
+    const { ticketId } = req.body;
+    const usuarioId = req.session.user.id; // Pega o ID do atendente logado
+
+    try {
+        // Update atômico para evitar que dois atendentes puxem o mesmo ao mesmo tempo
+        const atualizado = await db('chat_tickers')
+            .where({ id: ticketId, status: 'FILA' }) 
+            .update({
+                atendente_id: usuarioId,
+                status: 'ATENDIMENTO',
+                atualizado_em: new Date()
+            })
+            .returning('*');
+
+        if (atualizado.length === 0) {
+            return res.status(400).json({ error: 'Atendimento já assumido por outro colega.' });
+        }
+
+        // Log de início de atendimento
+        await db('chat_mensagens').insert({
+            ticket_id: ticketId,
+            remetente: 'SISTEMA',
+            tipo: 'texto',
+            conteudo: `Atendimento iniciado por ${req.session.user.nome}`,
+            criado_em: new Date()
+        });
+
+        res.json({ success: true, ticket: atualizado[0] });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Erro ao assumir atendimento.' });
     }
+}
 };

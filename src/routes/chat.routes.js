@@ -19,6 +19,8 @@ router.post('/api/chat/transferir', loginRequired, chatController.transferir);
 // Remova o loginRequired apenas desta linha de teste
 router.post('/api/teste/novo-paciente', chatController.simularEntradaPaciente);
 
+router.post('/api/chat/assumir', loginRequired, chatController.assumir);
+
 
 
 module.exports = router;

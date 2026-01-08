@@ -628,4 +628,36 @@
             timer: 4000
         });
     });
+
+
+    async function assumirTicket(ticketId) {
+        try {
+            const res = await fetch('/api/chat/assumir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticketId })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                // Em vez de reload, vamos ser elegantes:
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Ticket Assumido!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+
+                // Recarrega para mover o card de coluna (ou você pode mover via JS)
+                window.location.reload(); 
+            } else {
+                Swal.fire('Ops!', data.error, 'warning');
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
 </script>
