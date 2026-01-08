@@ -3,7 +3,7 @@
 echo "🚀 [1/4] Iniciando Daemon do Tailscale..."
 # Inicia o daemon em background
 tailscaled --tun=userspace-networking --socks5-server=localhost:1055 &
-sleep 3
+sleep 10
 
 echo "🔑 [2/4] Autenticando no Tailscale..."
 tailscale up --authkey=${TAILSCALE_AUTH_KEY} --hostname=railway-app
@@ -17,7 +17,7 @@ echo "⏳ [WAIT] Aguardando a porta 1521 abrir..."
 # Loop: Tenta conectar na porta 1521 a cada 1 segundo. Só sai daqui quando conseguir.
 # Se ficar preso aqui no log, significa que o socat não conseguiu subir.
 while ! nc -z 127.0.0.1 1521; do   
-  sleep 1
+  sleep 10
   echo "zzz... esperando túnel..."
 done
 
