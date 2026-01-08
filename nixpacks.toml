@@ -1,8 +1,0 @@
-[phases.setup]
-nixPkgs = ["tailscale", "socat"]
-
-[phases.build]
-cmds = ["npm ci", "npm run build"] # Ajuste se seu comando de build for diferente
-
-[start]
-cmd = "tailscaled --tun=userspace-networking --socks5-server=localhost:1055 & tailscale up --authkey=$TAILSCALE_AUTH_KEY --hostname=railway-app && socat TCP-LISTEN:1521,fork,bind=127.0.0.1 SOCKS4A:127.0.0.1:10.0.10.222:1521,socksport=1055 & npm start"
