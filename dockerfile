@@ -1,10 +1,10 @@
 FROM node:18-bullseye-slim
 
-# 1. Instalar dependências básicas, libaio (para Oracle) e socat
 RUN apt-get update && apt-get install -y \
     curl \
     libaio1 \
     socat \
+    netcat-openbsd \   <-- ADICIONE ISSO AQUI
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
