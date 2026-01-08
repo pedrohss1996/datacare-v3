@@ -1,25 +1,29 @@
-# Use a imagem base da sua linguagem (Ex: node:18, python:3.9, openjdk:17)
-FROM node:18-slim
+FROM node:18-bullseye-slim
 
-# 1. Instalar dependências necessárias (curl e ca-certificates)
-RUN apt-get update && apt-get install -y curl ca-certificates
+RUN apt-get update && apt-get install -y \
+    curl \
+    libaio1 \
+    socat \
+    netcat-openbsd \   <-- ADICIONE ISSO AQUI
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# 2. Baixar e instalar o Tailscale
+# 2. Instalar Tailscale
 RUN curl -fsSL https://tailscale.com/install.sh | sh
 
-# 3. Definir diretório de trabalho
+# 3. Configurar diretório da aplicação
 WORKDIR /app
 
-# 4. Copiar arquivos de dependências e instalar (padrão Node)
+# 4. Copiar arquivos de dependências e instalar
 COPY package*.json ./
 RUN npm install
 
 # 5. Copiar o restante do código
 COPY . .
 
-# 6. Copiar o script start.sh e dar permissão de execução
+# 6. Copiar o script de inicialização e dar permissão de execução
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
-# 7. Definir o start.sh como o comando inicial
+# 7. Definir o comando de entrada
 CMD ["/start.sh"]
