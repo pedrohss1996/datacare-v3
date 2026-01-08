@@ -25,4 +25,4 @@ echo "✅ Tailscale conectado!"
 # java -jar app.jar
 # ./meu-binario
 
-npm run dev
+npm run start
