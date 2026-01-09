@@ -8,7 +8,7 @@
 
 <div id="lista-meus" class="flex-1 overflow-y-auto custom-scrollbar">
     <% if(meus.length === 0) { %>
-        <div class="p-8 text-center text-slate-400 text-sm">Nenhum atendimento ativo.</div>
+        <div id="empty-meus" class="p-8 text-center text-slate-400 text-sm">Nenhum atendimento ativo.</div>
     <% } %>
     <% meus.forEach(ticket => { %>
         <div onclick="abrirChat(<%= ticket.id %>)" class="ticket-card cursor-pointer p-4 border-b border-slate-50 hover:bg-slate-50 transition flex gap-3 items-center group relative" data-id="<%= ticket.id %>">
@@ -28,10 +28,10 @@
 
 <div id="lista-fila" class="flex-1 overflow-y-auto hidden bg-slate-50/50 custom-scrollbar">
     <% if(fila.length === 0) { %>
-        <div class="p-8 text-center text-slate-400 text-sm">Fila vazia. 🎉</div>
+        <div id="empty-fila" class="p-8 text-center text-slate-400 text-sm">Fila vazia. 🎉</div>
     <% } %>
     <% fila.forEach(ticket => { %>
-        <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-white mb-1">
+        <div class="ticket-card p-4 border-b border-slate-100 flex justify-between items-center bg-white mb-1" data-id="<%= ticket.id %>">
             <div>
                 <h3 class="font-bold text-slate-700 text-sm"><%= ticket.nome_contato %></h3>
                 <p class="text-xs text-slate-400"><%= ticket.numero_whatsapp %></p>

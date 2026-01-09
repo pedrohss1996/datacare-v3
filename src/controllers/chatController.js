@@ -124,6 +124,15 @@ module.exports = {
                     atualizado_em: new Date()
                 });
 
+            const payload = {
+                ticketId: ticketId,
+                atendenteId: usuarioId,
+                nomeAtendente: req.session.user.nome
+            };
+
+            // Emite para TODOS para que saia da fila de todo mundo
+            req.io.emit('ticket_assumido_fila', payload);
+
             // 2. Verificação de Concorrência
             if (rowsAffected === 0) {
                 return res.status(400).json({ 
@@ -193,38 +202,79 @@ module.exports = {
     },
 
     assumir: async (req, res) => {
-    const { ticketId } = req.body;
-    const usuarioId = req.session.user.id; // Pega o ID do atendente logado
+        const { ticketId } = req.body;
+        const usuarioId = req.session.user.id;
 
-    try {
-        // Update atômico para evitar que dois atendentes puxem o mesmo ao mesmo tempo
-        const atualizado = await db('chat_tickers')
-            .where({ id: ticketId, status: 'FILA' }) 
-            .update({
-                atendente_id: usuarioId,
-                status: 'ATENDIMENTO',
-                atualizado_em: new Date()
-            })
-            .returning('*');
+        try {
+            const atualizado = await db('chat_tickets')
+                .where({ id: ticketId, status: 'FILA' }) 
+                .update({
+                    atendente_id: usuarioId,
+                    status: 'ATENDIMENTO',
+                    atualizado_em: new Date()
+                })
+                .returning('*');
 
-        if (atualizado.length === 0) {
-            return res.status(400).json({ error: 'Atendimento já assumido por outro colega.' });
+            if (atualizado.length === 0) {
+                // Se cair aqui, o F5 resolveu, mas o Real-time falhou antes
+                return res.status(400).json({ error: 'Ticket já assumido ou ID inválido.' });
+            }
+
+            // --- O SEGREDO ESTÁ AQUI ---
+            const payload = {
+                ticketId: ticketId,
+                atendenteId: usuarioId,
+                nomeAtendente: req.session.user.nome
+            };
+
+            // Envia para todos os sockets conectados
+            req.io.emit('ticket_assumido_fila', payload);
+
+            return res.json({ success: true, ticket: atualizado[0] });
+
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ error: 'Erro interno' });
         }
+    },
 
-        // Log de início de atendimento
-        await db('chat_mensagens').insert({
-            ticket_id: ticketId,
-            remetente: 'SISTEMA',
-            tipo: 'texto',
-            conteudo: `Atendimento iniciado por ${req.session.user.nome}`,
-            criado_em: new Date()
-        });
+    enviar: async (req, res) => {
+        const { ticketId, conteudo, tipo = 'texto' } = req.body;
+        const usuarioId = req.session.user.id;
 
-        res.json({ success: true, ticket: atualizado[0] });
+        try {
+            // 1. Insere a mensagem no Postgres
+            const [novaMsg] = await db('chat_mensagens')
+                .insert({
+                    ticket_id: ticketId,
+                    remetente: 'ATENDENTE',
+                    tipo: tipo,
+                    conteudo: conteudo,
+                    criado_em: new Date()
+                })
+                .returning('*');
 
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Erro ao assumir atendimento.' });
+            // 2. Atualiza a "última mensagem" no ticket para manter a lista lateral atualizada
+            await db('chat_tickets')
+                .where({ id: ticketId })
+                .update({
+                    ultima_mensagem: conteudo,
+                    atualizado_em: new Date()
+                });
+
+            // 3. EMITE VIA SOCKET (Para o próprio atendente e outros aparelhos conectados)
+            // Usamos o ticketId como 'sala' para que a msg só apareça no chat certo
+            req.io.to(ticketId.toString()).emit('nova_mensagem', novaMsg);
+
+            // TODO: Chamar sua função da Z-API aqui no futuro para enviar ao celular do paciente
+
+            res.json({ success: true, data: novaMsg });
+
+        } catch (error) {
+            console.error("Erro ao enviar mensagem:", error);
+            res.status(500).json({ error: 'Falha ao enviar mensagem.' });
+        }
     }
-}
+
+
 };

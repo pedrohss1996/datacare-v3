@@ -20,6 +20,7 @@ router.post('/api/chat/transferir', loginRequired, chatController.transferir);
 router.post('/api/teste/novo-paciente', chatController.simularEntradaPaciente);
 
 router.post('/api/chat/assumir', loginRequired, chatController.assumir);
+router.post('/api/chat/enviar', loginRequired, chatController.enviar);
 
 
 

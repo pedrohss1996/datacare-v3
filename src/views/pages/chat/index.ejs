@@ -125,53 +125,137 @@
     // --- 1. CONFIGURAÇÃO GERAL E SOCKET ---
     const socket = io(); 
     let activeTicketId = null;
+    // Identifica o usuário logado para a lógica de movimentação de cards
+    const meuIdAtual = "<%= user ? user.id : '' %>"; 
 
     document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('tasy-data').valueAsDate = new Date();
+        // Inicializa filtros da agenda
+        const inputData = document.getElementById('tasy-data');
+        if(inputData) inputData.valueAsDate = new Date();
         carregarUnidades();
 
-        socket.on('connect', () => console.log('🟢 Socket Conectado:', socket.id));
+        socket.on('connect', () => console.log('🟢 DataCare Socket Conectado:', socket.id));
         
+        // 1.1 OUVINTE: Novas mensagens (Real-time)
         socket.on('nova_mensagem', (msg) => {
-            if (activeTicketId && (msg.ticket_id == activeTicketId || msg.ticketId == activeTicketId)) {
-                renderizarMensagem(msg);
-                scrollParaBaixo();
-            } else {
-                console.log('Nova mensagem em outro ticket:', msg);
+            const idDaMsg = msg.ticket_id || msg.ticketId;
+            if (activeTicketId && idDaMsg == activeTicketId) {
+                renderizarMensagemNaTela(msg);
             }
         });
+
+        // 1.2 OUVINTE: Novo ticket entrando na fila (WebHook Simulado)
+        socket.on('novo_ticket_fila', (ticket) => {
+            adicionarTicketAFila(ticket);
+        });
+
+        // 1.3 OUVINTE: Movimentação de Ticket (Transbordo sem F5)
+        
+        socket.on('ticket_assumido_fila', (data) => {
+            const cardOriginal = document.querySelector(`.ticket-card[data-id="${data.ticketId}"]`);
+            
+            if (cardOriginal) {
+                if (data.atendenteId == meuIdAtual) {
+                    const listaMeus = document.getElementById('lista-meus');
+                    const emptyMeus = document.getElementById('empty-meus');
+                    if (emptyMeus) emptyMeus.remove();
+
+                    // RECONSTRUÇÃO DO CARD: Transformamos o layout da Fila no layout de Meus
+                    const nome = cardOriginal.querySelector('h3').innerText;
+                    const iniciais = nome.charAt(0).toUpperCase();
+
+                    const novoCardHtml = `
+                        <div onclick="abrirChat(${data.ticketId})" 
+                            class="ticket-card cursor-pointer p-4 border-b border-slate-50 hover:bg-slate-50 transition flex gap-3 items-center group relative animate-in fade-in" 
+                            data-id="${data.ticketId}">
+                            
+                            <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg shrink-0">
+                                ${iniciais}
+                            </div>
+                            
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between">
+                                    <h3 class="font-bold text-slate-800 text-sm truncate">${nome}</h3>
+                                    <span class="text-[10px] text-slate-400">Online</span>
+                                </div>
+                                <p class="text-xs text-slate-500 truncate last-msg">Conversa iniciada...</p>
+                            </div>
+                        </div>
+                    `;
+
+                    // Remove o card feio da Fila e insere o novo bonitão em Meus
+                    cardOriginal.remove();
+                    if (listaMeus) {
+                        listaMeus.insertAdjacentHTML('afterbegin', novoCardHtml);
+                        abrirChat(data.ticketId); // Abre automaticamente
+                        mudarAba('meus');
+                    }
+                } else {
+                    // Se foi outro atendente, apenas remove da fila
+                    cardOriginal.remove();
+                }
+                atualizarContadoresUI();
+            }
+        });
+
     });
 
-    // --- 2. FUNÇÕES DO CHAT ---
+    // --- 2. FUNÇÕES DE UI (DOM) ---
 
     function mudarAba(aba) {
-        if(aba === 'meus') {
-            document.getElementById('lista-meus').classList.remove('hidden');
-            document.getElementById('lista-fila').classList.add('hidden');
-            document.getElementById('tab-meus').classList.add('bg-white', 'shadow', 'text-slate-800');
-            document.getElementById('tab-meus').classList.remove('text-slate-500');
-            document.getElementById('tab-fila').classList.remove('bg-white', 'shadow', 'text-slate-800');
-            document.getElementById('tab-fila').classList.add('text-slate-500');
-        } else {
-            document.getElementById('lista-meus').classList.add('hidden');
-            document.getElementById('lista-fila').classList.remove('hidden');
-            document.getElementById('tab-fila').classList.add('bg-white', 'shadow', 'text-slate-800');
-            document.getElementById('tab-fila').classList.remove('text-slate-500');
-            document.getElementById('tab-meus').classList.remove('bg-white', 'shadow', 'text-slate-800');
-            document.getElementById('tab-meus').classList.add('text-slate-500');
-        }
+        const isMeus = aba === 'meus';
+        document.getElementById('lista-meus').classList.toggle('hidden', !isMeus);
+        document.getElementById('lista-fila').classList.toggle('hidden', isMeus);
+        
+        document.getElementById('tab-meus').classList.toggle('bg-white', isMeus);
+        document.getElementById('tab-meus').classList.toggle('shadow', isMeus);
+        document.getElementById('tab-fila').classList.toggle('bg-white', !isMeus);
+        document.getElementById('tab-fila').classList.toggle('shadow', !isMeus);
     }
+
+    function atualizarContadoresUI() {
+        const qtdFila = document.querySelectorAll('#lista-fila .ticket-card').length;
+        const badgeFila = document.getElementById('count-fila');
+        if (badgeFila) badgeFila.innerText = qtdFila;
+    }
+
+    function renderizarMensagemNaTela(msg) {
+        const container = document.getElementById('chat-messages');
+        if (!container) return;
+        if (container.innerText.includes('historico') || container.innerText.includes('Inicie')) container.innerHTML = '';
+
+        const isMe = msg.remetente === 'ATENDENTE';
+        const conteudo = msg.conteudo || msg.texto;
+        const hora = new Date(msg.criado_em || new Date()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        const htmlMsg = `
+            <div class="flex ${isMe ? 'justify-end' : 'justify-start'} mb-3 animate-in fade-in slide-in-from-bottom-2">
+                <div class="max-w-[75%] px-4 py-2 rounded-2xl shadow-sm text-sm relative ${
+                    isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
+                }">
+                    <p class="leading-relaxed font-medium">${conteudo}</p>
+                    <div class="text-[10px] mt-1 flex items-center justify-end gap-1 ${isMe ? 'text-blue-100' : 'text-slate-400'}">
+                        ${hora} ${isMe ? '<i class="fa-solid fa-check-double text-[8px]"></i>' : ''}
+                    </div>
+                </div>
+            </div>`;
+        container.insertAdjacentHTML('beforeend', htmlMsg);
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }
+
+    // --- 3. LÓGICA DE NEGÓCIO (API CALLS) ---
 
     async function abrirChat(ticketId) {
         activeTicketId = ticketId;
         
         document.getElementById('chat-empty').classList.add('hidden');
-        document.getElementById('chat-header').classList.remove('hidden');
-        document.getElementById('chat-messages').classList.remove('hidden');
-        document.getElementById('chat-input').classList.remove('hidden');
+        ['chat-header', 'chat-messages', 'chat-input'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.classList.remove('hidden');
+        });
         
         const areaMsg = document.getElementById('chat-messages');
-        areaMsg.innerHTML = '<div class="text-center text-xs text-slate-400 mt-4"><i class="fa-solid fa-spinner fa-spin"></i> Carregando histórico...</div>';
+        areaMsg.innerHTML = '<div class="text-center text-xs text-slate-400 mt-10"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
 
         socket.emit('join_ticket', ticketId);
 
@@ -185,146 +269,94 @@
         try {
             const res = await fetch(`/api/chat/mensagens/${ticketId}`);
             const mensagens = await res.json();
-            
-            areaMsg.innerHTML = ''; 
-            
-            if(mensagens.length === 0) {
-                areaMsg.innerHTML = '<div class="text-center text-xs text-slate-400 mt-4">Inicie a conversa...</div>';
-            }
-
-            mensagens.forEach(m => renderizarMensagem(m));
-            scrollParaBaixo();
+            areaMsg.innerHTML = mensagens.length ? '' : '<div class="text-center text-xs text-slate-400 mt-10">Nenhuma mensagem encontrada.</div>';
+            mensagens.forEach(m => renderizarMensagemNaTela(m));
         } catch (e) {
-            areaMsg.innerHTML = '<div class="text-center text-xs text-red-400 mt-4">Erro ao carregar mensagens.</div>';
+            areaMsg.innerHTML = '<div class="text-center text-xs text-red-400 mt-10">Erro ao carregar histórico.</div>';
         }
     }
 
-    function renderizarMensagem(msg) {
-        const area = document.getElementById('chat-messages');
-        const isMe = msg.remetente === 'ATENDENTE';
-        
-        const html = `
-            <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
-                <div class="max-w-[75%] p-2 px-3 rounded-lg text-sm shadow-sm relative ${isMe ? 'bg-[#d9fdd3] text-slate-800 rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none'}">
-                    <p class="mb-1">${msg.conteudo || msg.texto}</p>
-                    <span class="text-[9px] opacity-60 block text-right float-right ml-2 mt-1">
-                        ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
-                        ${isMe ? '<i class="fa-solid fa-check-double text-blue-400 ml-1"></i>' : ''}
-                    </span>
-                </div>
-            </div>
-        `;
-        area.innerHTML += html;
+    async function assumirTicket(ticketId) {
+        try {
+            await fetch('/api/chat/assumir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticketId })
+            });
+            // A movimentação do card ocorre via Socket (ticket_assumido_fila)
+        } catch (e) { 
+            console.error(e);
+            Swal.fire('Erro', 'Não foi possível assumir este ticket.', 'error');
+        }
     }
 
     async function enviarMensagem() {
         const input = document.getElementById('input-msg');
-        const texto = input.value.trim();
-        if(!texto || !activeTicketId) return;
-
-        input.value = ''; 
-        input.focus();
-
-        renderizarMensagem({ remetente: 'ATENDENTE', conteudo: texto });
-        scrollParaBaixo();
+        const conteudo = input.value.trim();
+        if (!conteudo || !activeTicketId) return;
+        input.value = ''; input.focus();
 
         try {
-            await fetch('/api/whatsapp/enviar', {
+            await fetch('/api/chat/enviar', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ ticketId: activeTicketId, conteudo: texto })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticketId: activeTicketId, conteudo: conteudo })
             });
-        } catch (e) {
-            alert('Erro ao enviar mensagem');
+        } catch (e) { console.error("Erro ao enviar mensagem", e); }
+    }
+
+    function handleEnter(e) { if (e.key === 'Enter') enviarMensagem(); }
+
+    function adicionarTicketAFila(ticket) {
+        const containerFila = document.getElementById('lista-fila');
+        if (containerFila) {
+            if (containerFila.innerText.includes('vazia')) containerFila.innerHTML = '';
+            const cardHtml = `
+                <div class="ticket-card p-4 border-b border-slate-100 flex justify-between items-center bg-white mb-1 animate-in slide-in-from-left" data-id="${ticket.id}">
+                    <div>
+                        <h3 class="font-bold text-slate-700 text-sm">${ticket.nome_contato}</h3>
+                        <p class="text-xs text-slate-400">${ticket.numero_whatsapp}</p>
+                    </div>
+                    <button onclick="assumirTicket(${ticket.id})" class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-bold transition active:scale-95">
+                        Atender
+                    </button>
+                </div>`;
+            containerFila.insertAdjacentHTML('afterbegin', cardHtml);
+            atualizarContadoresUI();
         }
+        Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Novo Paciente na Fila', showConfirmButton: false, timer: 3000 });
     }
 
-    async function finalizarAtendimento() {
-        if(!activeTicketId) return;
-        if(!confirm('Deseja finalizar este atendimento? O ticket será fechado.')) return;
+    // --- 4. INTEGRAÇÃO TASY (Agenda) ---
 
-        try {
-            const res = await fetch('/api/chat/finalizar', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ ticketId: activeTicketId })
-            });
-            const data = await res.json();
-
-            if(data.success) {
-                document.getElementById('chat-empty').classList.remove('hidden');
-                document.getElementById('chat-header').classList.add('hidden');
-                document.getElementById('chat-messages').classList.add('hidden');
-                document.getElementById('chat-input').classList.add('hidden');
-                
-                const card = document.querySelector(`.ticket-card[data-id="${activeTicketId}"]`);
-                if(card) card.remove();
-
-                activeTicketId = null;
-                alert('Atendimento finalizado com sucesso!');
-            }
-        } catch (e) {
-            alert('Erro ao finalizar');
-        }
-    }
-
-    function handleEnter(e) {
-        if(e.key === 'Enter') enviarMensagem();
-    }
-
-    function scrollParaBaixo() {
-        const div = document.getElementById('chat-messages');
-        div.scrollTop = div.scrollHeight;
-    }
-
-    // --- 3. FUNÇÕES DO TASY (Agenda) ---
-    
     async function carregarUnidades() {
         const select = document.getElementById('tasy-unidade');
         try {
             const res = await fetch('/api/tasy/unidades');
             const unidades = await res.json();
-            
-            select.innerHTML = '<option value="">Selecione...</option>';
-            unidades.forEach(u => {
-                select.innerHTML += `<option value="${u.CD_TIPO}">${u.DS_TIPO}</option>`;
-            });
-        } catch (e) { 
-            console.error('Erro ao carregar unidades Tasy');
-            select.innerHTML = '<option value="">Erro ao carregar</option>';
-        }
+            select.innerHTML = '<option value="">Selecione...</option>' + 
+                unidades.map(u => `<option value="${u.CD_TIPO}">${u.DS_TIPO}</option>`).join('');
+        } catch (e) { select.innerHTML = '<option>Erro ao carregar unidades</option>'; }
     }
 
     async function carregarRecursos() {
         const unidadeId = document.getElementById('tasy-unidade').value;
         const select = document.getElementById('tasy-recurso');
-        
-        if(!unidadeId) {
-            select.innerHTML = '<option value="">Selecione a tipo da agenda</option>';
-            return;
-        }
-
+        if(!unidadeId) return;
         try {
-            select.innerHTML = '<option>Carregando...</option>';
             const res = await fetch(`/api/tasy/recursos/${unidadeId}`);
             const recursos = await res.json();
-            
-            select.innerHTML = '';
-            recursos.forEach(r => {
-                select.innerHTML += `<option value="${r.CD_AGENDA}">${r.DS_AGENDA}</option>`;
-            });
-        } catch (e) { console.error('Erro ao selecionar a Agenda no Tasy', e); }
+            select.innerHTML = recursos.map(r => `<option value="${r.CD_AGENDA}">${r.DS_AGENDA}</option>`).join('');
+        } catch (e) { console.error(e); }
     }
 
     async function buscarAgenda() {
         const recurso = document.getElementById('tasy-recurso').value;
         const data = document.getElementById('tasy-data').value;
         const container = document.getElementById('lista-agenda');
+        if(!recurso || !data) return Swal.fire('Filtros', 'Selecione a agenda e a data', 'info');
 
-        if(!recurso || !data) return alert('Preencha os filtros da agenda');
-
-        container.innerHTML = '<div class="p-4 text-center text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin"></i> Carregando Horários...</div>';
-
+        container.innerHTML = '<div class="p-8 text-center text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin"></i></div>';
         try {
             const res = await fetch('/api/tasy/agenda', {
                 method: 'POST',
@@ -332,61 +364,22 @@
                 body: JSON.stringify({ recurso, data })
             });
             const agenda = await res.json();
-
-            container.innerHTML = ''; 
-
-            if(!agenda || agenda.length === 0) {
-                container.innerHTML = '<div class="p-4 text-center text-xs text-slate-400">Nenhum horário encontrado.</div>';
-                return;
-            }
-
+            container.innerHTML = agenda.length ? '' : '<div class="p-8 text-center text-xs text-slate-400">Nenhum horário disponível.</div>';
+            
             agenda.forEach(slot => {
-                let bgClass = '', statusClass = '', statusTexto = slot.STATUS_DESC || slot.IE_STATUS;
-
-                if(slot.IE_STATUS === 'L') { 
-                    bgClass = 'hover:bg-slate-50'; statusClass = 'bg-green-100 text-green-700'; 
-                } else if (slot.IE_STATUS === 'A') { 
-                    bgClass = 'bg-blue-50/50 hover:bg-blue-50'; statusClass = 'bg-blue-100 text-blue-700'; 
-                } else if (slot.IE_STATUS === 'C') {
-                    bgClass = 'bg-green-50/30'; statusClass = 'bg-green-600 text-white';
-                } else {
-                    bgClass = 'bg-slate-50 opacity-70'; statusClass = 'bg-red-100 text-red-700';
-                }
-
-                // AQUI FOI ADICIONADO O ONCONTEXTMENU
-                const html = `
-                    <div class="flex items-center px-4 py-3 border-b border-slate-50 cursor-pointer ${bgClass} group transition" oncontextmenu="abrirMenuContexto(event, ${slot.ID})">
+                const statusClass = slot.IE_STATUS === 'L' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700';
+                container.innerHTML += `
+                    <div class="flex items-center px-4 py-3 border-b border-slate-50 cursor-pointer hover:bg-slate-50 group transition" oncontextmenu="abrirMenuContexto(event, ${slot.ID})">
                         <div class="w-14 font-bold text-slate-600 text-xs">${slot.HORA}</div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex justify-between items-center mb-0.5">
-                                <span class="font-bold text-slate-800 text-xs truncate">
-                                    ${slot.PACIENTE || 'Livre'}
-                                </span>
-                                <span class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${statusClass}">
-                                    ${statusTexto}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.innerHTML += html;
+                        <div class="flex-1 truncate font-bold text-slate-800 text-xs">${slot.PACIENTE || 'Livre'}</div>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${statusClass}">${slot.STATUS_DESC || slot.IE_STATUS}</span>
+                    </div>`;
             });
-
-        } catch (e) {
-            container.innerHTML = '<div class="p-4 text-center text-xs text-red-500">Erro na consulta.</div>';
-        }
+        } catch (e) { container.innerHTML = 'Erro na consulta do Tasy.'; }
     }
 
-    // --- 4. MENU DE CONTEXTO E MODAL ---
-
-    let agendaIdSelecionado = null; // Guarda o ID do horário clicado
-
-    // Fecha o menu se clicar fora
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('#context-menu')) {
-            document.getElementById('context-menu').classList.add('hidden');
-        }
-    });
+    // --- 5. MENU DE CONTEXTO E MODAL ---
+    let agendaIdSelecionado = null;
 
     function abrirMenuContexto(e, idAgenda) {
         e.preventDefault(); 
@@ -397,132 +390,10 @@
         menu.classList.remove('hidden');
     }
 
-    async function acaoAgenda(acao) {
-        document.getElementById('context-menu').classList.add('hidden'); // Fecha menu
-        
-        // 1. AGENDAR (Abre o Modal HTML que já fizemos - Esse continua igual)
-        if(acao === 'agendar') {
-            abrirModalAgendamento();
-            return;
-        }
-
-        // Configurações visuais para cada tipo de ação
-        let titulo = '';
-        let texto = '';
-        let corBotao = '';
-        let icone = '';
-        let inputType = null; // Para o caso de Transferir
-        let endpoint = '';
-        let body = { agendaId: agendaIdSelecionado };
-
-        switch(acao) {
-            case 'confirmar':
-                titulo = 'Confirmar Agendamento?';
-                texto = 'O status mudará para Confirmado.';
-                corBotao = '#16a34a'; // Green-600
-                icone = 'question';
-                endpoint = '/api/tasy/confirmar';
-                break;
-
-            case 'cancelar':
-                titulo = 'Cancelar Agendamento?';
-                texto = 'O horário ficará livre e o histórico será guardado.';
-                corBotao = '#dc2626'; // Red-600
-                icone = 'warning';
-                endpoint = '/api/tasy/cancelar';
-                break;
-
-            case 'bloquear':
-                titulo = 'Bloquear Horário?';
-                texto = 'Ninguém poderá agendar neste horário.';
-                corBotao = '#ea580c'; // Orange-600
-                icone = 'error'; // X vermelho
-                endpoint = '/api/tasy/bloquear';
-                break;
-
-            case 'transferir':
-                titulo = 'Transferir Paciente';
-                texto = 'Digite o ID da Agenda de DESTINO:';
-                corBotao = '#2563eb'; // Blue-600
-                icone = 'info';
-                inputType = 'text'; // Habilita o campo de digitação
-                endpoint = '/api/tasy/transferir';
-                break;
-        }
-
-        // --- 2. MOSTRA O MODAL DE CONFIRMAÇÃO (SweetAlert) ---
-        const result = await Swal.fire({
-            title: titulo,
-            text: inputType ? texto : texto, 
-            icon: icone,
-            input: inputType, // Só aparece se for 'transferir'
-            inputPlaceholder: inputType ? 'Ex: 123456' : '',
-            showCancelButton: true,
-            confirmButtonColor: corBotao,
-            cancelButtonColor: '#64748b', // Slate-500
-            confirmButtonText: 'Sim, confirmar',
-            cancelButtonText: 'Cancelar',
-            reverseButtons: true, // Botão de cancelar na esquerda (UX melhor)
-            showLoaderOnConfirm: true, // Mostra spinner ao clicar
-            preConfirm: async (inputValue) => {
-                // Se for Transferir, valida se digitou algo
-                if (acao === 'transferir') {
-                    if (!inputValue) {
-                        Swal.showValidationMessage('Você precisa digitar o ID de destino!');
-                        return false;
-                    }
-                    body.novoId = inputValue;
-                }
-
-                // --- 3. EXECUTA A REQUISIÇÃO DENTRO DO MODAL ---
-                try {
-                    const response = await fetch(endpoint, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(body)
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (!response.ok || !data.success) {
-                        throw new Error(data.error || 'Erro desconhecido');
-                    }
-                    
-                    return data;
-
-                } catch (error) {
-                    Swal.showValidationMessage(`Erro: ${error.message}`);
-                }
-            },
-            allowOutsideClick: () => !Swal.isLoading()
-        });
-
-        // --- 4. FEEDBACK FINAL ---
-        if (result.isConfirmed) {
-            await Swal.fire({
-                title: 'Sucesso!',
-                text: 'Ação realizada com sucesso.',
-                icon: 'success',
-                timer: 2000,
-                showConfirmButton: false
-            });
-            
-            // Atualiza a lista do Tasy
-            buscarAgenda();
-        }
-    }
-
-    function abrirModalAgendamento() {
-        document.getElementById('modal-paciente-nome').value = '';
-        document.getElementById('modal-obs').value = '';
-        document.getElementById('modal-agenda-id').value = agendaIdSelecionado;
-        document.getElementById('modal-agendamento').classList.remove('hidden');
-        document.getElementById('modal-paciente-nome').focus();
-    }
-
-    function fecharModal() {
-        document.getElementById('modal-agendamento').classList.add('hidden');
-    }
+    document.addEventListener('click', () => {
+        const menu = document.getElementById('context-menu');
+        if(menu) menu.classList.add('hidden');
+    });
 
     async function confirmarAgendamento() {
         const id = document.getElementById('modal-agenda-id').value;
@@ -530,11 +401,10 @@
         const obs = document.getElementById('modal-obs').value;
         const btn = document.getElementById('btn-confirmar');
 
-        if(!paciente) return alert('Digite o nome do paciente.');
+        if(!paciente) return Swal.fire('Atenção', 'Digite o nome do paciente.', 'warning');
 
-        const textoOriginal = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
         btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
 
         try {
             const res = await fetch('/api/tasy/agendar', {
@@ -542,122 +412,23 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ agendaId: id, pacienteNome: paciente, obs: obs })
             });
-
             const data = await res.json();
-
             if(data.success) {
                 fecharModal();
-                buscarAgenda(); // Atualiza a lista
-                alert('Agendamento realizado com sucesso!');
-            } else {
-                alert('Erro ao agendar: ' + (data.error || 'Desconhecido'));
+                buscarAgenda();
+                Swal.fire('Sucesso', 'Paciente agendado no Tasy!', 'success');
             }
-
-        } catch (e) {
-            console.error(e);
-            alert('Erro de comunicação.');
+        } catch (e) { 
+            Swal.fire('Erro', 'Falha ao salvar no Oracle.', 'error');
         } finally {
-            btn.innerHTML = textoOriginal;
             btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar';
         }
     }
 
-    async function assumirTicket(ticketId) {
-        try {
-            const response = await fetch('/api/chat/assumir', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticketId })
-            });
-            
-            const data = await response.json();
-
-            if (data.success) {
-                // Recarrega para mover o card da 'Fila' para 'Meus' e abrir o chat
-                window.location.reload(); 
-            } else {
-                Swal.fire('Ops!', data.error, 'warning');
-            }
-        } catch (error) {
-            console.error(error);
-            Swal.fire('Erro', 'Não foi possível assumir este atendimento.', 'error');
-        }
-    }
-
-    socket.on('novo_ticket_fila', (ticket) => {
-    
-        // 1. Atualiza o contador na aba FILA (HTML que você mandou antes)
-        const countBadge = document.getElementById('count-fila');
-        if (countBadge) {
-            let atual = parseInt(countBadge.innerText) || 0;
-            countBadge.innerText = atual + 1;
-        }
-
-        // 2. Injeta o Card na lista de Fila (lista-chat.ejs)
-        const containerFila = document.getElementById('lista-fila');
-        if (containerFila) {
-            // Limpa a mensagem de "Fila vazia" se existir
-            if (containerFila.innerText.includes('Fila vazia')) {
-                containerFila.innerHTML = '';
-            }
-
-            // Template do card conforme seu estilo
-            const cardHtml = `
-                <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-white mb-1 animate-in fade-in slide-in-from-left duration-500">
-                    <div>
-                        <h3 class="font-bold text-slate-700 text-sm">${ticket.nome_contato}</h3>
-                        <p class="text-xs text-slate-400">${ticket.numero_whatsapp}</p>
-                    </div>
-                    <button onclick="assumirTicket(${ticket.id})" class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm transition transform active:scale-95">
-                        Atender
-                    </button>
-                </div>
-            `;
-            
-            containerFila.insertAdjacentHTML('afterbegin', cardHtml);
-        }
-
-        // 3. Notificação Visual (SweetAlert)
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: 'info',
-            title: 'Novo Paciente na Fila',
-            text: ticket.nome_contato,
-            showConfirmButton: false,
-            timer: 4000
-        });
-    });
-
-
-    async function assumirTicket(ticketId) {
-        try {
-            const res = await fetch('/api/chat/assumir', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticketId })
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-                // Em vez de reload, vamos ser elegantes:
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Ticket Assumido!',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 2000
-                });
-
-                // Recarrega para mover o card de coluna (ou você pode mover via JS)
-                window.location.reload(); 
-            } else {
-                Swal.fire('Ops!', data.error, 'warning');
-            }
-        } catch (e) {
-            console.error(e);
-        }
+    function fecharModal() { document.getElementById('modal-agendamento').classList.add('hidden'); }
+    function abrirModalAgendamento() {
+        document.getElementById('modal-agenda-id').value = agendaIdSelecionado;
+        document.getElementById('modal-agendamento').classList.remove('hidden');
     }
 </script>

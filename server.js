@@ -27,7 +27,7 @@ io.on('connection', (socket) => {
 
     // ESSENCIAL: Permite que o atendente receba as mensagens do ticket que ele abriu
     socket.on('join_ticket', (ticketId) => {
-        socket.join(ticketId); 
+        socket.join(ticketId.toString());
         // console.log(`O socket ${socket.id} entrou na sala do ticket: ${ticketId}`);
     });
 
