@@ -57,7 +57,9 @@ module.exports = {
                     HR_AGENDA    AS HORA,        -- Ex: '08:00'
                     IE_STATUS_AGENDA      AS IE_STATUS,   -- 'L' (Livre), 'A' (Agendado), 'B' (Bloq)
                     DS_STATUS_AGENDA      AS STATUS_DESC, -- 'Livre', 'Confirmado'...
-                    NM_PACIENTE    AS PACIENTE     -- Nome do paciente ou null se livre
+                    NM_PACIENTE    AS PACIENTE,     -- Nome do paciente ou null se livre
+                    CD_CONVENIO AS CODIGO_CONVENIO,
+                    DS_CONVENIO AS CONVENIO
                 
                 FROM DC_CHAT_AGENDAS          
                 WHERE CD_AGENDA = :recurso
@@ -93,20 +95,20 @@ module.exports = {
                     -- Tipo 1: Agenda Consulta (Médicos)
                     IF :cd_tipo = 1 THEN
                         UPDATE agenda_consulta
-                           SET ie_status_agenda   = 'CN',
-                               dt_confirmacao     = SYSDATE,
-                               nm_usuario_confirm = 'DATA',
-                               ds_confirmacao     = :observacao
-                         WHERE nr_sequencia       = :IdSequencia;
+                        SET ie_status_agenda   = 'CN',
+                            dt_confirmacao     = SYSDATE,
+                            nm_usuario_confirm = 'DATA',
+                            ds_confirmacao     = :observacao
+                        WHERE nr_sequencia       = :IdSequencia;
 
                     -- Tipo 2: Agenda Paciente (Exames/SADT)
                     ELSIF :cd_tipo = 2 THEN
                         UPDATE agenda_paciente
-                           SET ie_status_agenda   = 'CN',
-                               dt_confirmacao     = SYSDATE,
-                               nm_usuario_confirm = 'DATA',
-                               ds_confirmacao     = :observacao
-                         WHERE nr_sequencia       = :IdSequencia;
+                        SET ie_status_agenda   = 'CN',
+                            dt_confirmacao     = SYSDATE,
+                            nm_usuario_confirm = 'DATA',
+                            ds_confirmacao     = :observacao
+                        WHERE nr_sequencia       = :IdSequencia;
                     END IF;
 
                     COMMIT;
@@ -139,20 +141,20 @@ module.exports = {
                     -- Tipo 1: Agenda Consulta (Médicos)
                     IF :cd_tipo = 1 THEN
                         UPDATE agenda_consulta
-                           SET cd_motivo_cancelamento  = 302,
-                               IE_STATUS_AGENDA        = 'C',
-                               dt_cancelamento         = SYSDATE,
-                               nm_usuario_cancelamento = 'DATA'
-                         WHERE nr_sequencia            = :IdSequencia;
+                        SET cd_motivo_cancelamento  = 302,
+                            IE_STATUS_AGENDA = 'C',
+                            dt_cancelamento         = SYSDATE,
+                            nm_usuario_cancelamento = 'DATA'
+                        WHERE nr_sequencia            = :IdSequencia;
 
                     -- Tipo 2: Agenda Paciente (Exames/SADT)
                     ELSIF :cd_tipo = 2 THEN
                         UPDATE agenda_paciente
-                           SET cd_motivo_cancelamento = 302,
-                               IE_STATUS_AGENDA       = 'C',
-                               dt_cancelamento        = SYSDATE,
-                               nm_usuario_cancel      = 'DATA' -- Se der erro ORA-00904, tente NM_USUARIO_CANCELAMENTO
-                         WHERE nr_sequencia           = :IdSequencia;
+                        SET cd_motivo_cancelamento = 302,
+                            IE_STATUS_AGENDA = 'C',
+                            dt_cancelamento        = SYSDATE,
+                            nm_usuario_cancel      = 'DATA' -- Verifique se o nome é este ou NM_USUARIO_CANCELAMENTO
+                        WHERE nr_sequencia           = :IdSequencia;
                     END IF;
 
                     COMMIT;
@@ -182,23 +184,23 @@ module.exports = {
 
             const sql = `
                 BEGIN
-                    -- Tipo 1: Agenda Consulta (Médicos)
+                    -- Tipo 1: Agenda Consulta
                     IF :cd_tipo = 1 THEN
                         UPDATE agenda_consulta
-                           SET ie_status_agenda   = 'B',
-                               nr_seq_motivo_bloq = 5,
-                               dt_atualizacao     = SYSDATE
-                         WHERE nr_sequencia       = :IdSequencia;
+                        SET ie_status_agenda   = 'B',
+                            nr_seq_motivo_bloq = 5,
+                            dt_atualizacao     = SYSDATE
+                        WHERE nr_sequencia       = :IdSequencia;
 
-                    -- Tipo 2: Agenda Paciente (Exames/SADT)
+                    -- Tipo 2: Agenda Paciente
                     ELSIF :cd_tipo = 2 THEN
                         UPDATE agenda_paciente
-                           SET ie_status_agenda   = 'B',
-                               nr_seq_motivo_bloq = 5,
-                               dt_bloqueio        = SYSDATE,
-                               nm_usuario_bloq    = 'DATA',
-                               dt_atualizacao     = SYSDATE
-                         WHERE nr_sequencia       = :IdSequencia;
+                        SET ie_status_agenda   = 'B',
+                            nr_seq_motivo_bloq = 5,
+                            dt_bloqueio        = SYSDATE,
+                            nm_usuario_bloq    = 'DATA',
+                            dt_atualizacao     = SYSDATE
+                        WHERE nr_sequencia       = :IdSequencia;
                     END IF;
 
                     COMMIT;

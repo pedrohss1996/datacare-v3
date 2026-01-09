@@ -11,7 +11,7 @@
         <%- include('./partials/area-chat') %> 
     </main>
 
-    <aside class="w-[400px] bg-white flex flex-col shadow-xl z-20 border-l border-slate-200">
+    <aside class="w-[480px] bg-white flex flex-col shadow-xl z-20 border-l border-slate-200">
         
         <div class="h-14 bg-slate-800 text-white flex items-center px-4 gap-2 shadow-sm shrink-0">
             <i class="fa-solid fa-hospital-user"></i>
@@ -52,7 +52,8 @@
         <div class="flex-1 overflow-y-auto bg-white relative">
             <div class="sticky top-0 bg-slate-100 border-b border-slate-200 flex px-4 py-2 text-xs font-bold text-slate-600 z-10">
                 <div class="w-16">Hora</div>
-                <div class="flex-1">Paciente / Status</div>
+                <div class="flex-1">Paciente</div>
+                <div class="w-16">Status</div>
             </div>
             <div id="lista-agenda" class="divide-y divide-slate-100">
                 <div class="flex flex-col items-center justify-center h-40 text-slate-400">
@@ -350,6 +351,67 @@
         } catch (e) { console.error(e); }
     }
 
+
+    async function acaoAgenda(acao) {
+        // 1. Fecha o menu de contexto imediatamente
+        document.getElementById('context-menu').classList.add('hidden');
+        
+        // 2. Se for agendar, abre o modal manual que já temos
+        if (acao === 'agendar') return abrirModalAgendamento();
+
+        // 3. Mapeamento de configurações para ações automáticas
+        const configs = {
+            confirmar: { 
+                titulo: 'Confirmar Agendamento?', 
+                cor: '#16a34a', 
+                endpoint: '/api/tasy/confirmar' 
+            },
+            cancelar: { 
+                titulo: 'Cancelar Agendamento?', 
+                cor: '#dc2626', 
+                endpoint: '/api/tasy/cancelar' 
+            },
+            bloquear: { 
+                titulo: 'Bloquear Horário?', 
+                cor: '#ea580c', 
+                endpoint: '/api/tasy/bloquear' 
+            }
+        };
+
+        const config = configs[acao];
+
+        // 4. Alerta de Confirmação (SweetAlert2)
+        const result = await Swal.fire({
+            title: config.titulo,
+            text: "Deseja replicar essa alteração no Tasy (Oracle)?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: config.cor,
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Sim, processar',
+            cancelButtonText: 'Voltar',
+            reverseButtons: true
+        });
+
+    if (result.isConfirmed) {
+        // Feedback rápido para o usuário
+        const toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+        toast.fire({ icon: 'info', title: 'Processando no Tasy...' });
+
+        fetch(config.endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agendaId: agendaIdSelecionado })
+        }).then(res => res.json()).then(data => {
+            if (data.success) {
+                toast.fire({ icon: 'success', title: 'Atualizado!' });
+                buscarAgenda(); // Atualiza a grid em background
+            }
+        });
+    }
+    }
+
+
     async function buscarAgenda() {
         const recurso = document.getElementById('tasy-recurso').value;
         const data = document.getElementById('tasy-data').value;
@@ -364,15 +426,27 @@
                 body: JSON.stringify({ recurso, data })
             });
             const agenda = await res.json();
+            console.log(agenda)
             container.innerHTML = agenda.length ? '' : '<div class="p-8 text-center text-xs text-slate-400">Nenhum horário disponível.</div>';
             
             agenda.forEach(slot => {
                 const statusClass = slot.IE_STATUS === 'L' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700';
-                container.innerHTML += `
-                    <div class="flex items-center px-4 py-3 border-b border-slate-50 cursor-pointer hover:bg-slate-50 group transition" oncontextmenu="abrirMenuContexto(event, ${slot.ID})">
+                container.innerHTML += 
+                    `<div class="flex items-center px-4 py-3 border-b border-slate-50 cursor-pointer hover:bg-slate-50 group transition" oncontextmenu="abrirMenuContexto(event, ${slot.ID})">
                         <div class="w-14 font-bold text-slate-600 text-xs">${slot.HORA}</div>
-                        <div class="flex-1 truncate font-bold text-slate-800 text-xs">${slot.PACIENTE || 'Livre'}</div>
-                        <span class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${statusClass}">${slot.STATUS_DESC || slot.IE_STATUS}</span>
+                        
+                        <div class="flex-1 flex items-center gap-2 min-w-0">
+                            <span class="truncate font-bold text-slate-800 text-xs">${slot.PACIENTE || 'Livre'}</span>
+                            ${slot.CONVENIO ? `
+                                <span class="shrink-0 text-[10px] text-slate-400 font-medium">
+                                    (${slot.CONVENIO})
+                                </span>
+                            ` : ''}
+                        </div>
+
+                        <span class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${statusClass}">
+                            ${slot.STATUS_DESC || slot.IE_STATUS}
+                        </span>
                     </div>`;
             });
         } catch (e) { container.innerHTML = 'Erro na consulta do Tasy.'; }
