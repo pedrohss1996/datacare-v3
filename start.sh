@@ -13,9 +13,9 @@ sleep 5
 echo "🔑 [2/4] Autenticando no Tailscale..."
 tailscale up --authkey=${TAILSCALE_AUTH_KEY} --hostname=railway-app --accept-routes
 
-echo "🔗 [3/4] Subindo túnel Socat (Local 1521 -> Remoto 10.0.10.222:1521)..."
+echo "🔗 [3/4] Subindo túnel Socat (Local 1521 -> Remoto 10.0.10.225:1521)..."
 # Usa o protocolo PROXY (HTTP Connect) na porta 1055
-socat -d -d TCP-LISTEN:1521,fork,bind=127.0.0.1 PROXY:127.0.0.1:10.0.10.222:1521,proxyport=1055 &
+socat -d -d TCP-LISTEN:1521,fork,bind=127.0.0.1 PROXY:127.0.0.1:10.0.10.225:1521,proxyport=1055 &
 
 echo "⏳ [WAIT] Aguardando a porta 1521 abrir..."
 while ! nc -z 127.0.0.1 1521; do   
