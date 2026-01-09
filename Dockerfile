@@ -40,7 +40,7 @@ COPY . .
 
 # 12. Copiar o script de inicialização e dar permissão de execução
 COPY start.sh /start.sh
-
+RUN sed -i 's/\r$//' /start.sh && chmod +x /start.sh
 RUN chmod +x /start.sh
 
 # 13. Comando de entrada
