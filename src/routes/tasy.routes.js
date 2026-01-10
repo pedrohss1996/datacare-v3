@@ -1,24 +1,23 @@
-const express = require('express');
-const router = express.Router();
+const router = require('express').Router();
+const tasyController = require('../controllers/tasyController'); // Confirme o caminho
 const loginRequired = require('../middlewares/loginRequired');
-const tasyController = require('../controllers/tasyController');
 
-// Rotas de Leitura (Listagens)
+// ... (suas outras rotas de chat, login, etc) ...
+
+// === ROTAS DA INTEGRAÇÃO TASY ===
+router.get('/api/tasy/recursos-simples/:tipoId', loginRequired, tasyController.listarRecursosPorTipo);
 router.get('/api/tasy/unidades', loginRequired, tasyController.listarUnidades);
-router.get('/api/tasy/recursos/:unidadeId', loginRequired, tasyController.listarRecursos);
-router.post('/api/tasy/agenda', loginRequired, tasyController.listarAgenda);
+router.get('/api/tasy/especialidades/:tipoId', loginRequired, tasyController.listarEspecialidades); // Nova
+router.get('/api/tasy/convenios/:especialidadeId', loginRequired, tasyController.listarConvenios); // Nova
+router.get('/api/tasy/recursos', loginRequired, tasyController.listarRecursos); // Atualizada (sem :id na url, pois usa ?query)
 
-// Rotas de Ação (Botão Direito)
-router.post('/api/tasy/confirmar', loginRequired, tasyController.confirmar);
+router.post('/api/tasy/agenda', loginRequired, tasyController.listarAgenda);       // Busca Horários
+router.post('/api/tasy/confirmar', loginRequired, tasyController.confirmar);       // Ações
 router.post('/api/tasy/cancelar', loginRequired, tasyController.cancelar);
 router.post('/api/tasy/bloquear', loginRequired, tasyController.bloquear);
-
-// ✅ ROTA ATIVADA: Agendar Novo Paciente
-// O frontend chama '/api/tasy/agendar', então mapeamos para a função 'agendarNovo' do controller
 router.post('/api/tasy/agendar', loginRequired, tasyController.agendarNovo);
 
-// Rota de Transferência de Agenda (Stub / Futuro)
-// Pode deixar comentada ou ativa retornando erro 501 (como definimos no controller)
-// router.post('/api/tasy/transferir', loginRequired, tasyController.transferir);
-
 module.exports = router;
+
+
+

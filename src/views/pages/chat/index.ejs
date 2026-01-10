@@ -17,33 +17,50 @@
             <i class="fa-solid fa-hospital-user"></i>
             <h2 class="font-bold text-sm tracking-wide">Integração Agenda</h2>
         </div>
+        
 
         <div class="p-4 bg-slate-50 border-b border-slate-200 space-y-3 shrink-0">
             
             <div>
-                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tipo de Agenda</label>
-                <select id="tasy-unidade" class="w-full text-xs border border-slate-300 rounded h-9 px-2 bg-white text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none" onchange="carregarRecursos()">
-                    <option value="">Carregando Agendas...</option>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">1. Tipo de Agenda</label>
+                <select id="tasy-unidade" class="w-full text-xs border border-slate-300 rounded h-9 px-2 bg-white text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none transition" onchange="verificarFluxoAgenda()">
+                    <option value="">Carregando...</option>
                 </select>
             </div>
 
-            <div>
-                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">AGENDA</label>
-                <select id="tasy-recurso" class="w-full text-xs border border-slate-300 rounded h-9 px-2 bg-white text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none">
-                    <option value="">Selecione a Agenda primeiro</option>
+            <div id="container-especialidade" class="animate-in fade-in slide-in-from-top-1 duration-300">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">2. Especialidade</label>
+                <select id="tasy-especialidade" class="w-full text-xs border border-slate-300 rounded h-9 px-2 bg-white text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-400 transition" disabled onchange="carregarConvenios()">
+                    <option value="">Selecione o Tipo...</option>
+                </select>
+            </div>
+
+            <div id="container-convenio" class="animate-in fade-in slide-in-from-top-2 duration-500">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">3. Convênio</label>
+                <select id="tasy-convenio" class="w-full text-xs border border-slate-300 rounded h-9 px-2 bg-white text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-400 transition" disabled onchange="carregarRecursos()">
+                    <option value="">Selecione a Especialidade...</option>
+                </select>
+            </div>
+
+            <div class="animate-in fade-in slide-in-from-top-3 duration-700">
+                <label id="label-recurso" class="block text-[10px] font-bold text-slate-500 uppercase mb-1">4. Profissional</label>
+                <select id="tasy-recurso" class="w-full text-xs border border-slate-300 rounded h-9 px-2 bg-white text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-400 transition">
+                    <option value="">Aguardando filtros...</option>
                 </select>
             </div>
 
             <div>
                 <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">DATA</label>
                 <div class="flex gap-2">
-                    <input type="date" id="tasy-data" class="flex-1 text-xs border border-slate-300 rounded h-9 px-2 text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none">
-                    <button onclick="buscarAgenda()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded h-9 text-xs font-bold flex items-center gap-2 transition">
-                        <i class="fa-solid fa-rotate"></i> Listar
+                    <input type="date" id="tasy-data" class="flex-1 text-xs border border-slate-300 rounded h-9 px-2 text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none shadow-sm">
+                    <button onclick="buscarAgenda()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded h-9 text-xs font-bold flex items-center gap-2 transition shadow-sm active:scale-95">
+                        <i class="fa-solid fa-magnifying-glass"></i>
                     </button>
                 </div>
             </div>
         </div>
+
+
 
         <div class="bg-slate-100 py-1 px-4 border-b border-slate-200 text-center">
             <p class="text-[10px] text-slate-500"><i class="fa-solid fa-mouse-pointer mr-1"></i> Botão direito p/ ações</p>
@@ -368,27 +385,251 @@
 
     // --- 4. INTEGRAÇÃO TASY (Agenda) ---
 
+    async function verificarFluxoAgenda() {
+        const select = document.getElementById('tasy-unidade');
+        const tipoId = select.value;
+        const textoOpcao = select.options[select.selectedIndex].text.toUpperCase();
+
+        // Elementos para manipular
+        const divEsp = document.getElementById('container-especialidade');
+        const divConv = document.getElementById('container-convenio');
+        const labelRecurso = document.getElementById('label-recurso');
+        
+        // Reset dos selects inferiores
+        resetSelect('tasy-especialidade', 'Carregando...');
+        resetSelect('tasy-convenio', 'Carregando...');
+        resetSelect('tasy-recurso', 'Aguardando...');
+
+        if (!tipoId) return;
+
+        // LÓGICA INTELIGENTE: Detecta se é exame pelo ID ou pelo NOME
+        // Ajuste aqui conforme seu banco de dados (ex: ID 2 costuma ser SADT/Exame)
+        const isExame = tipoId == '2' || textoOpcao.includes('EXAME') || textoOpcao.includes('SADT') || textoOpcao.includes('RAIO-X');
+
+        if (isExame) {
+            // === MODO EXAME (Fluxo Curto) ===
+            console.log("Fluxo Exame Detectado");
+            
+            // 1. Esconde Especialidade e Convênio
+            divEsp.classList.add('hidden');
+            divConv.classList.add('hidden');
+
+            // 2. Muda o label para fazer sentido
+            labelRecurso.innerText = "2. Exame / Sala";
+            
+            // 3. Busca direto os recursos (pula a cascata)
+            carregarRecursosDireto(tipoId);
+
+        } else {
+            // === MODO CONSULTA (Fluxo Completo) ===
+            console.log("Fluxo Consulta Detectado");
+
+            // 1. Mostra Especialidade e Convênio
+            divEsp.classList.remove('hidden');
+            divConv.classList.remove('hidden');
+
+            // 2. Restaura Label
+            labelRecurso.innerText = "4. Profissional";
+
+            // 3. Inicia a cascata normal
+            carregarEspecialidades();
+        }
+    }
+
+    // Função Nova: Busca recursos ignorando especialidade/convênio
+    async function carregarRecursosDireto(tipoId) {
+        const target = document.getElementById('tasy-recurso');
+        target.innerHTML = '<option>Carregando Exames...</option>';
+
+        try {
+            // Chama a nova rota de Backend
+            const res = await fetch(`/api/tasy/recursos-simples/${tipoId}`);
+            const dados = await res.json();
+
+            if (dados.length > 0) {
+                target.innerHTML = '<option value="">Selecione...</option>' + 
+                    dados.map(d => `<option value="${d.CD_AGENDA}">${d.DS_AGENDA}</option>`).join('');
+                target.disabled = false;
+            } else {
+                target.innerHTML = '<option value="">Nenhum exame encontrado</option>';
+            }
+        } catch (e) {
+            console.error(e);
+            target.innerHTML = '<option>Erro ao buscar</option>';
+        }
+    }
+
+    // 1. Gatilho Principal
+    async function verificarTipoAgenda() {
+        const select = document.getElementById('tasy-unidade');
+        const tipoId = select.value;
+        const tipoTexto = select.options[select.selectedIndex].text.toUpperCase();
+        
+        // Elementos visuais
+        const boxEsp = document.getElementById('box-especialidade');
+        const boxConv = document.getElementById('box-convenio');
+        const labelRecurso = document.getElementById('label-recurso');
+        
+        // Reset Geral
+        resetSelect('tasy-especialidade', 'Carregando...');
+        resetSelect('tasy-convenio', 'Carregando...');
+        resetSelect('tasy-recurso', 'Aguardando...');
+
+        if(!tipoId) return;
+
+        // LÓGICA DE DECISÃO (Ajuste o ID '2' se no seu banco Exame for outro número)
+        const ehExame = tipoId == '2' || tipoTexto.includes('EXAME') || tipoTexto.includes('SADT');
+
+        if (ehExame) {
+            // --- MODO EXAME ---
+            // 1. Esconde Especialidade e Convênio
+            boxEsp.classList.add('hidden');
+            boxConv.classList.add('hidden');
+            
+            // 2. Ajusta Label
+            labelRecurso.innerText = "2. Exame / Sala";
+
+            // 3. Pula direto para carregar Recursos filtrados apenas pelo Tipo
+            carregarRecursosDiretoPorTipo(tipoId);
+
+        } else {
+            // --- MODO CONSULTA (Padrão) ---
+            // 1. Mostra tudo
+            boxEsp.classList.remove('hidden');
+            boxConv.classList.remove('hidden');
+            
+            // 2. Ajusta Label
+            labelRecurso.innerText = "4. Profissional";
+
+            // 3. Segue fluxo normal (Cascata)
+            carregarEspecialidades(); 
+        }
+    }
+
+    // [NOVA FUNÇÃO] Carrega recursos direto (para Exames)
+    async function carregarRecursosDiretoPorTipo(tipoId) {
+        const target = document.getElementById('tasy-recurso');
+        target.innerHTML = '<option>Carregando Exames...</option>';
+        
+        try {
+            // Rota nova que vamos criar no backend
+            const res = await fetch(`/api/tasy/recursos-por-tipo/${tipoId}`);
+            const dados = await res.json();
+
+            if(dados.length > 0) {
+                target.innerHTML = '<option value="">Selecione o Exame...</option>' + 
+                    dados.map(d => `<option value="${d.CD_AGENDA}">${d.DS_AGENDA}</option>`).join('');
+                target.disabled = false;
+            } else {
+                target.innerHTML = '<option value="">Nenhum exame disponível</option>';
+            }
+        } catch (e) {
+            console.error(e);
+            target.innerHTML = '<option>Erro ao buscar</option>';
+        }
+    }
+
+    // 1. Carrega Unidades (Início)
     async function carregarUnidades() {
         const select = document.getElementById('tasy-unidade');
         try {
             const res = await fetch('/api/tasy/unidades');
-            const unidades = await res.json();
+            const dados = await res.json();
+            
+            // Ajuste para ler as colunas retornadas pelo seu SQL (CD_TIPO, DS_TIPO)
             select.innerHTML = '<option value="">Selecione...</option>' + 
-                unidades.map(u => `<option value="${u.CD_TIPO}">${u.DS_TIPO}</option>`).join('');
-        } catch (e) { select.innerHTML = '<option>Erro ao carregar unidades</option>'; }
+                dados.map(d => `<option value="${d.CD_TIPO}">${d.DS_TIPO}</option>`).join('');
+        } catch (e) { select.innerHTML = '<option>Erro ao carregar</option>'; }
     }
 
+    // 2. Carrega Especialidades (Trigger: Unidade mudou)
+    async function carregarEspecialidades() {
+        const idPai = document.getElementById('tasy-unidade').value;
+        const target = document.getElementById('tasy-especialidade');
+        resetSelect('tasy-especialidade', 'Carregando...');
+        
+        // Reseta os campos filhos para evitar dados misturados
+        resetSelect('tasy-especialidade', 'Carregando...');
+        resetSelect('tasy-convenio', 'Aguardando Especialidade...');
+        resetSelect('tasy-recurso', 'Aguardando Convênio...');
+
+        if(!idPai) return resetSelect('tasy-especialidade', 'Selecione o Tipo...');
+
+        // Usa os nomes de coluna do seu SQL (CD_ESPECIALIDADE, DS_ESPECIALIDADE)
+        carregarSelectGenerico(`/api/tasy/especialidades/${idPai}`, target, 'CD_ESPECIALIDADE', 'DS_ESPECIALIDADE');
+    }
+
+    // 3. Carrega Convênios (Trigger: Especialidade mudou)
+    async function carregarConvenios() {
+        const idPai = document.getElementById('tasy-especialidade').value;
+        const target = document.getElementById('tasy-convenio');
+
+        resetSelect('tasy-convenio', 'Carregando...');
+        resetSelect('tasy-recurso', 'Aguardando Convênio...');
+
+        if(!idPai) return resetSelect('tasy-convenio', 'Selecione a Especialidade...');
+
+        // SQL: CD_CONVENIO, DS_CONVENIO
+        carregarSelectGenerico(`/api/tasy/convenios/${idPai}`, target, 'CD_CONVENIO', 'DS_CONVENIO');
+    }
+
+    // 4. Carrega Profissionais (Trigger: Convênio mudou)
     async function carregarRecursos() {
-        const unidadeId = document.getElementById('tasy-unidade').value;
-        const select = document.getElementById('tasy-recurso');
-        if(!unidadeId) return;
+        const idConvenio = document.getElementById('tasy-convenio').value;
+        const idEspecialidade = document.getElementById('tasy-especialidade').value;
+        const target = document.getElementById('tasy-recurso');
+
+        target.innerHTML = '<option>Carregando...</option>';
+        target.disabled = true;
+
+        if(!idConvenio || !idEspecialidade) return resetSelect('tasy-recurso', 'Selecione os filtros...');
+
+        // Monta URL com Query Params (Importante!)
+        const url = `/api/tasy/recursos?especialidade=${idEspecialidade}&convenio=${idConvenio}`;
+
         try {
-            const res = await fetch(`/api/tasy/recursos/${unidadeId}`);
-            const recursos = await res.json();
-            select.innerHTML = recursos.map(r => `<option value="${r.CD_AGENDA}">${r.DS_AGENDA}</option>`).join('');
-        } catch (e) { console.error(e); }
+            const res = await fetch(url);
+            const dados = await res.json();
+            
+            if(dados.length > 0) {
+                target.innerHTML = '<option value="">Selecione...</option>' + 
+                    dados.map(d => `<option value="${d.CD_AGENDA}">${d.DS_AGENDA}</option>`).join('');
+                target.disabled = false;
+            } else {
+                target.innerHTML = '<option value="">Nenhum médico encontrado</option>';
+            }
+        } catch (e) {
+            console.error(e);
+            target.innerHTML = '<option>Erro ao buscar</option>';
+        }
     }
 
+    // --- Helpers Genéricos ---
+    
+    function resetSelect(id, texto) {
+        const el = document.getElementById(id);
+        el.innerHTML = `<option value="">${texto}</option>`;
+        el.disabled = true;
+    }
+
+    async function carregarSelectGenerico(url, elemento, campoValor, campoTexto) {
+        try {
+            const res = await fetch(url);
+            const dados = await res.json();
+            
+            if(dados.length > 0) {
+                elemento.innerHTML = '<option value="">Selecione...</option>' + 
+                    dados.map(d => `<option value="${d[campoValor]}">${d[campoTexto]}</option>`).join('');
+                elemento.disabled = false;
+            } else {
+                elemento.innerHTML = '<option value="">Vazio / Não encontrado</option>';
+                elemento.disabled = true;
+            }
+        } catch (e) {
+            console.error(e);
+            elemento.innerHTML = '<option>Erro na busca</option>';
+        }
+    }
 
     async function acaoAgenda(acao) {
         // 1. Fecha o menu de contexto imediatamente
