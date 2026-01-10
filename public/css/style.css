@@ -1107,6 +1107,10 @@ video {
   width: 400px;
 }
 
+.w-\[480px\] {
+  width: 480px;
+}
+
 .w-\[500px\] {
   width: 500px;
 }
@@ -1125,10 +1129,6 @@ video {
 
 .w-screen {
   width: 100vw;
-}
-
-.w-\[480px\] {
-  width: 480px;
 }
 
 .min-w-0 {
@@ -1317,10 +1317,6 @@ video {
 
 .items-center {
   align-items: center;
-}
-
-.items-baseline {
-  align-items: baseline;
 }
 
 .justify-start {
@@ -2177,10 +2173,6 @@ video {
 
 .pt-8 {
   padding-top: 2rem;
-}
-
-.pr-2 {
-  padding-right: 0.5rem;
 }
 
 .text-left {

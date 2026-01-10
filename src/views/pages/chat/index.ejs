@@ -249,32 +249,70 @@
     async function abrirChat(ticketId) {
         activeTicketId = ticketId;
         
+        // 1. UI: Remove tela de vazio e mostra componentes do chat
         document.getElementById('chat-empty').classList.add('hidden');
         ['chat-header', 'chat-messages', 'chat-input'].forEach(id => {
             const el = document.getElementById(id);
             if(el) el.classList.remove('hidden');
         });
         
+        // 2. Feedback de Carregamento
         const areaMsg = document.getElementById('chat-messages');
         areaMsg.innerHTML = '<div class="text-center text-xs text-slate-400 mt-10"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
 
+        // 3. Socket: Entra na sala
         socket.emit('join_ticket', ticketId);
 
+        // 4. HEADER: Preenche Nome, Avatar e o NOVO ID
         const card = document.querySelector(`.ticket-card[data-id="${ticketId}"]`);
         if(card) {
             const nome = card.querySelector('h3').innerText;
+            
+            // Atualiza Nome e Avatar
             document.getElementById('chat-nome').innerText = nome;
             document.getElementById('chat-avatar').innerText = nome.charAt(0);
+
+            // ✅ ATUALIZA O BADGE COM O ID DO TICKET
+            const idDisplay = document.getElementById('ticket-id-val');
+            if (idDisplay) {
+                idDisplay.innerText = ticketId;
+            }
         }
 
+        // 5. Busca Mensagens no Backend
         try {
             const res = await fetch(`/api/chat/mensagens/${ticketId}`);
             const mensagens = await res.json();
+            
+            // Limpa o loader e verifica se tem mensagens
             areaMsg.innerHTML = mensagens.length ? '' : '<div class="text-center text-xs text-slate-400 mt-10">Nenhuma mensagem encontrada.</div>';
+            
             mensagens.forEach(m => renderizarMensagemNaTela(m));
         } catch (e) {
+            console.error(e);
             areaMsg.innerHTML = '<div class="text-center text-xs text-red-400 mt-10">Erro ao carregar histórico.</div>';
         }
+    }
+
+    // ✅ NOVA FUNÇÃO: Copiar ID ao clicar (UX Sênior)
+    function copiarTicketId() {
+        if(!activeTicketId) return;
+        
+        navigator.clipboard.writeText(activeTicketId).then(() => {
+            // Feedback visual sutil (Toast)
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top',
+                showConfirmButton: false,
+                timer: 2000,
+                timerProgressBar: false,
+            });
+            
+            Toast.fire({
+                icon: 'success',
+                title: `ID #${activeTicketId} copiado!`
+            });
+        });
     }
 
     async function assumirTicket(ticketId) {
