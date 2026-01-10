@@ -1,16 +1,28 @@
 const db = require('../infra/database/connection');
+const axios = require('axios');
+
+// Configuração da Z-API (Idealmente, mova para .env)
+const ZAPI_INSTANCE = process.env.ZAPI_INSTANCE_ID || 'SEU_INSTANCE_ID';
+const ZAPI_TOKEN = process.env.ZAPI_TOKEN || 'SEU_TOKEN';
+const ZAPI_CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN || 'SEU_CLIENT_TOKEN';
+const ZAPI_URL = `https://api.z-api.io/instances/${ZAPI_INSTANCE}/token/${ZAPI_TOKEN}`;
 
 module.exports = {
+
+    // =================================================================
+    // 1. VISUALIZAÇÃO (RENDER)
+    // =================================================================
+
     index: async (req, res) => {
         try {
             const usuarioId = req.session.user.id; 
 
-            // 1. Busca tickets da FILA
+            // Tickets aguardando na fila
             const fila = await db('chat_tickets')
                 .where('status', 'FILA')
                 .orderBy('criado_em', 'asc');
 
-            // 2. Busca MEUS tickets
+            // Tickets em atendimento pelo usuário
             const meus = await db('chat_tickets')
                 .where('status', 'ATENDIMENTO')
                 .andWhere('atendente_id', usuarioId)
@@ -20,15 +32,20 @@ module.exports = {
                 title: 'Atendimento DataCare',
                 layout: 'layouts/main',
                 user: req.session.user,
-                fila: fila,
-                meus: meus
+                fila: fila || [],
+                meus: meus || []
             });
 
         } catch (error) {
-            console.error(error);
-            res.redirect('/');
+            console.error("Erro Render Chat:", error);
+            // Renderiza vazio para não quebrar a aplicação
+            res.render('pages/chat/index', { user: req.session.user, fila: [], meus: [] });
         }
     },
+
+    // =================================================================
+    // 2. API INTERNA (AÇÕES DO ATENDENTE)
+    // =================================================================
 
     listarMensagens: async (req, res) => {
         try {
@@ -39,55 +56,100 @@ module.exports = {
             
             res.json(msgs);
         } catch (error) {
-            res.status(500).json({ error: 'Erro ao buscar mensagens' });
+            res.status(500).json({ error: 'Erro ao buscar histórico.' });
         }
     },
 
-    // --- NOVA FUNÇÃO: TRANSFERÊNCIA (TRANSBORDO) ---
-    transferir: async (req, res) => {
-        const { ticketId, novoAtendenteId, motivo } = req.body;
-        const usuarioLogado = req.session.user; // Quem está transferindo
+    // Ação Atômica: Puxar ticket da fila para mim
+    assumir: async (req, res) => {
+        const { ticketId } = req.body;
+        const usuarioId = req.session.user.id;
+        const nomeAtendente = req.session.user.nome;
 
-        // Inicia uma transação para garantir integridade
         const trx = await db.transaction();
 
         try {
-            // 1. Busca nome do novo atendente para o log (opcional, mas fica bonito)
-            const novoAtendente = await trx('usuarios')
-                .select('nome')
-                .where({ id: novoAtendenteId })
-                .first();
-            
+            // 1. Tenta atualizar e travar o registro
+            const [ticketAtualizado] = await trx('chat_tickets')
+                .where({ id: ticketId, status: 'FILA' }) // Trava de segurança
+                .update({
+                    atendente_id: usuarioId,
+                    status: 'ATENDIMENTO',
+                    atualizado_em: new Date()
+                })
+                .returning('*');
+
+            if (!ticketAtualizado) {
+                await trx.rollback();
+                return res.status(400).json({ error: 'Ticket já assumido por outro ou inexistente.' });
+            }
+
+            // 2. Log de Sistema
+            await trx('chat_mensagens').insert({
+                ticket_id: ticketId,
+                remetente: 'SISTEMA',
+                tipo: 'texto',
+                conteudo: `👨‍⚕️ ${nomeAtendente} iniciou o atendimento.`,
+                criado_em: new Date()
+            });
+
+            await trx.commit();
+
+            // 3. Notificação Real-time (Socket)
+            const payload = {
+                ticketId: ticketAtualizado.id,
+                atendenteId: usuarioId,
+                nomeAtendente: nomeAtendente,
+                nomePaciente: ticketAtualizado.nome_contato || ticketAtualizado.numero_whatsapp
+            };
+
+            // Avisa TODOS (remove da fila de todos)
+            req.io.emit('ticket_assumido_fila', payload);
+
+            res.json({ success: true, ticket: ticketAtualizado });
+
+        } catch (error) {
+            await trx.rollback();
+            console.error("Erro ao assumir:", error);
+            res.status(500).json({ error: 'Erro interno.' });
+        }
+    },
+
+    transferir: async (req, res) => {
+        const { ticketId, novoAtendenteId, motivo } = req.body;
+        const usuarioLogado = req.session.user;
+        const trx = await db.transaction();
+
+        try {
+            const novoAtendente = await trx('usuarios').where({ id: novoAtendenteId }).first();
             const nomeDestino = novoAtendente ? novoAtendente.nome : 'Outro Atendente';
 
-            // 2. Atualiza o Ticket (Troca o Dono)
             await trx('chat_tickets')
                 .where({ id: ticketId })
                 .update({
                     atendente_id: novoAtendenteId,
-                    status: 'ATENDIMENTO', // Garante que continua em atendimento
+                    status: 'ATENDIMENTO',
                     atualizado_em: new Date()
                 });
 
-            // 3. Insere Mensagem de Sistema (Auditoria do Transbordo)
             await trx('chat_mensagens').insert({
                 ticket_id: ticketId,
-                remetente: 'SISTEMA', // Importante para o front pintar diferente
-                conteudo: `🛑 𝗧𝗥𝗔𝗡𝗦𝗕𝗢𝗥𝗗𝗢: Atendimento transferido de *${usuarioLogado.nome}* para *${nomeDestino}*.\n📝 *Nota:* ${motivo || 'Sem observações.'}`,
+                remetente: 'SISTEMA',
+                conteudo: `🛑 𝗧𝗥𝗔𝗡𝗦𝗕𝗢𝗥𝗗𝗢: De *${usuarioLogado.nome}* para *${nomeDestino}*.\n📝 *Nota:* ${motivo || '-'}`,
                 criado_em: new Date()
             });
 
-            await trx.commit(); // Confirma tudo
-
-            // TODO: Aqui você emitiria o socket para avisar o novo atendente
-            // req.io.to(`user_${novoAtendenteId}`).emit('ticket_recebido', { ... });
+            await trx.commit();
+            
+            // TODO: Emitir socket para o novo atendente saber que recebeu um ticket
+            // req.io.to(`user_${novoAtendenteId}`).emit('ticket_recebido', ...);
 
             res.json({ success: true });
 
         } catch (error) {
-            await trx.rollback(); // Desfaz tudo se der erro
-            console.error("Erro no Transbordo:", error);
-            res.status(500).json({ error: 'Falha ao realizar transferência.' });
+            await trx.rollback();
+            console.error("Erro Transbordo:", error);
+            res.status(500).json({ error: 'Falha na transferência.' });
         }
     },
 
@@ -101,149 +163,28 @@ module.exports = {
                     atualizado_em: new Date()
                 });
 
+            // Avisa o front para fechar a aba se estiver aberta
+            req.io.to(ticketId.toString()).emit('ticket_finalizado');
+
             res.json({ success: true });
         } catch (e) {
-            console.error(e);
-            res.status(500).json({ error: 'Erro ao finalizar' });
+            res.status(500).json({ error: 'Erro ao finalizar.' });
         }
     },
 
-    assumirTicket: async (req, res) => {
-        const { ticketId } = req.body;
-        const usuarioId = req.session.user.id; // ID do atendente logado
+    // =================================================================
+    // 3. INTEGRAÇÃO Z-API (OUTBOUND & INBOUND)
+    // =================================================================
 
-        try {
-            // 1. Otimização de Transição (Atomic Update)
-            // Só faz o update se o status for 'FILA' e o atendente_id for nulo
-            const rowsAffected = await db('chat_tickets')
-                .where({ id: ticketId })
-                .andWhere('status', 'FILA')
-                .update({
-                    atendente_id: usuarioId,
-                    status: 'ATENDIMENTO',
-                    atualizado_em: new Date()
-                });
-
-            const payload = {
-                ticketId: ticketId,
-                atendenteId: usuarioId,
-                nomeAtendente: req.session.user.nome
-            };
-
-            // Emite para TODOS para que saia da fila de todo mundo
-            req.io.emit('ticket_assumido_fila', payload);
-
-            // 2. Verificação de Concorrência
-            if (rowsAffected === 0) {
-                return res.status(400).json({ 
-                    success: false, 
-                    error: 'Este atendimento já foi assumido por outro colega ou não está mais na fila.' 
-                });
-            }
-
-            // 3. Log de Auditoria na tabela CHAT_MENSAGENS
-            // É importante registrar que o atendimento começou para o histórico do paciente
-            await db('chat_mensagens').insert({
-                ticket_id: ticketId,
-                remetente: 'SISTEMA',
-                tipo: 'texto',
-                conteudo: `O atendente ${req.session.user.nome} assumiu o atendimento.`,
-                criado_em: new Date()
-            });
-
-            // 4. Notifica via Socket que a fila diminuiu (Opcional mas recomendado)
-            req.io.emit('ticket_puxado_da_fila', { ticketId, atendenteId: usuarioId });
-
-            res.json({ success: true });
-
-        } catch (error) {
-            console.error("Erro ao assumir ticket no Postgres:", error);
-            res.status(500).json({ error: 'Erro interno ao processar atendimento.' });
-        }
-    },
-
-    simularEntradaPaciente: async (req, res) => {
-    const { numero, nome, mensagem } = req.body;
-
-        try {
-            // 1. Insere na tabela CHAT_TICKETS (Usando o nome exato da sua tabela)
-            // Definimos status como 'FILA' e deixamos atendente_id como NULL
-            const [novoTicket] = await db('chat_tickets')
-                .insert({
-                    numero_whatsapp: numero,
-                    nome_contato: nome,
-                    status: 'FILA',
-                    ultima_mensagem: mensagem,
-                    nao_lidas: 1,
-                    criado_em: new Date(),
-                    atualizado_em: new Date()
-                })
-                .returning('*'); // Retorna o objeto inserido com o ID do Postgres
-
-            // 2. Insere a primeira mensagem na CHAT_MENSAGENS
-            await db('chat_mensagens').insert({
-                ticket_id: novoTicket.id,
-                remetente: 'PACIENTE',
-                tipo: 'texto',
-                conteudo: mensagem,
-                criado_em: new Date()
-            });
-
-            // 3. ENVIAR PARA O FRONT-END (SOCKET.IO)
-            // Aqui o 'io' que configuramos no server.js entra em ação
-            req.io.emit('novo_ticket_fila', novoTicket);
-
-            res.json({ success: true, ticket: novoTicket });
-
-        } catch (error) {
-            console.error("Erro na simulação:", error);
-            res.status(500).json({ error: error.message });
-        }
-    },
-
-    assumir: async (req, res) => {
-        const { ticketId } = req.body;
-        const usuarioId = req.session.user.id;
-
-        try {
-            const atualizado = await db('chat_tickets')
-                .where({ id: ticketId, status: 'FILA' }) 
-                .update({
-                    atendente_id: usuarioId,
-                    status: 'ATENDIMENTO',
-                    atualizado_em: new Date()
-                })
-                .returning('*');
-
-            if (atualizado.length === 0) {
-                // Se cair aqui, o F5 resolveu, mas o Real-time falhou antes
-                return res.status(400).json({ error: 'Ticket já assumido ou ID inválido.' });
-            }
-
-            // --- O SEGREDO ESTÁ AQUI ---
-            const payload = {
-                ticketId: ticketId,
-                atendenteId: usuarioId,
-                nomeAtendente: req.session.user.nome
-            };
-
-            // Envia para todos os sockets conectados
-            req.io.emit('ticket_assumido_fila', payload);
-
-            return res.json({ success: true, ticket: atualizado[0] });
-
-        } catch (error) {
-            console.error(error);
-            return res.status(500).json({ error: 'Erro interno' });
-        }
-    },
-
+    // Enviar Mensagem (App -> WhatsApp)
     enviar: async (req, res) => {
         const { ticketId, conteudo, tipo = 'texto' } = req.body;
-        const usuarioId = req.session.user.id;
-
+        
         try {
-            // 1. Insere a mensagem no Postgres
+            const ticket = await db('chat_tickets').where('id', ticketId).first();
+            if (!ticket) return res.status(404).json({ error: 'Ticket não encontrado' });
+
+            // 1. Salva no Banco
             const [novaMsg] = await db('chat_mensagens')
                 .insert({
                     ticket_id: ticketId,
@@ -254,27 +195,177 @@ module.exports = {
                 })
                 .returning('*');
 
-            // 2. Atualiza a "última mensagem" no ticket para manter a lista lateral atualizada
-            await db('chat_tickets')
-                .where({ id: ticketId })
-                .update({
-                    ultima_mensagem: conteudo,
-                    atualizado_em: new Date()
-                });
+            // 2. Atualiza Ticket
+            await db('chat_tickets').where('id', ticketId).update({
+                ultima_mensagem: conteudo,
+                atualizado_em: new Date()
+            });
 
-            // 3. EMITE VIA SOCKET (Para o próprio atendente e outros aparelhos conectados)
-            // Usamos o ticketId como 'sala' para que a msg só apareça no chat certo
+            // 3. Dispara Z-API (COM O HEADER OBRIGATÓRIO)
+            try {
+                let numeroLimpo = ticket.numero_whatsapp.replace(/\D/g, ''); 
+                
+                console.log(`🚀 Enviando com Client-Token Header...`);
+                
+                // --- AQUI ESTÁ A CORREÇÃO DO NOT ALLOWED ---
+                const response = await axios.post(
+                    `${ZAPI_URL}/send-text`, 
+                    {
+                        phone: numeroLimpo,
+                        message: conteudo
+                    },
+                    {
+                        headers: {
+                            // É obrigatório enviar isso quando a segurança extra está ativa!
+                            'Client-Token': ZAPI_CLIENT_TOKEN 
+                        }
+                    }
+                );
+                // -------------------------------------------
+
+                console.log("✅ Sucesso Z-API! ID:", response.data.messageId);
+
+            } catch (apiError) {
+                console.error("❌ ERRO Z-API:");
+                if (apiError.response) {
+                    console.error("Status:", apiError.response.status);
+                    console.error("Erro:", JSON.stringify(apiError.response.data));
+                } else {
+                    console.error("Mensagem:", apiError.message);
+                }
+            }
+
+            // 4. Emite Socket
             req.io.to(ticketId.toString()).emit('nova_mensagem', novaMsg);
-
-            // TODO: Chamar sua função da Z-API aqui no futuro para enviar ao celular do paciente
 
             res.json({ success: true, data: novaMsg });
 
         } catch (error) {
-            console.error("Erro ao enviar mensagem:", error);
-            res.status(500).json({ error: 'Falha ao enviar mensagem.' });
+            console.error("Erro Geral:", error);
+            res.status(500).json({ error: 'Falha interna.' });
+        }
+    },
+
+
+    // Webhook (WhatsApp -> App)
+    webhook: async (req, res) => {
+        try {
+            // Log para debug (pode manter ou comentar depois)
+            // console.log("📥 Z-API WEBHOOK:", JSON.stringify(req.body, null, 2));
+
+            // 1. Extrai os dados DIRETO da raiz (baseado no seu log)
+            const { type, phone, isGroup, text, senderName } = req.body;
+
+            // 2. FILTRO: Ignora se não for recebimento ou se for grupo
+            // O seu segundo log era 'MessageStatusCallback' (confirmação de leitura), por isso ignoramos aqui
+            if (type !== 'ReceivedCallback' || isGroup) {
+                // console.log("Ignorado: Não é mensagem de recebimento.");
+                return res.status(200).send('Ignorado'); 
+            }
+
+            // 3. EXTRAÇÃO SEGURA DO TEXTO
+            // A Z-API mandou: "text": { "message": "Marcar exame" }
+            const textoMensagem = (text && text.message) ? text.message : null;
+
+            if (!textoMensagem) {
+                console.log("Ignorado: Mensagem sem conteúdo de texto (pode ser imagem/áudio).");
+                return res.status(200).send('Ignorado');
+            }
+
+            // 4. Mapeamento das variáveis para o banco
+            const numeroCliente = phone; 
+            const nomeContato = senderName || numeroCliente; // Pega o nome do perfil ou usa o número
+
+            console.log(`💬 Processando mensagem de ${nomeContato}: "${textoMensagem}"`);
+
+            // --- DAQUI PARA BAIXO A LÓGICA PERMANECE A MESMA ---
+
+            // 1. Busca Ticket Ativo
+            let ticket = await db('chat_tickets')
+                .where('numero_whatsapp', numeroCliente)
+                .whereIn('status', ['FILA', 'ATENDIMENTO'])
+                .first();
+
+            let ehNovoTicket = false;
+
+            // 2. Cria Ticket se não existir
+            if (!ticket) {
+                const [novoId] = await db('chat_tickets').insert({
+                    numero_whatsapp: numeroCliente,
+                    nome_contato: nomeContato,
+                    status: 'FILA',
+                    ultima_mensagem: textoMensagem,
+                    nao_lidas: 1,
+                    criado_em: new Date(),
+                    atualizado_em: new Date()
+                }).returning('id');
+                
+                // Tratamento de ID (Postgres retorna objeto, outros array/int)
+                const idFinal = novoId.id || novoId;
+                
+                ticket = await db('chat_tickets').where('id', idFinal).first();
+                ehNovoTicket = true;
+            } else {
+                // Atualiza existente
+                await db('chat_tickets').where('id', ticket.id).update({
+                    ultima_mensagem: textoMensagem,
+                    nao_lidas: ticket.nao_lidas + 1,
+                    atualizado_em: new Date()
+                });
+            }
+
+            // 3. Salva Mensagem
+            const [msgDb] = await db('chat_mensagens').insert({
+                ticket_id: ticket.id,
+                remetente: 'PACIENTE',
+                tipo: 'texto',
+                conteudo: textoMensagem,
+                criado_em: new Date()
+            }).returning('*');
+
+            // 4. Socket: Atualiza telas
+            if (ehNovoTicket) {
+                req.io.emit('novo_ticket_fila', ticket);
+            } else {
+                req.io.to(ticket.id.toString()).emit('nova_mensagem', msgDb);
+            }
+
+            res.status(200).send('Recebido');
+
+        } catch (error) {
+            console.error("❌ Erro Crítico no Webhook:", error);
+            res.status(200).send('Erro processado'); 
+        }
+    },
+
+
+    // Função auxiliar para testes manuais (cria ticket fake)
+    simularEntradaPaciente: async (req, res) => {
+        const { numero, nome, mensagem } = req.body;
+        try {
+            // Reutiliza lógica parecida com o webhook, mas forçada
+            const [novoTicket] = await db('chat_tickets').insert({
+                numero_whatsapp: numero,
+                nome_contato: nome,
+                status: 'FILA',
+                ultima_mensagem: mensagem,
+                nao_lidas: 1,
+                criado_em: new Date(),
+                atualizado_em: new Date()
+            }).returning('*');
+
+            await db('chat_mensagens').insert({
+                ticket_id: novoTicket.id,
+                remetente: 'PACIENTE',
+                tipo: 'texto',
+                conteudo: mensagem,
+                criado_em: new Date()
+            });
+
+            req.io.emit('novo_ticket_fila', novoTicket);
+            res.json({ success: true, ticket: novoTicket });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
         }
     }
-
-
 };

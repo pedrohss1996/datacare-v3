@@ -11,14 +11,13 @@ const expressLayouts = require('express-ejs-layouts');
 const session = require('express-session');
 
 // --- Importação de Rotas ---
+const rotaChat = require('./routes/chat.routes');
 const indexRoutes = require('./routes/index.routes');
 const authRoutes = require('./routes/auth.routes');
 const rotasPessoas = require('./routes/pessoas.routes');
 const rotaIndicadores = require('./routes/indicadores.routes');
 const rotaIndicadoresIA = require('./routes/ia.routes');
 const rotaQuerisIA = require('./routes/queries.routes');
-//const whatsappRoutes = require('./routes/whatsapp.routes');
-const rotaChat = require('./routes/chat.routes');
 const rotaTasy = require('./routes/tasy.routes')
 
 // Inicializa o app
@@ -39,8 +38,8 @@ app.use(cors());
 app.use(morgan('dev')); 
 
 // 3. Parsers 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true })); 
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true }));
 
 // 4. Arquivos Estáticos
 app.use(express.static(path.join(__dirname, '../public')));
