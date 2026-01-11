@@ -26,6 +26,7 @@ router.get('/chat', loginRequired, chatController.index);
 router.get('/api/chat/mensagens/:ticketId', loginRequired, chatController.listarMensagens);
 router.post('/api/chat/assumir', loginRequired, chatController.assumir);
 router.post('/api/chat/enviar', loginRequired, chatController.enviar);
+router.post('/api/chat/iniciar', loginRequired, chatController.iniciarAtendimento);
 router.post('/api/chat/transferir', loginRequired, chatController.transferir);
 router.post('/api/chat/finalizar', loginRequired, chatController.finalizar);
 

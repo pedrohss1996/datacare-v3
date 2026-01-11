@@ -6,6 +6,14 @@
     </div>
 </div>
 
+
+<div class="p-4 border-b border-slate-200">
+    <button onclick="abrirModalAtivo()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow flex items-center justify-center gap-2 transition">
+        <i class="fa-solid fa-plus-circle"></i>
+        Mensagem Ativa
+    </button>
+</div>
+
 <div id="lista-meus" class="flex-1 overflow-y-auto custom-scrollbar">
     <% if(meus.length === 0) { %>
         <div id="empty-meus" class="p-8 text-center text-slate-400 text-sm">Nenhum atendimento ativo.</div>
@@ -42,3 +50,4 @@
         </div>
     <% }) %>
 </div>
+

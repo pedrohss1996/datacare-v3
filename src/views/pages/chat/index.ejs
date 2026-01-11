@@ -137,14 +137,96 @@
         </div>
     </div>
 
+
+
+    <div id="modal-ativo" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in duration-200">
+            
+            <div class="bg-slate-50 px-6 py-4 border-b flex justify-between items-center">
+                <h3 class="font-bold text-lg text-slate-800">Iniciar Novo Atendimento</h3>
+                <button onclick="fecharModalAtivo()" class="text-slate-400 hover:text-red-500 transition">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">WhatsApp do Paciente</label>
+                    <input type="text" id="ativo-telefone" placeholder="Ex: 62999998888 (Apenas números)" 
+                        class="w-full border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                    <p class="text-[10px] text-slate-400 mt-1">Digite com DDD. Ex: 629...</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nome do Paciente</label>
+                    <input type="text" id="ativo-nome" placeholder="Nome Completo" 
+                        class="w-full border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Mensagem Inicial</label>
+                    <textarea id="ativo-msg" rows="3" placeholder="Olá, gostaria de confirmar..." 
+                            class="w-full border border-slate-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                </div>
+
+            </div>
+
+            <div class="bg-slate-50 px-6 py-4 border-t flex justify-end gap-2">
+                <button onclick="fecharModalAtivo()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded transition">Cancelar</button>
+                <button onclick="confirmarContatoAtivo()" id="btn-enviar-ativo" class="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded font-bold transition flex items-center gap-2">
+                    <i class="fa-regular fa-paper-plane"></i> Enviar
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+
+
 </div>
 
 <script>
     // --- 1. CONFIGURAÇÃO GERAL E SOCKET ---
     const socket = io(); 
     let activeTicketId = null;
-    // Identifica o usuário logado para a lógica de movimentação de cards
     const meuIdAtual = "<%= user ? user.id : '' %>"; 
+
+    // --- FUNÇÕES UTILITÁRIAS (Helpers) ---
+    
+    // Formata a data (Ex: "14:30" ou "10/01 14:30")
+    function formatarDataHora(dataString) {
+        if (!dataString) return '';
+        const data = new Date(dataString);
+        const hoje = new Date();
+
+        const isHoje = data.getDate() === hoje.getDate() &&
+                       data.getMonth() === hoje.getMonth() &&
+                       data.getFullYear() === hoje.getFullYear();
+
+        const opcoesHora = { hour: '2-digit', minute: '2-digit' };
+        
+        if (isHoje) {
+            return data.toLocaleTimeString('pt-BR', opcoesHora);
+        }
+        return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + 
+               data.toLocaleTimeString('pt-BR', opcoesHora);
+    }
+
+    // Rola o chat para o final (Auto-Scroll)
+    function rolarParaBaixo() {
+        const areaMsg = document.getElementById('chat-messages');
+        if (areaMsg) {
+            setTimeout(() => {
+                areaMsg.scrollTop = areaMsg.scrollHeight;
+            }, 50);
+        }
+    }
+
+    // --- INICIALIZAÇÃO ---
 
     document.addEventListener('DOMContentLoaded', () => {
         // Inicializa filtros da agenda
@@ -157,65 +239,110 @@
         // 1.1 OUVINTE: Novas mensagens (Real-time)
         socket.on('nova_mensagem', (msg) => {
             const idDaMsg = msg.ticket_id || msg.ticketId;
+            // Só renderiza se estiver com o chat desse ticket aberto
             if (activeTicketId && idDaMsg == activeTicketId) {
                 renderizarMensagemNaTela(msg);
+                rolarParaBaixo(); // ✅ Rola para baixo quando chega mensagem nova
             }
         });
 
-        // 1.2 OUVINTE: Novo ticket entrando na fila (WebHook Simulado)
+        // 1.2 OUVINTE: Novo ticket entrando na fila
         socket.on('novo_ticket_fila', (ticket) => {
             adicionarTicketAFila(ticket);
         });
 
-        // 1.3 OUVINTE: Movimentação de Ticket (Transbordo sem F5)
         
+        
+        // 1.3 OUVINTE: Movimentação de Ticket (Transbordo e Contato Ativo)
         socket.on('ticket_assumido_fila', (data) => {
+            // Tenta achar o card na fila (caso venha de lá)
             const cardOriginal = document.querySelector(`.ticket-card[data-id="${data.ticketId}"]`);
             
-            if (cardOriginal) {
-                if (data.atendenteId == meuIdAtual) {
-                    const listaMeus = document.getElementById('lista-meus');
-                    const emptyMeus = document.getElementById('empty-meus');
-                    if (emptyMeus) emptyMeus.remove();
+            // Se for MEU ticket (ou eu assumi, ou eu criei ativo)
+            if (data.atendenteId == meuIdAtual) {
+                
+                const listaMeus = document.getElementById('lista-meus');
+                
+                // Remove mensagem de "Vazio" se tiver
+                const emptyMeus = document.getElementById('empty-meus');
+                if (emptyMeus) emptyMeus.remove();
 
-                    // RECONSTRUÇÃO DO CARD: Transformamos o layout da Fila no layout de Meus
-                    const nome = cardOriginal.querySelector('h3').innerText;
-                    const iniciais = nome.charAt(0).toUpperCase();
-
-                    const novoCardHtml = `
-                        <div onclick="abrirChat(${data.ticketId})" 
-                            class="ticket-card cursor-pointer p-4 border-b border-slate-50 hover:bg-slate-50 transition flex gap-3 items-center group relative animate-in fade-in" 
-                            data-id="${data.ticketId}">
-                            
-                            <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg shrink-0">
-                                ${iniciais}
-                            </div>
-                            
-                            <div class="flex-1 min-w-0">
-                                <div class="flex justify-between">
-                                    <h3 class="font-bold text-slate-800 text-sm truncate">${nome}</h3>
-                                    <span class="text-[10px] text-slate-400">Online</span>
-                                </div>
-                                <p class="text-xs text-slate-500 truncate last-msg">Conversa iniciada...</p>
-                            </div>
-                        </div>
-                    `;
-
-                    // Remove o card feio da Fila e insere o novo bonitão em Meus
-                    cardOriginal.remove();
-                    if (listaMeus) {
-                        listaMeus.insertAdjacentHTML('afterbegin', novoCardHtml);
-                        abrirChat(data.ticketId); // Abre automaticamente
-                        mudarAba('meus');
-                    }
-                } else {
-                    // Se foi outro atendente, apenas remove da fila
-                    cardOriginal.remove();
+                // DADOS DO PACIENTE:
+                // Se o card já existia (veio da fila), pega de lá. 
+                // Se não (Contato Ativo), usa os dados que vieram no evento socket.
+                let nome = data.nomePaciente || 'Paciente';
+                if (cardOriginal) {
+                    nome = cardOriginal.querySelector('h3').innerText;
                 }
-                atualizarContadoresUI();
+                const iniciais = nome.charAt(0).toUpperCase();
+
+                // HTML DO NOVO CARD (Na aba Meus)
+                const novoCardHtml = `
+                    <div onclick="abrirChat(${data.ticketId})" 
+                        class="ticket-card cursor-pointer p-4 border-b border-slate-50 hover:bg-slate-50 transition flex gap-3 items-center group relative animate-in fade-in" 
+                        data-id="${data.ticketId}">
+                        
+                        <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg shrink-0">
+                            ${iniciais}
+                        </div>
+                        
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between">
+                                <h3 class="font-bold text-slate-800 text-sm truncate">${nome}</h3>
+                                <span class="text-[10px] text-slate-400">Online</span>
+                            </div>
+                            <p class="text-xs text-slate-500 truncate last-msg">
+                                ${data.ultima_mensagem || 'Conversa iniciada...'}
+                            </p>
+                        </div>
+                    </div>
+                `;
+
+                // Remove da fila se estava lá
+                if (cardOriginal) cardOriginal.remove();
+
+                // Adiciona no topo da lista "Meus"
+                if (listaMeus) {
+                    // Verifica se já não existe na lista meus (pra não duplicar visualmente)
+                    const jaExiste = listaMeus.querySelector(`.ticket-card[data-id="${data.ticketId}"]`);
+                    if (!jaExiste) {
+                        listaMeus.insertAdjacentHTML('afterbegin', novoCardHtml);
+                    }
+                }
+
+                // Se fui eu que criei o ativo agora, já abre o chat e muda a aba
+                if (activeTicketId != data.ticketId) {
+                    mudarAba('meus');
+                    // Opcional: Se quiser abrir o chat automaticamente, descomente abaixo:
+                    // abrirChat(data.ticketId); 
+                }
+
+            } else {
+                // OUTRO ATENDENTE PEGOU: Apenas remove da fila se existir lá
+                if (cardOriginal) cardOriginal.remove();
             }
+            
+            atualizarContadoresUI();
         });
 
+
+        // 1.4 OUVINTE: Atualiza a lista lateral de "Meus" quando chega msg
+        socket.on('atualizar_lista_meus', (data) => {
+            // Procura o card na lista "Meus"
+            const card = document.querySelector(`#lista-meus .ticket-card[data-id="${data.ticketId}"]`);
+            if (card) {
+                // Atualiza o texto da última mensagem
+                const lastMsgEl = card.querySelector('.last-msg');
+                if (lastMsgEl) {
+                    lastMsgEl.innerText = data.msg;
+                    lastMsgEl.classList.add('font-bold', 'text-slate-800'); // Destaca que é nova
+                }
+                
+                // (Opcional) Poderíamos mover o card para o topo aqui
+                const parent = card.parentNode;
+                parent.prepend(card); // Move para o topo da lista
+            }
+        });
     });
 
     // --- 2. FUNÇÕES DE UI (DOM) ---
@@ -237,28 +364,34 @@
         if (badgeFila) badgeFila.innerText = qtdFila;
     }
 
+    // ✅ RENDERIZADOR AVANÇADO (WhatsApp Style)
     function renderizarMensagemNaTela(msg) {
         const container = document.getElementById('chat-messages');
         if (!container) return;
-        if (container.innerText.includes('historico') || container.innerText.includes('Inicie')) container.innerHTML = '';
+        
+        // Limpa mensagens de "carregando" ou "vazio"
+        if (container.innerText.includes('Carregando') || container.innerText.includes('Inicie')) container.innerHTML = '';
 
         const isMe = msg.remetente === 'ATENDENTE';
         const conteudo = msg.conteudo || msg.texto;
-        const hora = new Date(msg.criado_em || new Date()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const horaFormatada = formatarDataHora(msg.criado_em || new Date());
 
         const htmlMsg = `
-            <div class="flex ${isMe ? 'justify-end' : 'justify-start'} mb-3 animate-in fade-in slide-in-from-bottom-2">
-                <div class="max-w-[75%] px-4 py-2 rounded-2xl shadow-sm text-sm relative ${
-                    isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
-                }">
-                    <p class="leading-relaxed font-medium">${conteudo}</p>
-                    <div class="text-[10px] mt-1 flex items-center justify-end gap-1 ${isMe ? 'text-blue-100' : 'text-slate-400'}">
-                        ${hora} ${isMe ? '<i class="fa-solid fa-check-double text-[8px]"></i>' : ''}
+            <div class="flex ${isMe ? 'justify-end' : 'justify-start'} mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div class="max-w-[70%] ${isMe ? 'bg-green-100 text-slate-800 rounded-tl-lg rounded-tr-none rounded-br-lg rounded-bl-lg' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none rounded-tr-lg rounded-br-lg rounded-bl-lg'} p-3 shadow-sm relative group">
+                    
+                    <p class="text-sm whitespace-pre-wrap leading-relaxed">${conteudo}</p>
+                    
+                    <div class="flex items-center justify-end gap-1 mt-1 opacity-70">
+                        <span class="text-[10px] text-slate-500 font-medium">${horaFormatada}</span>
+                        ${isMe ? '<i class="fa-solid fa-check-double text-[10px] text-blue-500"></i>' : ''}
                     </div>
+                    
+                    <div class="absolute top-0 ${isMe ? '-right-2 border-l-green-100' : '-left-2 border-r-white'} w-0 h-0 border-t-[10px] border-t-transparent border-b-[0px] border-b-transparent ${isMe ? 'border-l-[10px]' : 'border-r-[10px]'}"></div>
                 </div>
             </div>`;
+            
         container.insertAdjacentHTML('beforeend', htmlMsg);
-        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     }
 
     // --- 3. LÓGICA DE NEGÓCIO (API CALLS) ---
@@ -284,16 +417,11 @@
         const card = document.querySelector(`.ticket-card[data-id="${ticketId}"]`);
         if(card) {
             const nome = card.querySelector('h3').innerText;
-            
-            // Atualiza Nome e Avatar
             document.getElementById('chat-nome').innerText = nome;
             document.getElementById('chat-avatar').innerText = nome.charAt(0);
 
-            // ✅ ATUALIZA O BADGE COM O ID DO TICKET
             const idDisplay = document.getElementById('ticket-id-val');
-            if (idDisplay) {
-                idDisplay.innerText = ticketId;
-            }
+            if (idDisplay) idDisplay.innerText = ticketId;
         }
 
         // 5. Busca Mensagens no Backend
@@ -301,35 +429,81 @@
             const res = await fetch(`/api/chat/mensagens/${ticketId}`);
             const mensagens = await res.json();
             
-            // Limpa o loader e verifica se tem mensagens
-            areaMsg.innerHTML = mensagens.length ? '' : '<div class="text-center text-xs text-slate-400 mt-10">Nenhuma mensagem encontrada.</div>';
+            areaMsg.innerHTML = mensagens.length ? '' : '<div class="text-center text-xs text-slate-400 mt-10">Inicie a conversa...</div>';
             
             mensagens.forEach(m => renderizarMensagemNaTela(m));
+            
+            // ✅ Rola para baixo assim que carrega
+            rolarParaBaixo();
+
         } catch (e) {
             console.error(e);
             areaMsg.innerHTML = '<div class="text-center text-xs text-red-400 mt-10">Erro ao carregar histórico.</div>';
         }
     }
 
-    // ✅ NOVA FUNÇÃO: Copiar ID ao clicar (UX Sênior)
     function copiarTicketId() {
         if(!activeTicketId) return;
-        
         navigator.clipboard.writeText(activeTicketId).then(() => {
-            // Feedback visual sutil (Toast)
             const Toast = Swal.mixin({
-                toast: true,
-                position: 'top',
-                showConfirmButton: false,
-                timer: 2000,
-                timerProgressBar: false,
+                toast: true, position: 'top', showConfirmButton: false, timer: 2000,
             });
-            
-            Toast.fire({
-                icon: 'success',
-                title: `ID #${activeTicketId} copiado!`
-            });
+            Toast.fire({ icon: 'success', title: `ID #${activeTicketId} copiado!` });
         });
+    }
+
+    // --- MODAL CONTATO ATIVO ---
+    function abrirModalAtivo() {
+        document.getElementById('modal-ativo').classList.remove('hidden');
+        document.getElementById('ativo-telefone').focus();
+    }
+
+    function fecharModalAtivo() {
+        document.getElementById('modal-ativo').classList.add('hidden');
+        document.getElementById('ativo-telefone').value = '';
+        document.getElementById('ativo-nome').value = '';
+        document.getElementById('ativo-msg').value = '';
+    }
+
+    async function confirmarContatoAtivo() {
+        const telefone = document.getElementById('ativo-telefone').value.replace(/\D/g, ''); 
+        const nome = document.getElementById('ativo-nome').value;
+        const msg = document.getElementById('ativo-msg').value;
+        const btn = document.getElementById('btn-enviar-ativo');
+
+        if (telefone.length < 10) return Swal.fire('Erro', 'Telefone inválido. Digite DDD + Número.', 'warning');
+        if (!msg) return Swal.fire('Erro', 'Digite uma mensagem inicial.', 'warning');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+
+        try {
+            const res = await fetch('/api/chat/iniciar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telefone, nome, mensagem: msg })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                fecharModalAtivo();
+                Swal.fire({ 
+                    toast: true, icon: 'success', title: 'Mensagem enviada!', 
+                    position: 'top-end', showConfirmButton: false, timer: 2000 
+                });
+                // O Socket já vai atualizar a lista e abrir o chat se necessário
+            } else {
+                throw new Error(data.error);
+            }
+
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Erro', error.message || 'Falha ao iniciar contato.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-regular fa-paper-plane"></i> Enviar';
+        }
     }
 
     async function assumirTicket(ticketId) {
@@ -339,7 +513,6 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ticketId })
             });
-            // A movimentação do card ocorre via Socket (ticket_assumido_fila)
         } catch (e) { 
             console.error(e);
             Swal.fire('Erro', 'Não foi possível assumir este ticket.', 'error');
@@ -353,6 +526,10 @@
         input.value = ''; input.focus();
 
         try {
+            // Renderiza imediatamente (Otimista)
+            // renderizarMensagemNaTela({ remetente: 'ATENDENTE', conteudo: conteudo, criado_em: new Date() });
+            // rolarParaBaixo();
+            
             await fetch('/api/chat/enviar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -385,81 +562,7 @@
 
     // --- 4. INTEGRAÇÃO TASY (Agenda) ---
 
-    async function verificarFluxoAgenda() {
-        const select = document.getElementById('tasy-unidade');
-        const tipoId = select.value;
-        const textoOpcao = select.options[select.selectedIndex].text.toUpperCase();
-
-        // Elementos para manipular
-        const divEsp = document.getElementById('container-especialidade');
-        const divConv = document.getElementById('container-convenio');
-        const labelRecurso = document.getElementById('label-recurso');
-        
-        // Reset dos selects inferiores
-        resetSelect('tasy-especialidade', 'Carregando...');
-        resetSelect('tasy-convenio', 'Carregando...');
-        resetSelect('tasy-recurso', 'Aguardando...');
-
-        if (!tipoId) return;
-
-        // LÓGICA INTELIGENTE: Detecta se é exame pelo ID ou pelo NOME
-        // Ajuste aqui conforme seu banco de dados (ex: ID 2 costuma ser SADT/Exame)
-        const isExame = tipoId == '2' || textoOpcao.includes('EXAME') || textoOpcao.includes('SADT') || textoOpcao.includes('RAIO-X');
-
-        if (isExame) {
-            // === MODO EXAME (Fluxo Curto) ===
-            console.log("Fluxo Exame Detectado");
-            
-            // 1. Esconde Especialidade e Convênio
-            divEsp.classList.add('hidden');
-            divConv.classList.add('hidden');
-
-            // 2. Muda o label para fazer sentido
-            labelRecurso.innerText = "2. Exame / Sala";
-            
-            // 3. Busca direto os recursos (pula a cascata)
-            carregarRecursosDireto(tipoId);
-
-        } else {
-            // === MODO CONSULTA (Fluxo Completo) ===
-            console.log("Fluxo Consulta Detectado");
-
-            // 1. Mostra Especialidade e Convênio
-            divEsp.classList.remove('hidden');
-            divConv.classList.remove('hidden');
-
-            // 2. Restaura Label
-            labelRecurso.innerText = "4. Profissional";
-
-            // 3. Inicia a cascata normal
-            carregarEspecialidades();
-        }
-    }
-
-    // Função Nova: Busca recursos ignorando especialidade/convênio
-    async function carregarRecursosDireto(tipoId) {
-        const target = document.getElementById('tasy-recurso');
-        target.innerHTML = '<option>Carregando Exames...</option>';
-
-        try {
-            // Chama a nova rota de Backend
-            const res = await fetch(`/api/tasy/recursos-simples/${tipoId}`);
-            const dados = await res.json();
-
-            if (dados.length > 0) {
-                target.innerHTML = '<option value="">Selecione...</option>' + 
-                    dados.map(d => `<option value="${d.CD_AGENDA}">${d.DS_AGENDA}</option>`).join('');
-                target.disabled = false;
-            } else {
-                target.innerHTML = '<option value="">Nenhum exame encontrado</option>';
-            }
-        } catch (e) {
-            console.error(e);
-            target.innerHTML = '<option>Erro ao buscar</option>';
-        }
-    }
-
-    // 1. Gatilho Principal
+    // Gatilho Principal (Unificado)
     async function verificarTipoAgenda() {
         const select = document.getElementById('tasy-unidade');
         const tipoId = select.value;
@@ -477,31 +580,19 @@
 
         if(!tipoId) return;
 
-        // LÓGICA DE DECISÃO (Ajuste o ID '2' se no seu banco Exame for outro número)
         const ehExame = tipoId == '2' || tipoTexto.includes('EXAME') || tipoTexto.includes('SADT');
 
         if (ehExame) {
             // --- MODO EXAME ---
-            // 1. Esconde Especialidade e Convênio
             boxEsp.classList.add('hidden');
             boxConv.classList.add('hidden');
-            
-            // 2. Ajusta Label
             labelRecurso.innerText = "2. Exame / Sala";
-
-            // 3. Pula direto para carregar Recursos filtrados apenas pelo Tipo
             carregarRecursosDiretoPorTipo(tipoId);
-
         } else {
-            // --- MODO CONSULTA (Padrão) ---
-            // 1. Mostra tudo
+            // --- MODO CONSULTA ---
             boxEsp.classList.remove('hidden');
             boxConv.classList.remove('hidden');
-            
-            // 2. Ajusta Label
             labelRecurso.innerText = "4. Profissional";
-
-            // 3. Segue fluxo normal (Cascata)
             carregarEspecialidades(); 
         }
     }
@@ -512,8 +603,7 @@
         target.innerHTML = '<option>Carregando Exames...</option>';
         
         try {
-            // Rota nova que vamos criar no backend
-            const res = await fetch(`/api/tasy/recursos-por-tipo/${tipoId}`);
+            const res = await fetch(`/api/tasy/recursos-simples/${tipoId}`); // Corrigi a rota para bater com a que criamos antes
             const dados = await res.json();
 
             if(dados.length > 0) {
@@ -529,51 +619,37 @@
         }
     }
 
-    // 1. Carrega Unidades (Início)
     async function carregarUnidades() {
         const select = document.getElementById('tasy-unidade');
         try {
             const res = await fetch('/api/tasy/unidades');
             const dados = await res.json();
-            
-            // Ajuste para ler as colunas retornadas pelo seu SQL (CD_TIPO, DS_TIPO)
             select.innerHTML = '<option value="">Selecione...</option>' + 
                 dados.map(d => `<option value="${d.CD_TIPO}">${d.DS_TIPO}</option>`).join('');
         } catch (e) { select.innerHTML = '<option>Erro ao carregar</option>'; }
     }
 
-    // 2. Carrega Especialidades (Trigger: Unidade mudou)
     async function carregarEspecialidades() {
         const idPai = document.getElementById('tasy-unidade').value;
         const target = document.getElementById('tasy-especialidade');
-        resetSelect('tasy-especialidade', 'Carregando...');
-        
-        // Reseta os campos filhos para evitar dados misturados
         resetSelect('tasy-especialidade', 'Carregando...');
         resetSelect('tasy-convenio', 'Aguardando Especialidade...');
         resetSelect('tasy-recurso', 'Aguardando Convênio...');
 
         if(!idPai) return resetSelect('tasy-especialidade', 'Selecione o Tipo...');
-
-        // Usa os nomes de coluna do seu SQL (CD_ESPECIALIDADE, DS_ESPECIALIDADE)
         carregarSelectGenerico(`/api/tasy/especialidades/${idPai}`, target, 'CD_ESPECIALIDADE', 'DS_ESPECIALIDADE');
     }
 
-    // 3. Carrega Convênios (Trigger: Especialidade mudou)
     async function carregarConvenios() {
         const idPai = document.getElementById('tasy-especialidade').value;
         const target = document.getElementById('tasy-convenio');
-
         resetSelect('tasy-convenio', 'Carregando...');
         resetSelect('tasy-recurso', 'Aguardando Convênio...');
 
         if(!idPai) return resetSelect('tasy-convenio', 'Selecione a Especialidade...');
-
-        // SQL: CD_CONVENIO, DS_CONVENIO
         carregarSelectGenerico(`/api/tasy/convenios/${idPai}`, target, 'CD_CONVENIO', 'DS_CONVENIO');
     }
 
-    // 4. Carrega Profissionais (Trigger: Convênio mudou)
     async function carregarRecursos() {
         const idConvenio = document.getElementById('tasy-convenio').value;
         const idEspecialidade = document.getElementById('tasy-especialidade').value;
@@ -584,7 +660,6 @@
 
         if(!idConvenio || !idEspecialidade) return resetSelect('tasy-recurso', 'Selecione os filtros...');
 
-        // Monta URL com Query Params (Importante!)
         const url = `/api/tasy/recursos?especialidade=${idEspecialidade}&convenio=${idConvenio}`;
 
         try {
@@ -605,7 +680,6 @@
     }
 
     // --- Helpers Genéricos ---
-    
     function resetSelect(id, texto) {
         const el = document.getElementById(id);
         el.innerHTML = `<option value="">${texto}</option>`;
@@ -631,66 +705,6 @@
         }
     }
 
-    async function acaoAgenda(acao) {
-        // 1. Fecha o menu de contexto imediatamente
-        document.getElementById('context-menu').classList.add('hidden');
-        
-        // 2. Se for agendar, abre o modal manual que já temos
-        if (acao === 'agendar') return abrirModalAgendamento();
-
-        // 3. Mapeamento de configurações para ações automáticas
-        const configs = {
-            confirmar: { 
-                titulo: 'Confirmar Agendamento?', 
-                cor: '#16a34a', 
-                endpoint: '/api/tasy/confirmar' 
-            },
-            cancelar: { 
-                titulo: 'Cancelar Agendamento?', 
-                cor: '#dc2626', 
-                endpoint: '/api/tasy/cancelar' 
-            },
-            bloquear: { 
-                titulo: 'Bloquear Horário?', 
-                cor: '#ea580c', 
-                endpoint: '/api/tasy/bloquear' 
-            }
-        };
-
-        const config = configs[acao];
-
-        // 4. Alerta de Confirmação (SweetAlert2)
-        const result = await Swal.fire({
-            title: config.titulo,
-            text: "Deseja replicar essa alteração no Tasy (Oracle)?",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: config.cor,
-            cancelButtonColor: '#64748b',
-            confirmButtonText: 'Sim, processar',
-            cancelButtonText: 'Voltar',
-            reverseButtons: true
-        });
-
-    if (result.isConfirmed) {
-        // Feedback rápido para o usuário
-        const toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
-        toast.fire({ icon: 'info', title: 'Processando no Tasy...' });
-
-        fetch(config.endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ agendaId: agendaIdSelecionado })
-        }).then(res => res.json()).then(data => {
-            if (data.success) {
-                toast.fire({ icon: 'success', title: 'Atualizado!' });
-                buscarAgenda(); // Atualiza a grid em background
-            }
-        });
-    }
-    }
-
-
     async function buscarAgenda() {
         const recurso = document.getElementById('tasy-recurso').value;
         const data = document.getElementById('tasy-data').value;
@@ -705,7 +719,7 @@
                 body: JSON.stringify({ recurso, data })
             });
             const agenda = await res.json();
-            console.log(agenda)
+            
             container.innerHTML = agenda.length ? '' : '<div class="p-8 text-center text-xs text-slate-400">Nenhum horário disponível.</div>';
             
             agenda.forEach(slot => {
@@ -716,11 +730,7 @@
                         
                         <div class="flex-1 flex items-center gap-2 min-w-0">
                             <span class="truncate font-bold text-slate-800 text-xs">${slot.PACIENTE || 'Livre'}</span>
-                            ${slot.CONVENIO ? `
-                                <span class="shrink-0 text-[10px] text-slate-400 font-medium">
-                                    (${slot.CONVENIO})
-                                </span>
-                            ` : ''}
+                            ${slot.CONVENIO ? `<span class="shrink-0 text-[10px] text-slate-400 font-medium">(${slot.CONVENIO})</span>` : ''}
                         </div>
 
                         <span class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${statusClass}">
@@ -747,6 +757,48 @@
         const menu = document.getElementById('context-menu');
         if(menu) menu.classList.add('hidden');
     });
+
+    async function acaoAgenda(acao) {
+        document.getElementById('context-menu').classList.add('hidden');
+        
+        if (acao === 'agendar') return abrirModalAgendamento();
+
+        const configs = {
+            confirmar: { titulo: 'Confirmar Agendamento?', cor: '#16a34a', endpoint: '/api/tasy/confirmar' },
+            cancelar: { titulo: 'Cancelar Agendamento?', cor: '#dc2626', endpoint: '/api/tasy/cancelar' },
+            bloquear: { titulo: 'Bloquear Horário?', cor: '#ea580c', endpoint: '/api/tasy/bloquear' }
+        };
+
+        const config = configs[acao];
+
+        const result = await Swal.fire({
+            title: config.titulo,
+            text: "Deseja replicar essa alteração no Tasy (Oracle)?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: config.cor,
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Sim, processar',
+            cancelButtonText: 'Voltar',
+            reverseButtons: true
+        });
+
+        if (result.isConfirmed) {
+            const toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            toast.fire({ icon: 'info', title: 'Processando no Tasy...' });
+
+            fetch(config.endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agendaId: agendaIdSelecionado })
+            }).then(res => res.json()).then(data => {
+                if (data.success) {
+                    toast.fire({ icon: 'success', title: 'Atualizado!' });
+                    buscarAgenda(); 
+                }
+            });
+        }
+    }
 
     async function confirmarAgendamento() {
         const id = document.getElementById('modal-agenda-id').value;

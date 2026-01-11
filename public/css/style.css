@@ -653,6 +653,14 @@ video {
   bottom: 0px;
 }
 
+.-left-2 {
+  left: -0.5rem;
+}
+
+.-right-2 {
+  right: -0.5rem;
+}
+
 .bottom-0 {
   bottom: 0px;
 }
@@ -740,6 +748,11 @@ video {
 .-my-2 {
   margin-top: -0.5rem;
   margin-bottom: -0.5rem;
+}
+
+.mx-4 {
+  margin-left: 1rem;
+  margin-right: 1rem;
 }
 
 .mx-auto {
@@ -891,6 +904,10 @@ video {
   display: none;
 }
 
+.h-0 {
+  height: 0px;
+}
+
 .h-1 {
   height: 0.25rem;
 }
@@ -1013,6 +1030,10 @@ video {
 
 .min-h-screen {
   min-height: 100vh;
+}
+
+.w-0 {
+  width: 0px;
 }
 
 .w-1 {
@@ -1171,8 +1192,8 @@ video {
   max-width: 1600px;
 }
 
-.max-w-\[75\%\] {
-  max-width: 75%;
+.max-w-\[70\%\] {
+  max-width: 70%;
 }
 
 .max-w-\[85\%\] {
@@ -1507,8 +1528,24 @@ video {
   border-top-right-radius: 1rem;
 }
 
+.rounded-bl-lg {
+  border-bottom-left-radius: 0.5rem;
+}
+
+.rounded-br-lg {
+  border-bottom-right-radius: 0.5rem;
+}
+
+.rounded-tl-lg {
+  border-top-left-radius: 0.5rem;
+}
+
 .rounded-tl-none {
   border-top-left-radius: 0px;
+}
+
+.rounded-tr-lg {
+  border-top-right-radius: 0.5rem;
 }
 
 .rounded-tr-none {
@@ -1527,6 +1564,10 @@ video {
   border-bottom-width: 1px;
 }
 
+.border-b-\[0px\] {
+  border-bottom-width: 0px;
+}
+
 .border-l {
   border-left-width: 1px;
 }
@@ -1535,8 +1576,16 @@ video {
   border-left-width: 4px;
 }
 
+.border-l-\[10px\] {
+  border-left-width: 10px;
+}
+
 .border-r {
   border-right-width: 1px;
+}
+
+.border-r-\[10px\] {
+  border-right-width: 10px;
 }
 
 .border-t {
@@ -1545,6 +1594,10 @@ video {
 
 .border-t-0 {
   border-top-width: 0px;
+}
+
+.border-t-\[10px\] {
+  border-top-width: 10px;
 }
 
 .border-dashed {
@@ -1676,6 +1729,20 @@ video {
 
 .border-white\/10 {
   border-color: rgb(255 255 255 / 0.1);
+}
+
+.border-b-transparent {
+  border-bottom-color: transparent;
+}
+
+.border-l-green-100 {
+  --tw-border-opacity: 1;
+  border-left-color: rgb(220 252 231 / var(--tw-border-opacity, 1));
+}
+
+.border-r-white {
+  --tw-border-opacity: 1;
+  border-right-color: rgb(255 255 255 / var(--tw-border-opacity, 1));
 }
 
 .border-t-indigo-600 {
@@ -2358,11 +2425,6 @@ video {
   color: rgb(180 83 9 / var(--tw-text-opacity, 1));
 }
 
-.text-blue-100 {
-  --tw-text-opacity: 1;
-  color: rgb(219 234 254 / var(--tw-text-opacity, 1));
-}
-
 .text-blue-50 {
   --tw-text-opacity: 1;
   color: rgb(239 246 255 / var(--tw-text-opacity, 1));
@@ -2572,6 +2634,10 @@ video {
 
 .opacity-40 {
   opacity: 0.4;
+}
+
+.opacity-70 {
+  opacity: 0.7;
 }
 
 .opacity-75 {

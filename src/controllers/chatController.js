@@ -1,11 +1,42 @@
 const db = require('../infra/database/connection');
 const axios = require('axios');
 
-// Configuração da Z-API (Idealmente, mova para .env)
+// Configuração da Z-API
 const ZAPI_INSTANCE = process.env.ZAPI_INSTANCE_ID || 'SEU_INSTANCE_ID';
 const ZAPI_TOKEN = process.env.ZAPI_TOKEN || 'SEU_TOKEN';
 const ZAPI_CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN || 'SEU_CLIENT_TOKEN';
 const ZAPI_URL = `https://api.z-api.io/instances/${ZAPI_INSTANCE}/token/${ZAPI_TOKEN}`;
+
+// =================================================================
+// 🧠 HELPER: NORMALIZAÇÃO DE TELEFONE (A MÁGICA DO 9º DÍGITO)
+// =================================================================
+function normalizarTelefone(phone) {
+    // 1. Remove tudo que não é número
+    let cleanPhone = phone.toString().replace(/\D/g, '');
+
+    // 2. Garante o DDI 55 se parecer ser um número BR curto
+    // Ex: 6299998888 (10 ou 11 dígitos) -> vira 5562...
+    if (!cleanPhone.startsWith('55') && cleanPhone.length <= 11) {
+        cleanPhone = '55' + cleanPhone;
+    }
+
+    // 3. Lógica do Nono Dígito
+    // Formato com DDI: 55 (2) + DDD (2) + 9 + 8 dígitos = 13 caracteres
+    // Se tiver 12 caracteres (55 + DDD + 8 dígitos), provável que falte o 9.
+    if (cleanPhone.length === 12) {
+        const ddd = cleanPhone.substring(2, 4); // Pega o DDD
+        const numberPart = cleanPhone.substring(4); // Pega o número
+        
+        // Verifica se é celular (começa com 6, 7, 8 ou 9) para não estragar fixos
+        const firstDigit = parseInt(numberPart[0]);
+        if (firstDigit >= 6) {
+            console.log(`🔧 Corrigindo número (adicionando 9): ${cleanPhone} -> ${cleanPhone.substring(0, 4)}9${numberPart}`);
+            return `${cleanPhone.substring(0, 4)}9${numberPart}`;
+        }
+    }
+    
+    return cleanPhone;
+}
 
 module.exports = {
 
@@ -17,12 +48,10 @@ module.exports = {
         try {
             const usuarioId = req.session.user.id; 
 
-            // Tickets aguardando na fila
             const fila = await db('chat_tickets')
                 .where('status', 'FILA')
                 .orderBy('criado_em', 'asc');
 
-            // Tickets em atendimento pelo usuário
             const meus = await db('chat_tickets')
                 .where('status', 'ATENDIMENTO')
                 .andWhere('atendente_id', usuarioId)
@@ -38,7 +67,6 @@ module.exports = {
 
         } catch (error) {
             console.error("Erro Render Chat:", error);
-            // Renderiza vazio para não quebrar a aplicação
             res.render('pages/chat/index', { user: req.session.user, fila: [], meus: [] });
         }
     },
@@ -60,7 +88,6 @@ module.exports = {
         }
     },
 
-    // Ação Atômica: Puxar ticket da fila para mim
     assumir: async (req, res) => {
         const { ticketId } = req.body;
         const usuarioId = req.session.user.id;
@@ -69,9 +96,8 @@ module.exports = {
         const trx = await db.transaction();
 
         try {
-            // 1. Tenta atualizar e travar o registro
             const [ticketAtualizado] = await trx('chat_tickets')
-                .where({ id: ticketId, status: 'FILA' }) // Trava de segurança
+                .where({ id: ticketId, status: 'FILA' })
                 .update({
                     atendente_id: usuarioId,
                     status: 'ATENDIMENTO',
@@ -84,7 +110,6 @@ module.exports = {
                 return res.status(400).json({ error: 'Ticket já assumido por outro ou inexistente.' });
             }
 
-            // 2. Log de Sistema
             await trx('chat_mensagens').insert({
                 ticket_id: ticketId,
                 remetente: 'SISTEMA',
@@ -95,7 +120,6 @@ module.exports = {
 
             await trx.commit();
 
-            // 3. Notificação Real-time (Socket)
             const payload = {
                 ticketId: ticketAtualizado.id,
                 atendenteId: usuarioId,
@@ -103,7 +127,6 @@ module.exports = {
                 nomePaciente: ticketAtualizado.nome_contato || ticketAtualizado.numero_whatsapp
             };
 
-            // Avisa TODOS (remove da fila de todos)
             req.io.emit('ticket_assumido_fila', payload);
 
             res.json({ success: true, ticket: ticketAtualizado });
@@ -140,10 +163,6 @@ module.exports = {
             });
 
             await trx.commit();
-            
-            // TODO: Emitir socket para o novo atendente saber que recebeu um ticket
-            // req.io.to(`user_${novoAtendenteId}`).emit('ticket_recebido', ...);
-
             res.json({ success: true });
 
         } catch (error) {
@@ -163,9 +182,7 @@ module.exports = {
                     atualizado_em: new Date()
                 });
 
-            // Avisa o front para fechar a aba se estiver aberta
             req.io.to(ticketId.toString()).emit('ticket_finalizado');
-
             res.json({ success: true });
         } catch (e) {
             res.status(500).json({ error: 'Erro ao finalizar.' });
@@ -176,7 +193,6 @@ module.exports = {
     // 3. INTEGRAÇÃO Z-API (OUTBOUND & INBOUND)
     // =================================================================
 
-    // Enviar Mensagem (App -> WhatsApp)
     enviar: async (req, res) => {
         const { ticketId, conteudo, tipo = 'texto' } = req.body;
         
@@ -201,38 +217,29 @@ module.exports = {
                 atualizado_em: new Date()
             });
 
-            // 3. Dispara Z-API (COM O HEADER OBRIGATÓRIO)
+            // 3. Dispara Z-API
             try {
-                let numeroLimpo = ticket.numero_whatsapp.replace(/\D/g, ''); 
+                // Aqui podemos usar o número do banco, pois já deve estar normalizado
+                // Mas por segurança, removemos símbolos
+                let numeroEnvio = ticket.numero_whatsapp.replace(/\D/g, ''); 
                 
-                console.log(`🚀 Enviando com Client-Token Header...`);
-                
-                // --- AQUI ESTÁ A CORREÇÃO DO NOT ALLOWED ---
                 const response = await axios.post(
                     `${ZAPI_URL}/send-text`, 
                     {
-                        phone: numeroLimpo,
+                        phone: numeroEnvio,
                         message: conteudo
                     },
                     {
                         headers: {
-                            // É obrigatório enviar isso quando a segurança extra está ativa!
                             'Client-Token': ZAPI_CLIENT_TOKEN 
                         }
                     }
                 );
-                // -------------------------------------------
-
-                console.log("✅ Sucesso Z-API! ID:", response.data.messageId);
+                
+                console.log("✅ MSG Enviada. ID:", response.data.messageId);
 
             } catch (apiError) {
-                console.error("❌ ERRO Z-API:");
-                if (apiError.response) {
-                    console.error("Status:", apiError.response.status);
-                    console.error("Erro:", JSON.stringify(apiError.response.data));
-                } else {
-                    console.error("Mensagem:", apiError.message);
-                }
+                console.error("❌ ERRO Z-API Envio:", apiError.message);
             }
 
             // 4. Emite Socket
@@ -241,111 +248,210 @@ module.exports = {
             res.json({ success: true, data: novaMsg });
 
         } catch (error) {
-            console.error("Erro Geral:", error);
+            console.error("Erro Geral Enviar:", error);
             res.status(500).json({ error: 'Falha interna.' });
         }
     },
 
-
-    // Webhook (WhatsApp -> App)
+    // =================================================================
+    // 🪝 WEBHOOK: VERSÃO CAÇADORA DE TICKETS (CORRIGIDA)
+    // =================================================================
     webhook: async (req, res) => {
         try {
-            // Log para debug (pode manter ou comentar depois)
-            // console.log("📥 Z-API WEBHOOK:", JSON.stringify(req.body, null, 2));
+            const { isGroup, text, senderName, phone } = req.body;
 
-            // 1. Extrai os dados DIRETO da raiz (baseado no seu log)
-            const { type, phone, isGroup, text, senderName } = req.body;
+            // Filtros Básicos
+            if (isGroup || !text || !text.message) return res.status(200).send('Ignorado');
 
-            // 2. FILTRO: Ignora se não for recebimento ou se for grupo
-            // O seu segundo log era 'MessageStatusCallback' (confirmação de leitura), por isso ignoramos aqui
-            if (type !== 'ReceivedCallback' || isGroup) {
-                // console.log("Ignorado: Não é mensagem de recebimento.");
-                return res.status(200).send('Ignorado'); 
-            }
+            const textoMensagem = text.message;
+            
+            // -------------------------------------------------------------
+            // 🕵️‍♂️ ESTRATÉGIA DE BUSCA MULTI-FORMATO
+            // -------------------------------------------------------------
+            const raw = phone.toString().replace(/\D/g, ''); // O que chegou (ex: 556295543983)
+            const normalized = normalizarTelefone(raw);      // O ideal (ex: 5562995543983)
+            const withoutDDI = normalized.replace(/^55/, ''); // Sem DDI (ex: 62995543983)
+            
+            // Array de possibilidades para o WHERE IN
+            // Isso cobre: formato antigo no banco, formato novo, formato sem 55, formato bugado
+            const possiveisNumeros = [...new Set([raw, normalized, withoutDDI])]; 
 
-            // 3. EXTRAÇÃO SEGURA DO TEXTO
-            // A Z-API mandou: "text": { "message": "Marcar exame" }
-            const textoMensagem = (text && text.message) ? text.message : null;
+            console.log(`🔍 Webhook buscando ticket para: ${possiveisNumeros.join(' | ')}`);
 
-            if (!textoMensagem) {
-                console.log("Ignorado: Mensagem sem conteúdo de texto (pode ser imagem/áudio).");
-                return res.status(200).send('Ignorado');
-            }
-
-            // 4. Mapeamento das variáveis para o banco
-            const numeroCliente = phone; 
-            const nomeContato = senderName || numeroCliente; // Pega o nome do perfil ou usa o número
-
-            console.log(`💬 Processando mensagem de ${nomeContato}: "${textoMensagem}"`);
-
-            // --- DAQUI PARA BAIXO A LÓGICA PERMANECE A MESMA ---
-
-            // 1. Busca Ticket Ativo
             let ticket = await db('chat_tickets')
-                .where('numero_whatsapp', numeroCliente)
+                .whereIn('numero_whatsapp', possiveisNumeros)
                 .whereIn('status', ['FILA', 'ATENDIMENTO'])
                 .first();
 
-            let ehNovoTicket = false;
+            const trx = await db.transaction();
 
-            // 2. Cria Ticket se não existir
-            if (!ticket) {
-                const [novoId] = await db('chat_tickets').insert({
-                    numero_whatsapp: numeroCliente,
-                    nome_contato: nomeContato,
-                    status: 'FILA',
-                    ultima_mensagem: textoMensagem,
-                    nao_lidas: 1,
-                    criado_em: new Date(),
-                    atualizado_em: new Date()
-                }).returning('id');
-                
-                // Tratamento de ID (Postgres retorna objeto, outros array/int)
-                const idFinal = novoId.id || novoId;
-                
-                ticket = await db('chat_tickets').where('id', idFinal).first();
-                ehNovoTicket = true;
-            } else {
-                // Atualiza existente
-                await db('chat_tickets').where('id', ticket.id).update({
-                    ultima_mensagem: textoMensagem,
-                    nao_lidas: ticket.nao_lidas + 1,
-                    atualizado_em: new Date()
-                });
+            try {
+                let ehNovoTicket = false;
+
+                if (!ticket) {
+                    console.log("⚠️ Nenhum ticket encontrado. Criando NOVO com formato PADRÃO.");
+                    
+                    // Salva SEMPRE o formato normalizado (com 9 e com 55) para manter o banco limpo
+                    const numeroPadrao = normalized; 
+
+                    const [novoId] = await trx('chat_tickets').insert({
+                        numero_whatsapp: numeroPadrao,
+                        nome_contato: senderName || numeroPadrao,
+                        status: 'FILA',
+                        ultima_mensagem: textoMensagem,
+                        nao_lidas: 1,
+                        criado_em: new Date(),
+                        atualizado_em: new Date()
+                    }).returning('id');
+                    
+                    const idFinal = novoId.id || novoId;
+                    ticket = await trx('chat_tickets').where('id', idFinal).first();
+                    ehNovoTicket = true;
+
+                } else {
+                    console.log(`✅ Ticket ENCONTRADO (ID: ${ticket.id}). Atualizando.`);
+                    
+                    // Opcional: Se achou o ticket com numero "errado" (antigo), atualiza para o novo?
+                    // Descomente abaixo se quiser "consertar" o banco aos poucos:
+                    /*
+                    if (ticket.numero_whatsapp !== normalized) {
+                        await trx('chat_tickets').where('id', ticket.id).update({ numero_whatsapp: normalized });
+                    }
+                    */
+
+                    await trx('chat_tickets').where('id', ticket.id).update({
+                        ultima_mensagem: textoMensagem,
+                        nao_lidas: ticket.nao_lidas + 1,
+                        atualizado_em: new Date()
+                    });
+                }
+
+                const [msgDb] = await trx('chat_mensagens').insert({
+                    ticket_id: ticket.id,
+                    remetente: 'PACIENTE',
+                    tipo: 'texto',
+                    conteudo: textoMensagem,
+                    criado_em: new Date()
+                }).returning('*');
+
+                await trx.commit();
+
+                // SOCKETS
+                if (ehNovoTicket) {
+                    req.io.emit('novo_ticket_fila', ticket);
+                } else {
+                    if (ticket.status === 'ATENDIMENTO') {
+                        req.io.to(ticket.id.toString()).emit('nova_mensagem', msgDb);
+                        req.io.emit('atualizar_lista_meus', {
+                            ticketId: ticket.id,
+                            msg: textoMensagem,
+                            nao_lidas: ticket.nao_lidas + 1
+                        });
+                    } else {
+                        req.io.emit('novo_ticket_fila', ticket);
+                    }
+                }
+
+                res.status(200).send('Recebido');
+
+            } catch (errorTrx) {
+                await trx.rollback();
+                console.error("Erro Transação Webhook:", errorTrx);
+                throw errorTrx;
             }
-
-            // 3. Salva Mensagem
-            const [msgDb] = await db('chat_mensagens').insert({
-                ticket_id: ticket.id,
-                remetente: 'PACIENTE',
-                tipo: 'texto',
-                conteudo: textoMensagem,
-                criado_em: new Date()
-            }).returning('*');
-
-            // 4. Socket: Atualiza telas
-            if (ehNovoTicket) {
-                req.io.emit('novo_ticket_fila', ticket);
-            } else {
-                req.io.to(ticket.id.toString()).emit('nova_mensagem', msgDb);
-            }
-
-            res.status(200).send('Recebido');
 
         } catch (error) {
-            console.error("❌ Erro Crítico no Webhook:", error);
-            res.status(200).send('Erro processado'); 
+            console.error("❌ Erro Geral Webhook:", error);
+            res.status(200).send('Erro processado');
         }
     },
 
 
-    // Função auxiliar para testes manuais (cria ticket fake)
+    // =================================================================
+    // 📞 INICIAR CONTATO ATIVO (ATUALIZADO)
+    // =================================================================
+    iniciarAtendimento: async (req, res) => {
+        const { telefone, nome, mensagem } = req.body;
+        const usuarioId = req.session.user.id; 
+
+        if (!telefone || !mensagem) return res.status(400).json({ error: 'Dados incompletos.' });
+
+        try {
+            // ✅ CORREÇÃO: Usa a função INTELIGENTE
+            const zap = normalizarTelefone(telefone);
+            
+            console.log(`📞 Iniciando Ativo para: ${zap} (Original: ${telefone})`);
+
+            // Busca usando a versão corrigida
+            let ticket = await db('chat_tickets').where('numero_whatsapp', zap).first();
+            
+            const trx = await db.transaction();
+            try {
+                if (!ticket) {
+                    const [novoId] = await trx('chat_tickets').insert({
+                        numero_whatsapp: zap,
+                        nome_contato: nome || zap,
+                        status: 'ATENDIMENTO',
+                        atendente_id: usuarioId,
+                        ultima_mensagem: mensagem,
+                        nao_lidas: 0,
+                        criado_em: new Date(),
+                        atualizado_em: new Date()
+                    }).returning('id');
+                    const idFinal = novoId.id || novoId;
+                    ticket = await trx('chat_tickets').where('id', idFinal).first();
+                } else {
+                    await trx('chat_tickets').where('id', ticket.id).update({
+                        atendente_id: usuarioId,
+                        status: 'ATENDIMENTO',
+                        ultima_mensagem: mensagem,
+                        atualizado_em: new Date()
+                    });
+                    ticket = await trx('chat_tickets').where('id', ticket.id).first();
+                }
+
+                const [novaMsg] = await trx('chat_mensagens').insert({
+                    ticket_id: ticket.id,
+                    remetente: 'ATENDENTE',
+                    tipo: 'texto',
+                    conteudo: mensagem,
+                    criado_em: new Date()
+                }).returning('*');
+
+                await trx.commit();
+
+                // Envia Z-API
+                try {
+                    await axios.post(`${ZAPI_URL}/send-text`, 
+                        { phone: zap, message: mensagem },
+                        { headers: { 'Client-Token': ZAPI_CLIENT_TOKEN } }
+                    );
+                } catch (zapiErr) { console.error("Erro Z-API", zapiErr.message); }
+
+                req.io.emit('ticket_assumido_fila', { 
+                    ticketId: ticket.id, 
+                    atendenteId: usuarioId,
+                    nomePaciente: ticket.nome_contato, 
+                    ultima_mensagem: mensagem
+                });
+                req.io.to(ticket.id.toString()).emit('nova_mensagem', novaMsg);
+
+                res.json({ success: true, ticket });
+            } catch (errTrx) { await trx.rollback(); throw errTrx; }
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: 'Erro ao iniciar.' });
+        }
+    },
+    
+    // Simulação mantida para testes
     simularEntradaPaciente: async (req, res) => {
         const { numero, nome, mensagem } = req.body;
         try {
-            // Reutiliza lógica parecida com o webhook, mas forçada
+            const zap = normalizarTelefone(numero); // Também normaliza aqui para testar igual produção
+
             const [novoTicket] = await db('chat_tickets').insert({
-                numero_whatsapp: numero,
+                numero_whatsapp: zap,
                 nome_contato: nome,
                 status: 'FILA',
                 ultima_mensagem: mensagem,
