@@ -43,7 +43,6 @@ module.exports = {
     // 3. DROPDOWN 3: CONVÊNIOS (NOVO ✅)
     // Filtra convênios baseados na Especialidade selecionada
     listarConvenios: async (req, res) => {
-        const { especialidadeId } = req.params;
         try {
             const sql = `
                 SELECT DISTINCT 

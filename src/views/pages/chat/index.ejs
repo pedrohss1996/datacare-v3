@@ -237,13 +237,58 @@
         socket.on('connect', () => console.log('🟢 DataCare Socket Conectado:', socket.id));
         
         // 1.1 OUVINTE: Novas mensagens (Real-time)
-        socket.on('nova_mensagem', (msg) => {
-            const idDaMsg = msg.ticket_id || msg.ticketId;
-            // Só renderiza se estiver com o chat desse ticket aberto
-            if (activeTicketId && idDaMsg == activeTicketId) {
-                renderizarMensagemNaTela(msg);
-                rolarParaBaixo(); // ✅ Rola para baixo quando chega mensagem nova
+        socket.on('nova_mensagem', (data) => {
+            // Verifica se a mensagem é para o ticket aberto atual
+            if (data.ticket_id != ticketAtualId) return;
+
+            // 1. Cria o HTML baseado no TIPO
+            let htmlConteudo = '';
+
+            if (data.tipo === 'imagem') {
+                htmlConteudo = `
+                    <a href="${data.conteudo}" target="_blank">
+                        <img src="${data.conteudo}" class="img-fluid rounded mt-2" style="max-width: 300px; border: 1px solid #ddd;">
+                    </a>`;
+            } 
+            else if (data.tipo === 'audio') {
+                htmlConteudo = `
+                    <div class="mt-2">
+                        <audio controls style="max-width: 280px;">
+                            <source src="${data.conteudo}" type="audio/ogg">
+                        </audio>
+                    </div>`;
+            } 
+            else if (data.tipo === 'arquivo' || data.tipo === 'document') {
+                htmlConteudo = `
+                    <a href="${data.conteudo}" target="_blank" class="btn btn-sm btn-outline-secondary mt-2">
+                        📄 Baixar Arquivo
+                    </a>`;
+            } 
+            else {
+                // Texto normal
+                htmlConteudo = `<span class="text-break">${data.conteudo}</span>`;
             }
+
+            // 2. Monta a div da mensagem
+            const div = document.createElement('div');
+            // Ajuste as classes abaixo conforme seu CSS (ex: 'message-out' ou 'message-in')
+            const classeLado = data.remetente === 'ATENDENTE' ? 'justify-content-end' : 'justify-content-start';
+            const classeCor = data.remetente === 'ATENDENTE' ? 'bg-primary text-white' : 'bg-light text-dark';
+            
+            div.className = `d-flex ${classeLado} mb-3`;
+            div.innerHTML = `
+                <div class="p-3 rounded shadow-sm ${classeCor}" style="max-width: 75%;">
+                    ${htmlConteudo}
+                    <small class="d-block text-end opacity-50 mt-1" style="font-size: 0.75rem;">
+                        ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </small>
+                </div>
+            `;
+
+            // 3. Adiciona na tela e rola para baixo
+            const chatContainer = document.getElementById('chat-messages'); // ID da sua div de lista
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
         });
 
         // 1.2 OUVINTE: Novo ticket entrando na fila
@@ -364,7 +409,7 @@
         if (badgeFila) badgeFila.innerText = qtdFila;
     }
 
-    // ✅ RENDERIZADOR AVANÇADO (WhatsApp Style)
+    // ✅ RENDERIZADOR AVANÇADO (CORRIGIDO PARA MÍDIA)
     function renderizarMensagemNaTela(msg) {
         const container = document.getElementById('chat-messages');
         if (!container) return;
@@ -373,14 +418,52 @@
         if (container.innerText.includes('Carregando') || container.innerText.includes('Inicie')) container.innerHTML = '';
 
         const isMe = msg.remetente === 'ATENDENTE';
-        const conteudo = msg.conteudo || msg.texto;
+        // Garante que pega o conteudo certo
+        const rawConteudo = msg.conteudo || msg.texto; 
         const horaFormatada = formatarDataHora(msg.criado_em || new Date());
 
+        // -----------------------------------------------------------
+        // 1. LÓGICA DE MÍDIA (DECIDE O HTML COM BASE NO TIPO)
+        // -----------------------------------------------------------
+        let conteudoHtml = '';
+
+        if (msg.tipo === 'imagem') {
+            conteudoHtml = `
+                <a href="${rawConteudo}" target="_blank">
+                    <img src="${rawConteudo}" class="img-fluid rounded-lg mt-1 mb-1 border border-slate-200" style="max-width: 100%; max-height: 300px; object-fit: cover;">
+                </a>`;
+        } 
+        else if (msg.tipo === 'audio') {
+            conteudoHtml = `
+                <div class="mt-2 mb-1 flex items-center gap-2">
+                    <div class="bg-slate-200 rounded-full p-2 text-slate-500"><i class="fa-solid fa-microphone"></i></div>
+                    <audio controls style="max-width: 220px; height: 32px;">
+                        <source src="${rawConteudo}" type="audio/ogg">
+                        <source src="${rawConteudo}" type="audio/mpeg">
+                        Seu navegador não suporta áudio.
+                    </audio>
+                </div>`;
+        } 
+        else if (msg.tipo === 'arquivo' || msg.tipo === 'document') {
+            conteudoHtml = `
+                <a href="${rawConteudo}" target="_blank" class="flex items-center gap-3 bg-white/50 p-2 rounded border border-slate-200/50 hover:bg-white transition mt-1">
+                    <div class="bg-red-100 text-red-500 p-2 rounded"><i class="fa-solid fa-file-pdf"></i></div>
+                    <span class="text-xs font-bold underline">Baixar Arquivo</span>
+                </a>`;
+        } 
+        else {
+            // TEXTO NORMAL (Com suporte a quebra de linha)
+            conteudoHtml = `<p class="text-sm whitespace-pre-wrap leading-relaxed">${rawConteudo}</p>`;
+        }
+
+        // -----------------------------------------------------------
+        // 2. MONTAGEM FINAL DO BALÃO
+        // -----------------------------------------------------------
         const htmlMsg = `
             <div class="flex ${isMe ? 'justify-end' : 'justify-start'} mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div class="max-w-[70%] ${isMe ? 'bg-green-100 text-slate-800 rounded-tl-lg rounded-tr-none rounded-br-lg rounded-bl-lg' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none rounded-tr-lg rounded-br-lg rounded-bl-lg'} p-3 shadow-sm relative group">
                     
-                    <p class="text-sm whitespace-pre-wrap leading-relaxed">${conteudo}</p>
+                    ${conteudoHtml}
                     
                     <div class="flex items-center justify-end gap-1 mt-1 opacity-70">
                         <span class="text-[10px] text-slate-500 font-medium">${horaFormatada}</span>

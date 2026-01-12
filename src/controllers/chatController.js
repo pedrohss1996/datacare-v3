@@ -6,35 +6,25 @@ const ZAPI_INSTANCE = process.env.ZAPI_INSTANCE_ID || 'SEU_INSTANCE_ID';
 const ZAPI_TOKEN = process.env.ZAPI_TOKEN || 'SEU_TOKEN';
 const ZAPI_CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN || 'SEU_CLIENT_TOKEN';
 const ZAPI_URL = `https://api.z-api.io/instances/${ZAPI_INSTANCE}/token/${ZAPI_TOKEN}`;
+const { baixarMidia } = require('../utils/mediaHandler'); // <--- IMPORTANTE
 
 // =================================================================
 // 🧠 HELPER: NORMALIZAÇÃO DE TELEFONE (A MÁGICA DO 9º DÍGITO)
 // =================================================================
+// Helper Normalização (Mantido)
 function normalizarTelefone(phone) {
-    // 1. Remove tudo que não é número
     let cleanPhone = phone.toString().replace(/\D/g, '');
-
-    // 2. Garante o DDI 55 se parecer ser um número BR curto
-    // Ex: 6299998888 (10 ou 11 dígitos) -> vira 5562...
     if (!cleanPhone.startsWith('55') && cleanPhone.length <= 11) {
         cleanPhone = '55' + cleanPhone;
     }
-
-    // 3. Lógica do Nono Dígito
-    // Formato com DDI: 55 (2) + DDD (2) + 9 + 8 dígitos = 13 caracteres
-    // Se tiver 12 caracteres (55 + DDD + 8 dígitos), provável que falte o 9.
     if (cleanPhone.length === 12) {
-        const ddd = cleanPhone.substring(2, 4); // Pega o DDD
-        const numberPart = cleanPhone.substring(4); // Pega o número
-        
-        // Verifica se é celular (começa com 6, 7, 8 ou 9) para não estragar fixos
+        const ddd = cleanPhone.substring(2, 4);
+        const numberPart = cleanPhone.substring(4);
         const firstDigit = parseInt(numberPart[0]);
         if (firstDigit >= 6) {
-            console.log(`🔧 Corrigindo número (adicionando 9): ${cleanPhone} -> ${cleanPhone.substring(0, 4)}9${numberPart}`);
             return `${cleanPhone.substring(0, 4)}9${numberPart}`;
         }
     }
-    
     return cleanPhone;
 }
 
@@ -62,7 +52,8 @@ module.exports = {
                 layout: 'layouts/main',
                 user: req.session.user,
                 fila: fila || [],
-                meus: meus || []
+                meus: meus || [],
+                hideFooter: true
             });
 
         } catch (error) {
@@ -256,27 +247,91 @@ module.exports = {
     // =================================================================
     // 🪝 WEBHOOK: VERSÃO CAÇADORA DE TICKETS (CORRIGIDA)
     // =================================================================
+
+
     webhook: async (req, res) => {
         try {
-            const { isGroup, text, senderName, phone } = req.body;
-
-            // Filtros Básicos
-            if (isGroup || !text || !text.message) return res.status(200).send('Ignorado');
-
-            const textoMensagem = text.message;
+            const body = req.body;
             
-            // -------------------------------------------------------------
-            // 🕵️‍♂️ ESTRATÉGIA DE BUSCA MULTI-FORMATO
-            // -------------------------------------------------------------
-            const raw = phone.toString().replace(/\D/g, ''); // O que chegou (ex: 556295543983)
-            const normalized = normalizarTelefone(raw);      // O ideal (ex: 5562995543983)
-            const withoutDDI = normalized.replace(/^55/, ''); // Sem DDI (ex: 62995543983)
+            // 1. IGNORAR STATUS DE LEITURA E ENTREGAS (O segundo log que você mandou)
+            // Se for MessageStatusCallback ou DeliveryCallback, a gente ignora.
+            if (body.type === 'MessageStatusCallback' || body.type === 'DeliveryCallback') {
+                return res.status(200).send('Status Ignorado');
+            }
+
+            // 2. Extração de Dados
+            const { isGroup, phone, senderName } = body;
             
-            // Array de possibilidades para o WHERE IN
-            // Isso cobre: formato antigo no banco, formato novo, formato sem 55, formato bugado
+            if (isGroup) return res.status(200).send('Ignorado (Grupo)');
+
+            // Definição do Conteúdo e Tipo Interno
+            let textoMensagem = '';
+            let tipoInterno = 'texto';
+            let urlMidiaParaBaixar = null;
+            let tipoZapi = 'text'; // Para passar pro downloader
+
+            // -------------------------------------------------------------
+            // 🕵️‍♂️ DETECÇÃO ROBUSTA DE TIPO (CORRIGIDA)
+            // -------------------------------------------------------------
+            
+            // Se tiver objeto 'text'
+            if (body.text) {
+                tipoInterno = 'texto';
+                textoMensagem = body.text.message || '';
+            } 
+            // Se tiver objeto 'image' (AQUI ESTAVA O PULO DO GATO)
+            else if (body.image) {
+                tipoInterno = 'imagem';
+                tipoZapi = 'image';
+                textoMensagem = body.image.caption || '📷 [Imagem]'; 
+                urlMidiaParaBaixar = body.image.imageUrl;
+            }
+            // Se tiver objeto 'audio'
+            else if (body.audio) {
+                tipoInterno = 'audio';
+                tipoZapi = 'audio';
+                textoMensagem = '🎤 [Áudio]';
+                urlMidiaParaBaixar = body.audio.audioUrl;
+            }
+            // Se tiver objeto 'document'
+            else if (body.document) {
+                tipoInterno = 'arquivo';
+                tipoZapi = 'document';
+                textoMensagem = body.document.caption || '📄 [Documento]';
+                urlMidiaParaBaixar = body.document.documentUrl;
+            }
+            else {
+                // Se não for nenhum dos acima, ignora
+                console.log("Tipo desconhecido ou não tratado:", body.type);
+                return res.status(200).send('Ignorado');
+            }
+
+            // -------------------------------------------------------------
+            // LÓGICA DE DOWNLOAD (Se for mídia)
+            // -------------------------------------------------------------
+            let conteudoFinal = textoMensagem;
+            
+            if (urlMidiaParaBaixar) {
+                console.log(`📥 Baixando mídia (${tipoInterno}). URL: ${urlMidiaParaBaixar}`);
+                
+                // Chama nossa função utilitária
+                const caminhoLocal = await baixarMidia(urlMidiaParaBaixar, tipoZapi);
+                
+                if (caminhoLocal) {
+                    conteudoFinal = caminhoLocal; // Salva /uploads/xxxx.jpg no banco
+                } else {
+                    conteudoFinal = "❌ Erro ao baixar mídia.";
+                    tipoInterno = 'texto'; 
+                }
+            }
+
+            // -------------------------------------------------------------
+            // O RESTO CONTINUA IGUAL (Busca de Ticket, Save no Banco, etc)
+            // -------------------------------------------------------------
+            const raw = phone.toString().replace(/\D/g, ''); 
+            const normalized = normalizarTelefone(raw);      
+            const withoutDDI = normalized.replace(/^55/, ''); 
             const possiveisNumeros = [...new Set([raw, normalized, withoutDDI])]; 
-
-            console.log(`🔍 Webhook buscando ticket para: ${possiveisNumeros.join(' | ')}`);
 
             let ticket = await db('chat_tickets')
                 .whereIn('numero_whatsapp', possiveisNumeros)
@@ -289,16 +344,11 @@ module.exports = {
                 let ehNovoTicket = false;
 
                 if (!ticket) {
-                    console.log("⚠️ Nenhum ticket encontrado. Criando NOVO com formato PADRÃO.");
-                    
-                    // Salva SEMPRE o formato normalizado (com 9 e com 55) para manter o banco limpo
-                    const numeroPadrao = normalized; 
-
                     const [novoId] = await trx('chat_tickets').insert({
-                        numero_whatsapp: numeroPadrao,
-                        nome_contato: senderName || numeroPadrao,
+                        numero_whatsapp: normalized,
+                        nome_contato: senderName || normalized,
                         status: 'FILA',
-                        ultima_mensagem: textoMensagem,
+                        ultima_mensagem: tipoInterno === 'texto' ? textoMensagem : `[${tipoInterno.toUpperCase()}]`,
                         nao_lidas: 1,
                         criado_em: new Date(),
                         atualizado_em: new Date()
@@ -307,20 +357,9 @@ module.exports = {
                     const idFinal = novoId.id || novoId;
                     ticket = await trx('chat_tickets').where('id', idFinal).first();
                     ehNovoTicket = true;
-
                 } else {
-                    console.log(`✅ Ticket ENCONTRADO (ID: ${ticket.id}). Atualizando.`);
-                    
-                    // Opcional: Se achou o ticket com numero "errado" (antigo), atualiza para o novo?
-                    // Descomente abaixo se quiser "consertar" o banco aos poucos:
-                    /*
-                    if (ticket.numero_whatsapp !== normalized) {
-                        await trx('chat_tickets').where('id', ticket.id).update({ numero_whatsapp: normalized });
-                    }
-                    */
-
                     await trx('chat_tickets').where('id', ticket.id).update({
-                        ultima_mensagem: textoMensagem,
+                        ultima_mensagem: tipoInterno === 'texto' ? textoMensagem : `[${tipoInterno.toUpperCase()}]`,
                         nao_lidas: ticket.nao_lidas + 1,
                         atualizado_em: new Date()
                     });
@@ -329,22 +368,24 @@ module.exports = {
                 const [msgDb] = await trx('chat_mensagens').insert({
                     ticket_id: ticket.id,
                     remetente: 'PACIENTE',
-                    tipo: 'texto',
-                    conteudo: textoMensagem,
+                    tipo: tipoInterno,
+                    conteudo: conteudoFinal,
                     criado_em: new Date()
                 }).returning('*');
 
                 await trx.commit();
 
                 // SOCKETS
+                const payloadSocket = { ...msgDb };
+                
                 if (ehNovoTicket) {
                     req.io.emit('novo_ticket_fila', ticket);
                 } else {
                     if (ticket.status === 'ATENDIMENTO') {
-                        req.io.to(ticket.id.toString()).emit('nova_mensagem', msgDb);
+                        req.io.to(ticket.id.toString()).emit('nova_mensagem', payloadSocket);
                         req.io.emit('atualizar_lista_meus', {
                             ticketId: ticket.id,
-                            msg: textoMensagem,
+                            msg: tipoInterno === 'texto' ? textoMensagem : `📎 ${tipoInterno}`,
                             nao_lidas: ticket.nao_lidas + 1
                         });
                     } else {
@@ -352,7 +393,7 @@ module.exports = {
                     }
                 }
 
-                res.status(200).send('Recebido');
+                res.status(200).send('Recebido Mídia');
 
             } catch (errorTrx) {
                 await trx.rollback();
