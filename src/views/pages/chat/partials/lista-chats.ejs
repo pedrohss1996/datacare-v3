@@ -1,53 +1,165 @@
-<div class="p-4 bg-slate-50 border-b flex justify-between items-center h-14 shrink-0">
-    <h2 class="font-bold text-slate-700">Atendimentos</h2>
-    <div class="flex gap-2 text-xs bg-slate-200 p-1 rounded-lg">
-        <button onclick="mudarAba('meus')" id="tab-meus" class="px-3 py-1 bg-white shadow rounded text-slate-800 font-bold transition">Meus</button>
-        <button onclick="mudarAba('fila')" id="tab-fila" class="px-3 py-1 text-slate-500 hover:text-slate-800 transition">Fila (<span id="count-fila"><%= fila.length %></span>)</button>
+<div class="flex flex-col h-full bg-white border-r border-slate-200 shadow-sm relative z-10">
+
+    <div class="h-16 flex items-center justify-center border-b border-slate-100 shrink-0 bg-white">
+        <div class="flex items-center gap-2 text-slate-700">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-blue-200 shadow-md">
+                <i class="fa-solid fa-plus font-bold"></i>
+            </div>
+            <div class="leading-tight">
+                <h1 class="font-bold text-lg tracking-tight text-slate-800">DataCare</h1>
+                <p class="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Healthtech</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="px-4 py-3 bg-white shrink-0 border-b border-slate-50">
+        <div class="flex bg-slate-100 p-1 rounded-lg">
+            
+            <button id="tab-meus" onclick="mudarAba('meus')" class="flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold rounded-md transition-all shadow-sm bg-white text-slate-800 border border-slate-200">
+                Meus
+                <% if (meus.length > 0) { %>
+                    <span class="bg-blue-100 text-blue-600 px-1.5 rounded-full text-[9px] border border-blue-200"><%= meus.length %></span>
+                <% } %>
+            </button>
+
+            <button id="tab-fila" onclick="mudarAba('fila')" class="flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all">
+                Fila
+                <% if (fila.length > 0) { %>
+                    <span class="bg-slate-200 text-slate-600 px-1.5 rounded-full text-[9px]"><%= fila.length %></span>
+                <% } %>
+            </button>
+
+            <button onclick="abrirModalAtivo()" class="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold rounded-md text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all group" title="Iniciar Nova Conversa">
+                
+                <span class="hidden xl:inline">Mensagem Ativa</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto custom-scrollbar bg-white relative">
+        
+        <div id="lista-meus" class="animate-in fade-in duration-300">
+            <% if (meus.length === 0) { %>
+                <div id="empty-meus" class="flex flex-col items-center justify-center h-64 text-slate-300">
+                    <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                        <i class="fa-regular fa-comments text-2xl text-slate-300"></i>
+                    </div>
+                    <p class="text-xs font-medium">Nenhum atendimento em andamento.</p>
+                </div>
+            <% } %>
+
+            <% meus.forEach(ticket => { %>
+                <div onclick="abrirChat(<%= ticket.id %>)" class="ticket-card relative p-4 border-b border-slate-50 hover:bg-slate-50 transition cursor-pointer group flex gap-3" data-id="<%= ticket.id %>">
+                    
+                    <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0 border border-blue-100">
+                        <%= ticket.nome_contato.charAt(0) %>
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-start mb-1">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-sm leading-none"><%= ticket.nome_contato %></h3>
+                                <span class="inline-block mt-1 px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold bg-blue-50 text-blue-600 uppercase tracking-wide border border-blue-100">
+                                    Em Atendimento
+                                </span>
+                            </div>
+
+                            <div class="w-7 h-7 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-all shadow-sm">
+                                <i class="fa-regular fa-paper-plane text-[10px]"></i>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between mt-2">
+                            <div class="flex items-center gap-1.5 text-slate-400">
+                                <i class="fa-brands fa-whatsapp text-green-500 text-xs"></i>
+                                <span class="text-[11px] font-medium"><%= ticket.numero_whatsapp %></span>
+                            </div>
+                            
+                        </div>
+                        
+                        <p class="text-[10px] text-slate-400 mt-1 truncate group-hover:text-slate-500 transition-colors last-msg">
+                            <%= ticket.ultima_mensagem || '...' %>
+                        </p>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+
+        <div id="lista-fila" class="hidden animate-in fade-in duration-300 bg-slate-50/30 min-h-full">
+            <% if (fila.length === 0) { %>
+                <div class="flex flex-col items-center justify-center h-64 text-slate-300">
+                    <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                        <i class="fa-solid fa-inbox text-2xl text-slate-300"></i>
+                    </div>
+                    <p class="text-xs font-medium">Fila vazia.</p>
+                </div>
+            <% } %>
+
+            <% fila.forEach(ticket => { %>
+                <div class="ticket-card relative p-4 border-b border-slate-100 hover:bg-white transition group bg-white mx-2 my-2 rounded-lg shadow-sm border" data-id="<%= ticket.id %>">
+                    <div class="flex justify-between items-start">
+                        <div class="flex gap-3">
+                            <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs shrink-0">
+                                <%= ticket.nome_contato.charAt(0) %>
+                            </div>
+                            
+                            <div>
+                                <h3 class="font-bold text-slate-700 text-sm"><%= ticket.nome_contato %></h3>
+                                <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold bg-amber-50 text-amber-600 uppercase tracking-wide border border-amber-100">
+                                    Aguardando
+                                </span>
+                            </div>
+                        </div>
+
+                        <button onclick="assumirTicket(<%= ticket.id %>)" class="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition shadow-sm active:scale-95" title="Assumir Ticket">
+                            <i class="fa-solid fa-check text-xs"></i>
+                        </button>
+                    </div>
+
+                    <div class="mt-3 flex items-center gap-1.5 pl-1">
+                        <i class="fa-brands fa-whatsapp text-slate-300 text-xs"></i>
+                        <span class="text-[11px] text-slate-400 font-medium"><%= ticket.numero_whatsapp %></span>
+                    </div>
+                    
+                    <p class="text-[10px] text-slate-400 mt-2 pl-1 truncate border-l-2 border-slate-200 pl-2 italic">
+                        "<%= ticket.ultima_mensagem || 'Sem mensagem...' %>"
+                    </p>
+                </div>
+            <% }) %>
+        </div>
+
     </div>
 </div>
 
+<script>
+    function mudarAba(aba) {
+        const btnMeus = document.getElementById('tab-meus');
+        const btnFila = document.getElementById('tab-fila');
+        const listaMeus = document.getElementById('lista-meus');
+        const listaFila = document.getElementById('lista-fila');
 
-<div class="p-4 border-b border-slate-200">
-    <button onclick="abrirModalAtivo()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow flex items-center justify-center gap-2 transition">
-        <i class="fa-solid fa-plus-circle"></i>
-        Mensagem Ativa
-    </button>
-</div>
+        // Classes de estado ativo vs inativo
+        const activeClasses = ['bg-white', 'text-slate-800', 'shadow-sm', 'border', 'border-slate-200'];
+        const inactiveClasses = ['text-slate-500', 'hover:text-slate-700'];
 
-<div id="lista-meus" class="flex-1 overflow-y-auto custom-scrollbar">
-    <% if(meus.length === 0) { %>
-        <div id="empty-meus" class="p-8 text-center text-slate-400 text-sm">Nenhum atendimento ativo.</div>
-    <% } %>
-    <% meus.forEach(ticket => { %>
-        <div onclick="abrirChat(<%= ticket.id %>)" class="ticket-card cursor-pointer p-4 border-b border-slate-50 hover:bg-slate-50 transition flex gap-3 items-center group relative" data-id="<%= ticket.id %>">
-            <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg shrink-0">
-                <%= ticket.nome_contato.charAt(0) %>
-            </div>
-            <div class="flex-1 min-w-0">
-                <div class="flex justify-between">
-                    <h3 class="font-bold text-slate-800 text-sm truncate"><%= ticket.nome_contato %></h3>
-                    <span class="text-[10px] text-slate-400">Online</span>
-                </div>
-                <p class="text-xs text-slate-500 truncate last-msg"><%= ticket.ultima_mensagem || 'Clique para ver as mensagens...' %></p>
-            </div>
-        </div>
-    <% }) %>
-</div>
+        if (aba === 'meus') {
+            btnMeus.classList.add(...activeClasses);
+            btnMeus.classList.remove(...inactiveClasses);
+            
+            btnFila.classList.remove(...activeClasses);
+            btnFila.classList.add(...inactiveClasses);
 
-<div id="lista-fila" class="flex-1 overflow-y-auto hidden bg-slate-50/50 custom-scrollbar">
-    <% if(fila.length === 0) { %>
-        <div id="empty-fila" class="p-8 text-center text-slate-400 text-sm">Fila vazia. 🎉</div>
-    <% } %>
-    <% fila.forEach(ticket => { %>
-        <div class="ticket-card p-4 border-b border-slate-100 flex justify-between items-center bg-white mb-1" data-id="<%= ticket.id %>">
-            <div>
-                <h3 class="font-bold text-slate-700 text-sm"><%= ticket.nome_contato %></h3>
-                <p class="text-xs text-slate-400"><%= ticket.numero_whatsapp %></p>
-            </div>
-            <button onclick="assumirTicket(<%= ticket.id %>)" class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm">
-                Atender
-            </button>
-        </div>
-    <% }) %>
-</div>
+            listaMeus.classList.remove('hidden');
+            listaFila.classList.add('hidden');
+        } else {
+            btnFila.classList.add(...activeClasses);
+            btnFila.classList.remove(...inactiveClasses);
 
+            btnMeus.classList.remove(...activeClasses);
+            btnMeus.classList.add(...inactiveClasses);
+
+            listaFila.classList.remove('hidden');
+            listaMeus.classList.add('hidden');
+        }
+    }
+</script>

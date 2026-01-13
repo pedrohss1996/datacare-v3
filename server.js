@@ -23,12 +23,14 @@ app.set('io', io);
 
 // 4. Eventos Globais do Socket (Para debug)
 io.on('connection', (socket) => {
-    // console.log(`🔌 Cliente conectado: ${socket.id}`);
+    //console.log(`🔌 Cliente conectado: ${socket.id}`);
 
     // ESSENCIAL: Permite que o atendente receba as mensagens do ticket que ele abriu
     socket.on('join_ticket', (ticketId) => {
-        socket.join(ticketId.toString());
-        // console.log(`O socket ${socket.id} entrou na sala do ticket: ${ticketId}`);
+        if(ticketId) {
+            socket.join(ticketId.toString()); 
+            //console.log(`🔌 Socket ${socket.id} sintonizado no Ticket #${ticketId}`);
+        }
     });
 
     socket.on('disconnect', () => {

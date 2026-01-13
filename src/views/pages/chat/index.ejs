@@ -190,12 +190,46 @@
 </div>
 
 <script>
+
     // --- 1. CONFIGURAÇÃO GERAL E SOCKET ---
     const socket = io(); 
     let activeTicketId = null;
     const meuIdAtual = "<%= user ? user.id : '' %>"; 
 
     // --- FUNÇÕES UTILITÁRIAS (Helpers) ---
+
+    // Dicionário de atalhos do sistema
+    function monitorarAtalhos(event) {
+        const input = event.target;
+        const textoAtual = input.value;
+        
+        // Só dispara se apertou ESPAÇO (código 32) ou ENTER (código 13)
+        // O Enter já envia, então vamos focar no ESPAÇO para expansão
+        if (event.keyCode === 32) {
+            
+            // Pega a última palavra digitada antes do espaço
+            const palavras = textoAtual.trimEnd().split(' ');
+            const ultimaPalavra = palavras[palavras.length - 1];
+
+            // Verifica se existe no dicionário (case insensitive)
+            const chave = ultimaPalavra.toLowerCase();
+            
+            if (atalhosSistema[chave]) {
+                event.preventDefault(); // Evita o espaço extra desnecessário
+                
+                // Substitui o atalho pelo texto completo
+                // A lógica abaixo troca apenas a última ocorrência do atalho
+                const novoTexto = textoAtual.substring(0, textoAtual.lastIndexOf(ultimaPalavra)) + atalhosSistema[chave] + ' ';
+                
+                input.value = novoTexto;
+                
+                // Efeito visual (opcional)
+                input.classList.add('bg-blue-50');
+                setTimeout(() => input.classList.remove('bg-blue-50'), 200);
+            }
+        }
+    }
+
     
     // Formata a data (Ex: "14:30" ou "10/01 14:30")
     function formatarDataHora(dataString) {
@@ -235,60 +269,89 @@
         carregarUnidades();
 
         socket.on('connect', () => console.log('🟢 DataCare Socket Conectado:', socket.id));
-        
+
+        // ============================================================
+        // ⚡ SISTEMA DE RESPOSTAS RÁPIDAS (ATALHOS)
+        // ============================================================
+        const atalhosSistema = {
+            '#ola': 'Olá! Sou o atendente <%= user ? user.nome : "Virtual" %>. Como posso ajudar você hoje?',
+            '#marlon': 'Olá, aqui é o Marlon! Em que posso ser útil?',
+            '#endereco': '🏥 Estamos na Av. T-63, nº 1290 - Setor Bueno.',
+            '#pix': '💲 Chave PIX: 00.123.456/0001-99',
+            '#tarde': 'Boa tarde! Tudo bem com você?',
+            '#exame': 'Por favor, envie a foto do pedido médico e da carteirinha.'
+        };
+
+        const inputMsg = document.getElementById('input-msg');
+
+
+        if (inputMsg) {
+            // 1. OUVINTE PARA ATALHOS (Ao soltar a tecla ESPAÇO)
+            inputMsg.addEventListener('keyup', (e) => {
+                const texto = inputMsg.value;
+                const cursorPosition = inputMsg.selectionStart;
+
+                // Atalho com ESPAÇO
+                if (e.key === ' ' || e.code === 'Space') {
+                    const textoAteCursor = texto.substring(0, cursorPosition);
+                    const palavras = textoAteCursor.trimEnd().split(' ');
+                    const ultimaPalavra = palavras[palavras.length - 1].toLowerCase();
+
+                    if (atalhosSistema[ultimaPalavra]) {
+                        const expansao = atalhosSistema[ultimaPalavra];
+                        const inicioTexto = textoAteCursor.substring(0, textoAteCursor.lastIndexOf(ultimaPalavra));
+                        const restoTexto = texto.substring(cursorPosition);
+                        const novoTexto = inicioTexto + expansao + ' ' + restoTexto;
+                        
+                        inputMsg.value = novoTexto;
+                        
+                        const novaPosicaoCursor = (inicioTexto + expansao + ' ').length;
+                        inputMsg.setSelectionRange(novaPosicaoCursor, novaPosicaoCursor);
+
+                        inputMsg.classList.add('bg-blue-50');
+                        setTimeout(() => inputMsg.classList.remove('bg-blue-50'), 200);
+                    }
+                }
+            });
+
+            // 2. OUVINTE PARA ENVIAR (Ao apertar ENTER) - CORREÇÃO AQUI
+            inputMsg.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); // Impede pular linha se for input normal
+                    enviarMensagem();
+                }
+            });
+
+        } else {
+            console.warn("⚠️ Input de mensagem não encontrado.");
+        }
+        // ============================================================        
         // 1.1 OUVINTE: Novas mensagens (Real-time)
         socket.on('nova_mensagem', (data) => {
-            // Verifica se a mensagem é para o ticket aberto atual
-            if (data.ticket_id != ticketAtualId) return;
+            console.log("📩 Socket msg:", data); 
 
-            // 1. Cria o HTML baseado no TIPO
-            let htmlConteudo = '';
+            // 1. Filtro de Chat Ativo
+            if (!activeTicketId || data.ticket_id != activeTicketId) return;
 
-            if (data.tipo === 'imagem') {
-                htmlConteudo = `
-                    <a href="${data.conteudo}" target="_blank">
-                        <img src="${data.conteudo}" class="img-fluid rounded mt-2" style="max-width: 300px; border: 1px solid #ddd;">
-                    </a>`;
-            } 
-            else if (data.tipo === 'audio') {
-                htmlConteudo = `
-                    <div class="mt-2">
-                        <audio controls style="max-width: 280px;">
-                            <source src="${data.conteudo}" type="audio/ogg">
-                        </audio>
-                    </div>`;
-            } 
-            else if (data.tipo === 'arquivo' || data.tipo === 'document') {
-                htmlConteudo = `
-                    <a href="${data.conteudo}" target="_blank" class="btn btn-sm btn-outline-secondary mt-2">
-                        📄 Baixar Arquivo
-                    </a>`;
-            } 
-            else {
-                // Texto normal
-                htmlConteudo = `<span class="text-break">${data.conteudo}</span>`;
+            // 2. --- TRAVA ANTI-DUPLICIDADE ---
+            if (data.remetente === 'ATENDENTE') {
+                const agora = new Date().getTime();
+                const msgTime = new Date(data.criado_em).getTime();
+                
+                // Se a diferença for menor que 3000ms (3s), ignora
+                if ((agora - msgTime) < 3000) {
+                    console.log("🚫 Duplicidade evitada (UI Otimista já renderizou)");
+                    return; 
+                }
             }
+            // ---------------------------------
 
-            // 2. Monta a div da mensagem
-            const div = document.createElement('div');
-            // Ajuste as classes abaixo conforme seu CSS (ex: 'message-out' ou 'message-in')
-            const classeLado = data.remetente === 'ATENDENTE' ? 'justify-content-end' : 'justify-content-start';
-            const classeCor = data.remetente === 'ATENDENTE' ? 'bg-primary text-white' : 'bg-light text-dark';
+            // 3. Renderiza usando a função OFICIAL (que tem as cores certas)
+            renderizarMensagemNaTela(data);
             
-            div.className = `d-flex ${classeLado} mb-3`;
-            div.innerHTML = `
-                <div class="p-3 rounded shadow-sm ${classeCor}" style="max-width: 75%;">
-                    ${htmlConteudo}
-                    <small class="d-block text-end opacity-50 mt-1" style="font-size: 0.75rem;">
-                        ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                    </small>
-                </div>
-            `;
-
-            // 3. Adiciona na tela e rola para baixo
-            const chatContainer = document.getElementById('chat-messages'); // ID da sua div de lista
-            chatContainer.appendChild(div);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            // 4. Rola para baixo
+            const chatContainer = document.getElementById('chat-messages'); 
+            if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
         });
 
         // 1.2 OUVINTE: Novo ticket entrando na fila
@@ -296,7 +359,6 @@
             adicionarTicketAFila(ticket);
         });
 
-        
         
         // 1.3 OUVINTE: Movimentação de Ticket (Transbordo e Contato Ativo)
         socket.on('ticket_assumido_fila', (data) => {
@@ -324,20 +386,36 @@
                 // HTML DO NOVO CARD (Na aba Meus)
                 const novoCardHtml = `
                     <div onclick="abrirChat(${data.ticketId})" 
-                        class="ticket-card cursor-pointer p-4 border-b border-slate-50 hover:bg-slate-50 transition flex gap-3 items-center group relative animate-in fade-in" 
+                        class="ticket-card relative p-4 border-b border-slate-50 hover:bg-slate-50 transition cursor-pointer group flex gap-3 animate-in fade-in slide-in-from-left duration-300" 
                         data-id="${data.ticketId}">
                         
-                        <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg shrink-0">
+                        <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0 border border-blue-100">
                             ${iniciais}
                         </div>
-                        
+
                         <div class="flex-1 min-w-0">
-                            <div class="flex justify-between">
-                                <h3 class="font-bold text-slate-800 text-sm truncate">${nome}</h3>
-                                <span class="text-[10px] text-slate-400">Online</span>
+                            <div class="flex justify-between items-start mb-1">
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-sm leading-none">${nome}</h3>
+                                    <span class="inline-block mt-1 px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold bg-blue-50 text-blue-600 uppercase tracking-wide border border-blue-100">
+                                        Em Atendimento
+                                    </span>
+                                </div>
+
+                                <div class="w-7 h-7 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center shadow-sm">
+                                    <i class="fa-regular fa-paper-plane text-[10px]"></i>
+                                </div>
                             </div>
-                            <p class="text-xs text-slate-500 truncate last-msg">
-                                ${data.ultima_mensagem || 'Conversa iniciada...'}
+
+                            <div class="flex items-center justify-between mt-2">
+                                <div class="flex items-center gap-1.5 text-slate-400">
+                                    <i class="fa-brands fa-whatsapp text-green-500 text-xs"></i>
+                                    <span class="text-[11px] font-medium">Online</span>
+                                </div>
+                            </div>
+                            
+                            <p class="text-[10px] text-slate-400 mt-1 truncate last-msg font-medium text-slate-600">
+                                ${data.ultima_mensagem || 'Iniciando conversa...'}
                             </p>
                         </div>
                     </div>
@@ -392,16 +470,6 @@
 
     // --- 2. FUNÇÕES DE UI (DOM) ---
 
-    function mudarAba(aba) {
-        const isMeus = aba === 'meus';
-        document.getElementById('lista-meus').classList.toggle('hidden', !isMeus);
-        document.getElementById('lista-fila').classList.toggle('hidden', isMeus);
-        
-        document.getElementById('tab-meus').classList.toggle('bg-white', isMeus);
-        document.getElementById('tab-meus').classList.toggle('shadow', isMeus);
-        document.getElementById('tab-fila').classList.toggle('bg-white', !isMeus);
-        document.getElementById('tab-fila').classList.toggle('shadow', !isMeus);
-    }
 
     function atualizarContadoresUI() {
         const qtdFila = document.querySelectorAll('#lista-fila .ticket-card').length;
@@ -409,72 +477,57 @@
         if (badgeFila) badgeFila.innerText = qtdFila;
     }
 
-    // ✅ RENDERIZADOR AVANÇADO (CORRIGIDO PARA MÍDIA)
+    // ✅ RENDERIZADOR VISUAL (CORRIGIDO E DEFINITIVO)
     function renderizarMensagemNaTela(msg) {
         const container = document.getElementById('chat-messages');
         if (!container) return;
         
-        // Limpa mensagens de "carregando" ou "vazio"
+        // Remove avisos de vazio
         if (container.innerText.includes('Carregando') || container.innerText.includes('Inicie')) container.innerHTML = '';
 
+        // Verifica se sou EU (Atendente)
         const isMe = msg.remetente === 'ATENDENTE';
-        // Garante que pega o conteudo certo
+        
         const rawConteudo = msg.conteudo || msg.texto; 
         const horaFormatada = formatarDataHora(msg.criado_em || new Date());
 
-        // -----------------------------------------------------------
-        // 1. LÓGICA DE MÍDIA (DECIDE O HTML COM BASE NO TIPO)
-        // -----------------------------------------------------------
-        let conteudoHtml = '';
+        // --- DEFINIÇÃO DE CORES ---
+        const alignClass = isMe ? 'justify-end' : 'justify-start';
+        // Atendente: Azul Escuro | Paciente: Branco
+        const bgClass = isMe ? 'bg-blue-600 text-white' : 'bg-white text-slate-800 border border-slate-200';
+        const borderClass = isMe ? 'rounded-tr-none' : 'rounded-tl-none';
+        const checkColor = isMe ? 'text-blue-200' : 'text-blue-500';
 
+        // Lógica de Mídia
+        let conteudoHtml = '';
         if (msg.tipo === 'imagem') {
-            conteudoHtml = `
-                <a href="${rawConteudo}" target="_blank">
-                    <img src="${rawConteudo}" class="img-fluid rounded-lg mt-1 mb-1 border border-slate-200" style="max-width: 100%; max-height: 300px; object-fit: cover;">
-                </a>`;
-        } 
-        else if (msg.tipo === 'audio') {
-            conteudoHtml = `
-                <div class="mt-2 mb-1 flex items-center gap-2">
-                    <div class="bg-slate-200 rounded-full p-2 text-slate-500"><i class="fa-solid fa-microphone"></i></div>
-                    <audio controls style="max-width: 220px; height: 32px;">
-                        <source src="${rawConteudo}" type="audio/ogg">
-                        <source src="${rawConteudo}" type="audio/mpeg">
-                        Seu navegador não suporta áudio.
-                    </audio>
-                </div>`;
-        } 
-        else if (msg.tipo === 'arquivo' || msg.tipo === 'document') {
-            conteudoHtml = `
-                <a href="${rawConteudo}" target="_blank" class="flex items-center gap-3 bg-white/50 p-2 rounded border border-slate-200/50 hover:bg-white transition mt-1">
-                    <div class="bg-red-100 text-red-500 p-2 rounded"><i class="fa-solid fa-file-pdf"></i></div>
-                    <span class="text-xs font-bold underline">Baixar Arquivo</span>
-                </a>`;
-        } 
-        else {
-            // TEXTO NORMAL (Com suporte a quebra de linha)
+            conteudoHtml = `<a href="${rawConteudo}" target="_blank"><img src="${rawConteudo}" class="img-fluid rounded mt-1 bg-white p-1" style="max-width: 250px;"></a>`;
+        } else if (msg.tipo === 'audio') {
+            const audioBg = isMe ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500';
+            conteudoHtml = `<div class="mt-1 flex items-center gap-2"><div class="${audioBg} rounded-full p-2"><i class="fa-solid fa-microphone"></i></div><audio controls style="max-width: 220px; height: 32px;"><source src="${rawConteudo}" type="audio/ogg"></audio></div>`;
+        } else if (msg.tipo === 'arquivo') {
+            const fileBg = isMe ? 'bg-white/20 border-white/20' : 'bg-slate-50 border-slate-200';
+            conteudoHtml = `<a href="${rawConteudo}" target="_blank" class="flex items-center gap-2 ${fileBg} p-2 rounded border transition mt-1"><i class="fa-solid fa-file-pdf text-red-500"></i><span class="text-xs font-bold underline">Baixar Arquivo</span></a>`;
+        } else {
             conteudoHtml = `<p class="text-sm whitespace-pre-wrap leading-relaxed">${rawConteudo}</p>`;
         }
 
-        // -----------------------------------------------------------
-        // 2. MONTAGEM FINAL DO BALÃO
-        // -----------------------------------------------------------
+        // HTML FINAL DO BALÃO
         const htmlMsg = `
-            <div class="flex ${isMe ? 'justify-end' : 'justify-start'} mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div class="max-w-[70%] ${isMe ? 'bg-green-100 text-slate-800 rounded-tl-lg rounded-tr-none rounded-br-lg rounded-bl-lg' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none rounded-tr-lg rounded-br-lg rounded-bl-lg'} p-3 shadow-sm relative group">
-                    
+            <div class="flex ${alignClass} mb-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                <div class="max-w-[75%] ${bgClass} rounded-2xl ${borderClass} px-4 py-2 shadow-sm relative group">
                     ${conteudoHtml}
-                    
-                    <div class="flex items-center justify-end gap-1 mt-1 opacity-70">
-                        <span class="text-[10px] text-slate-500 font-medium">${horaFormatada}</span>
-                        ${isMe ? '<i class="fa-solid fa-check-double text-[10px] text-blue-500"></i>' : ''}
+                    <div class="flex items-center justify-end gap-1 mt-1 opacity-80">
+                        <span class="text-[10px] font-medium ${isMe ? 'text-blue-100' : 'text-slate-400'}">${horaFormatada}</span>
+                        ${isMe ? `<i class="fa-solid fa-check-double text-[10px] ${checkColor}"></i>` : ''}
                     </div>
-                    
-                    <div class="absolute top-0 ${isMe ? '-right-2 border-l-green-100' : '-left-2 border-r-white'} w-0 h-0 border-t-[10px] border-t-transparent border-b-[0px] border-b-transparent ${isMe ? 'border-l-[10px]' : 'border-r-[10px]'}"></div>
                 </div>
             </div>`;
             
         container.insertAdjacentHTML('beforeend', htmlMsg);
+        
+        // 👇 AQUI ESTÁ A MÁGICA: CHAMA SUA FUNÇÃO
+        rolarParaBaixo();
     }
 
     // --- 3. LÓGICA DE NEGÓCIO (API CALLS) ---
@@ -605,42 +658,99 @@
     async function enviarMensagem() {
         const input = document.getElementById('input-msg');
         const conteudo = input.value.trim();
+        
         if (!conteudo || !activeTicketId) return;
-        input.value = ''; input.focus();
+        
+        // 1. Limpa e Foca
+        input.value = ''; 
+        input.focus();
 
+        // 2. UI Otimista (Chat Central)
+        renderizarMensagemNaTela({
+            remetente: 'ATENDENTE', // Isso garante que o balão fique azul/verde
+            tipo: 'texto',
+            conteudo: conteudo,
+            criado_em: new Date()
+        });
+
+        // 3. UI Otimista (Lista Lateral)
+        const cardLateral = document.querySelector(`.ticket-card[data-id="${activeTicketId}"]`);
+        if (cardLateral) {
+            // Atualiza o texto
+            const lastMsgEl = cardLateral.querySelector('.last-msg');
+            if (lastMsgEl) {
+                lastMsgEl.innerText = `Você: ${conteudo}`;
+                lastMsgEl.classList.add('font-bold', 'text-slate-800');
+            }
+            // Move para o topo
+            const listaMeus = document.getElementById('lista-meus');
+            if(listaMeus) listaMeus.prepend(cardLateral);
+        }
+
+        // 4. Envio Backend
         try {
-            // Renderiza imediatamente (Otimista)
-            // renderizarMensagemNaTela({ remetente: 'ATENDENTE', conteudo: conteudo, criado_em: new Date() });
-            // rolarParaBaixo();
-            
             await fetch('/api/chat/enviar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ticketId: activeTicketId, conteudo: conteudo })
             });
-        } catch (e) { console.error("Erro ao enviar mensagem", e); }
+        } catch (e) { console.error(e); }
     }
 
     function handleEnter(e) { if (e.key === 'Enter') enviarMensagem(); }
 
     function adicionarTicketAFila(ticket) {
         const containerFila = document.getElementById('lista-fila');
-        if (containerFila) {
-            if (containerFila.innerText.includes('vazia')) containerFila.innerHTML = '';
-            const cardHtml = `
-                <div class="ticket-card p-4 border-b border-slate-100 flex justify-between items-center bg-white mb-1 animate-in slide-in-from-left" data-id="${ticket.id}">
-                    <div>
-                        <h3 class="font-bold text-slate-700 text-sm">${ticket.nome_contato}</h3>
-                        <p class="text-xs text-slate-400">${ticket.numero_whatsapp}</p>
+        
+        // Remove msg de "vazia" se houver
+        const emptyMsg = document.getElementById('empty-fila'); // Caso tenha ID no empty
+        if (containerFila && containerFila.innerText.includes('vazia')) containerFila.innerHTML = '';
+        
+        // Tratamento de Iniciais
+        const nome = ticket.nome_contato || 'Paciente';
+        const iniciais = nome.charAt(0).toUpperCase();
+
+        // HTML NOVO (Estilo Healthtech Fila)
+        const cardHtml = `
+            <div class="ticket-card relative p-4 border-b border-slate-100 hover:bg-white transition group bg-white mx-2 my-2 rounded-lg shadow-sm border animate-in slide-in-from-left duration-300" data-id="${ticket.id}">
+                <div class="flex justify-between items-start">
+                    <div class="flex gap-3">
+                        <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs shrink-0">
+                            ${iniciais}
+                        </div>
+                        
+                        <div>
+                            <h3 class="font-bold text-slate-700 text-sm">${nome}</h3>
+                            <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold bg-amber-50 text-amber-600 uppercase tracking-wide border border-amber-100">
+                                Aguardando
+                            </span>
+                        </div>
                     </div>
-                    <button onclick="assumirTicket(${ticket.id})" class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-bold transition active:scale-95">
-                        Atender
+
+                    <button onclick="assumirTicket(${ticket.id})" class="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition shadow-sm active:scale-95" title="Assumir Ticket">
+                        <i class="fa-solid fa-check text-xs"></i>
                     </button>
-                </div>`;
+                </div>
+
+                <div class="mt-3 flex items-center gap-1.5 pl-1">
+                    <i class="fa-brands fa-whatsapp text-slate-300 text-xs"></i>
+                    <span class="text-[11px] text-slate-400 font-medium">${ticket.numero_whatsapp}</span>
+                </div>
+                
+                <p class="text-[10px] text-slate-400 mt-2 pl-1 truncate border-l-2 border-slate-200 pl-2 italic">
+                    "${ticket.ultima_mensagem || 'Nova mensagem...'}"
+                </p>
+            </div>`;
+
+        if (containerFila) {
             containerFila.insertAdjacentHTML('afterbegin', cardHtml);
             atualizarContadoresUI();
         }
-        Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Novo Paciente na Fila', showConfirmButton: false, timer: 3000 });
+        
+        Swal.fire({ 
+            toast: true, position: 'top-end', icon: 'info', 
+            title: 'Novo Paciente na Fila', showConfirmButton: false, timer: 3000 
+        });
     }
 
     // --- 4. INTEGRAÇÃO TASY (Agenda) ---
