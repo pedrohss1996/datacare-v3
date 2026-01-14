@@ -17,16 +17,16 @@
             
             <button id="tab-meus" onclick="mudarAba('meus')" class="flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold rounded-md transition-all shadow-sm bg-white text-slate-800 border border-slate-200">
                 Meus
-                <% if (meus.length > 0) { %>
-                    <span class="bg-blue-100 text-blue-600 px-1.5 rounded-full text-[9px] border border-blue-200"><%= meus.length %></span>
-                <% } %>
+                <span id="count-meus" class="bg-blue-100 text-blue-600 px-1.5 rounded-full text-[9px] border border-blue-200 <%= meus.length > 0 ? '' : 'hidden' %>">
+                    <%= meus.length %>
+                </span>
             </button>
 
             <button id="tab-fila" onclick="mudarAba('fila')" class="flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all">
                 Fila
-                <% if (fila.length > 0) { %>
-                    <span class="bg-slate-200 text-slate-600 px-1.5 rounded-full text-[9px]"><%= fila.length %></span>
-                <% } %>
+                <span id="count-fila" class="bg-slate-200 text-slate-600 px-1.5 rounded-full text-[9px] <%= fila.length > 0 ? '' : 'hidden' %>">
+                    <%= fila.length %>
+                </span>
             </button>
 
             <button onclick="abrirModalAtivo()" class="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-bold rounded-md text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all group" title="Iniciar Nova Conversa">

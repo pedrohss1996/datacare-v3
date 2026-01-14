@@ -245,6 +245,9 @@ async function finalizarAtendimento() {
                 if(card) card.remove();
                 
                 activeTicketId = null;
+
+                atualizarContadoresUI();
+
                 Swal.fire('Finalizado!', 'Atendimento encerrado.', 'success');
             }
         } catch (e) {
@@ -357,9 +360,34 @@ function adicionarTicketAFila(ticket) {
 }
 
 function atualizarContadoresUI() {
+    // --- Lógica da Fila ---
     const qtdFila = document.querySelectorAll('#lista-fila .ticket-card').length;
-    const badgeFila = document.getElementById('count-fila');
-    if (badgeFila) badgeFila.innerText = qtdFila;
+    const badgeFila = document.getElementById('count-fila'); // O JS busca esse ID aqui!
+    if (badgeFila) {
+        badgeFila.innerText = qtdFila;
+        
+        if (qtdFila === 0) {
+            badgeFila.classList.add('hidden');
+        } else {
+            badgeFila.classList.remove('hidden');
+        }
+    }
+
+    // --- Lógica dos Meus Tickets (CORREÇÃO) ---
+    const qtdMeus = document.querySelectorAll('#lista-meus .ticket-card').length;
+    const badgeMeus = document.getElementById('count-meus');
+    
+    if (badgeMeus) {
+        badgeMeus.innerText = qtdMeus;
+        
+        // Se for 0, adiciona a classe 'hidden' (some visualmente)
+        // Se for > 0, remove a classe 'hidden' (aparece)
+        if (qtdMeus === 0) {
+            badgeMeus.classList.add('hidden');
+        } else {
+            badgeMeus.classList.remove('hidden');
+        }
+    }
 }
 
 // ==========================================
