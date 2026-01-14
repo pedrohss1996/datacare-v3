@@ -1,10 +1,13 @@
+const jwt = require('jsonwebtoken');
+const ldap = require('ldapjs');
 const db = require('../infra/database/connection');
-const bcrypt = require('bcryptjs');
+require('dotenv').config();
 
 module.exports = {
-    // Exibe a tela de login
     renderizarLogin: (req, res) => {
-        if (req.session.user) return res.redirect('/'); // Já está logado
+        if (req.session && req.session.user && req.session.user.token) {
+            return res.redirect('/');
+        }
         res.render('pages/auth/login', {
             title: 'Login - DataCare',
             layout: 'layouts/auth',
@@ -12,72 +15,110 @@ module.exports = {
         });
     },
 
-    // Processa o login
     login: async (req, res) => {
-        const { usuario, senha } = req.body;
+        let { usuario, senha } = req.body;
+
+        // Limpeza básica: se o usuário digitou o email completo, removemos o dominio
+        // para usar apenas o uid na montagem do DN LDAP.
+        if (usuario.includes('@')) {
+            usuario = usuario.split('@')[0];
+        }
+
+        const client = ldap.createClient({
+            url: process.env.LDAP_URL,
+            timeout: 5000,
+            connectTimeout: 5000
+        });
+
+        client.on('error', (err) => console.error('LDAP Client Error:', err.message));
+
+        // --- DEFINIÇÃO DAS BASES POSSÍVEIS ---
+        // Vamos tentar autenticar nestes caminhos, em ordem.
+        const dnMappings = [
+            // 1. Tenta na Intranet (intranet.arh.com.br)
+            `uid=${usuario},ou=people,dc=intranet,dc=arh,dc=com,dc=br`,
+            
+            // 2. Tenta na Raiz (arh.com.br) - O que validamos no teste anterior
+            `uid=${usuario},ou=people,dc=arh,dc=com,dc=br`
+        ];
+
+        // Função auxiliar para tentar o Bind em uma lista de DNs
+        const tentarAutenticacao = async () => {
+            // Percorre todas as possibilidades de DN
+            for (const dn of dnMappings) {
+                try {
+                    console.log(`--- Tentando autenticar em: ${dn} ---`);
+                    
+                    await new Promise((resolve, reject) => {
+                        client.bind(dn, senha, (err) => {
+                            if (err) return reject(err);
+                            resolve(true);
+                        });
+                    });
+                    
+                    // Se chegou aqui, é sucesso!
+                    console.log('✅ SUCESSO! Login validado no DN:', dn);
+                    return true; 
+
+                } catch (error) {
+                    // Apenas loga que falhou neste domínio, mas NÃO joga o erro pra fora.
+                    // O loop vai continuar para a próxima tentativa.
+                    console.log(`❌ Falha na tentativa (${dn}): ${error.message}`);
+                }
+            }
+
+            // Se o loop terminou e a função não retornou "true", então falhou em todos.
+            throw new Error('Credenciais inválidas em todos os domínios configurados.');
+        };
 
         try {
-            // 1. Busca o usuário no banco (pelo login)
-            const userEncontrado = await db('usuarios')
-                .where({ nm_usuario: usuario }) // Ajuste se sua coluna for outra (ex: ds_login)
-                .first();
+            // 1. Executa a cascata de tentativas LDAP
+            await tentarAutenticacao();
+            client.unbind();
 
-            // 2. Se não achar usuário
-            if (!userEncontrado) {
+            // 2. Login LDAP OK -> Busca dados no DataCare (Banco SQL)
+            // Aqui usamos o login limpo (sem @dominio) para buscar
+            const userDb = await db('usuarios').where({ nm_usuario: usuario }).first();
+
+            if (!userDb) {
                 return res.render('pages/auth/login', {
                     title: 'Login - DataCare',
                     layout: 'layouts/auth',
-                    erro: 'Usuário ou senha incorretos.'
+                    erro: 'Usuário autenticado na rede, mas sem cadastro no DataCare.'
                 });
             }
 
-            // 3. Verifica a senha (Bcrypt)
-            // userEncontrado.ds_senha deve ser o hash que salvamos no cadastro
-            const senhaBate = await bcrypt.compare(senha, userEncontrado.ds_senha);
+            // 3. Gera Token
+            const token = jwt.sign({
+                id: userDb.cd_usuario,
+                username: userDb.ds_usuario,
+                role: 'TI' // Placeholder
+            }, process.env.JWT_SECRET, { expiresIn: '8h' });
 
-            if (!senhaBate) {
-                return res.render('pages/auth/login', {
-                    title: 'Login - DataCare',
-                    layout: 'layouts/auth',
-                    erro: 'Usuário ou senha incorretos.'
-                });
-            }
-
-            // 4. Login Sucesso: Salva na sessão
-            // Pegamos o nome real da pessoa fazendo um join se necessário, 
-            // mas por enquanto vamos usar o ds_usuario que salvamos na tabela usuarios
             req.session.user = {
-                id: userEncontrado.cd_usuario,
-                name: userEncontrado.ds_usuario, // Nome exibido na tela
-                role: 'TI' // Placeholder: depois pegamos do perfil real
+                id: userDb.cd_usuario,
+                name: userDb.nm_usuario || userDb.ds_usuario || 'Usuário',
+                token: token
             };
 
-            // Redireciona para a Home
-            res.redirect('/');
+            return res.redirect('/');
 
-        } catch (erro) {
-            console.error(erro);
-            res.render('pages/auth/login', {
+        } catch (error) {
+            try { client.unbind(); } catch(e) {}
+            
+            console.error('Falha Auth:', error.message);
+            
+            return res.render('pages/auth/login', {
                 title: 'Login - DataCare',
                 layout: 'layouts/auth',
-                erro: 'Erro interno ao tentar logar.'
+                erro: 'Usuário ou senha incorretos.'
             });
         }
     },
 
-    // Faz logout
     logout: (req, res) => {
-        // Destrói a sessão no servidor
-        req.session.destroy((err) => {
-            if (err) {
-                console.error('Erro ao destruir sessão:', err);
-            }
-            
-            // Opcional: Limpa o cookie no navegador explicitamente
-            // O nome padrão do cookie do express-session é 'connect.sid'
-            res.clearCookie('connect.sid'); 
-
-            // Redireciona para o login
+        req.session.destroy(() => {
+            res.clearCookie('connect.sid');
             res.redirect('/login');
         });
     }

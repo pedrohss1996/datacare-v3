@@ -1,14 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const authMiddleware = require('../middlewares/authMiddleware.js'); // O arquivo novo
 
-// Rota GET: Tela de Login
+// Rotas Públicas (Não usa middleware)
 router.get('/login', authController.renderizarLogin);
-
-// Rota POST: Processar Login
 router.post('/login', authController.login);
-
-// Rota GET: Logout
 router.get('/logout', authController.logout);
+
+// Rotas Protegidas (SaaS DataCare)
+// Todas as rotas abaixo desta linha exigirão Token JWT válido
+router.use(authMiddleware); 
+
+router.get('/', (req, res) => {
+    // req.user está disponível aqui graças ao middleware
+    res.render('pages/index', { user: req.user });
+});
 
 module.exports = router;

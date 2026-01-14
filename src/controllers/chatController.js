@@ -248,52 +248,49 @@ module.exports = {
     // 🪝 WEBHOOK: VERSÃO CAÇADORA DE TICKETS (CORRIGIDA)
     // =================================================================
 
-
     webhook: async (req, res) => {
         try {
             const body = req.body;
             
-            // 1. IGNORAR STATUS DE LEITURA E ENTREGAS (O segundo log que você mandou)
-            // Se for MessageStatusCallback ou DeliveryCallback, a gente ignora.
+            // 1. IGNORAR STATUS (Entregue, Lido, etc)
             if (body.type === 'MessageStatusCallback' || body.type === 'DeliveryCallback') {
                 return res.status(200).send('Status Ignorado');
             }
 
             // 2. Extração de Dados
-            const { isGroup, phone, senderName } = body;
+            // O campo 'fromMe' indica se foi enviado pelo seu celular
+            const { isGroup, phone, senderName, fromMe } = body;
             
             if (isGroup) return res.status(200).send('Ignorado (Grupo)');
 
-            // Definição do Conteúdo e Tipo Interno
+            // Definição do Remetente e Contador
+            const quemEnviou = fromMe ? 'ATENDENTE' : 'PACIENTE';
+            const incrementoNaoLidas = fromMe ? 0 : 1; // Se fui eu, não aumenta não lidas
+
+            // -------------------------------------------------------------
+            // DETECÇÃO DE TIPO (TEXTO, IMAGEM, AUDIO...)
+            // -------------------------------------------------------------
             let textoMensagem = '';
             let tipoInterno = 'texto';
             let urlMidiaParaBaixar = null;
-            let tipoZapi = 'text'; // Para passar pro downloader
+            let tipoZapi = 'text';
 
-            // -------------------------------------------------------------
-            // 🕵️‍♂️ DETECÇÃO ROBUSTA DE TIPO (CORRIGIDA)
-            // -------------------------------------------------------------
-            
-            // Se tiver objeto 'text'
             if (body.text) {
                 tipoInterno = 'texto';
                 textoMensagem = body.text.message || '';
             } 
-            // Se tiver objeto 'image' (AQUI ESTAVA O PULO DO GATO)
             else if (body.image) {
                 tipoInterno = 'imagem';
                 tipoZapi = 'image';
                 textoMensagem = body.image.caption || '📷 [Imagem]'; 
                 urlMidiaParaBaixar = body.image.imageUrl;
             }
-            // Se tiver objeto 'audio'
             else if (body.audio) {
                 tipoInterno = 'audio';
                 tipoZapi = 'audio';
                 textoMensagem = '🎤 [Áudio]';
                 urlMidiaParaBaixar = body.audio.audioUrl;
             }
-            // Se tiver objeto 'document'
             else if (body.document) {
                 tipoInterno = 'arquivo';
                 tipoZapi = 'document';
@@ -301,38 +298,33 @@ module.exports = {
                 urlMidiaParaBaixar = body.document.documentUrl;
             }
             else {
-                // Se não for nenhum dos acima, ignora
-                console.log("Tipo desconhecido ou não tratado:", body.type);
-                return res.status(200).send('Ignorado');
+                return res.status(200).send('Tipo ignorado');
             }
 
             // -------------------------------------------------------------
-            // LÓGICA DE DOWNLOAD (Se for mídia)
+            // DOWNLOAD DE MÍDIA (SE HOUVER)
             // -------------------------------------------------------------
             let conteudoFinal = textoMensagem;
-            
             if (urlMidiaParaBaixar) {
-                console.log(`📥 Baixando mídia (${tipoInterno}). URL: ${urlMidiaParaBaixar}`);
-                
-                // Chama nossa função utilitária
+                // Se foi enviado pelo celular, talvez não precise baixar, mas vamos baixar para garantir o histórico
                 const caminhoLocal = await baixarMidia(urlMidiaParaBaixar, tipoZapi);
-                
                 if (caminhoLocal) {
-                    conteudoFinal = caminhoLocal; // Salva /uploads/xxxx.jpg no banco
+                    conteudoFinal = caminhoLocal;
                 } else {
-                    conteudoFinal = "❌ Erro ao baixar mídia.";
-                    tipoInterno = 'texto'; 
+                    tipoInterno = 'texto';
+                    conteudoFinal = `Erro ao baixar mídia: ${textoMensagem}`;
                 }
             }
 
             // -------------------------------------------------------------
-            // O RESTO CONTINUA IGUAL (Busca de Ticket, Save no Banco, etc)
+            // BUSCA OU CRIA TICKET
             // -------------------------------------------------------------
             const raw = phone.toString().replace(/\D/g, ''); 
             const normalized = normalizarTelefone(raw);      
             const withoutDDI = normalized.replace(/^55/, ''); 
             const possiveisNumeros = [...new Set([raw, normalized, withoutDDI])]; 
 
+            // Busca ticket aberto
             let ticket = await db('chat_tickets')
                 .whereIn('numero_whatsapp', possiveisNumeros)
                 .whereIn('status', ['FILA', 'ATENDIMENTO'])
@@ -344,12 +336,14 @@ module.exports = {
                 let ehNovoTicket = false;
 
                 if (!ticket) {
+                    // Se a mensagem veio DO CELULAR e não tem ticket, cria um ticket novo na FILA ou já ATENDIDO?
+                    // Padrão: Cria na FILA para ser registrado
                     const [novoId] = await trx('chat_tickets').insert({
                         numero_whatsapp: normalized,
                         nome_contato: senderName || normalized,
                         status: 'FILA',
-                        ultima_mensagem: tipoInterno === 'texto' ? textoMensagem : `[${tipoInterno.toUpperCase()}]`,
-                        nao_lidas: 1,
+                        ultima_mensagem: fromMe ? `Você: ${textoMensagem}` : textoMensagem,
+                        nao_lidas: incrementoNaoLidas,
                         criado_em: new Date(),
                         atualizado_em: new Date()
                     }).returning('id');
@@ -358,16 +352,20 @@ module.exports = {
                     ticket = await trx('chat_tickets').where('id', idFinal).first();
                     ehNovoTicket = true;
                 } else {
+                    // Atualiza ticket existente
                     await trx('chat_tickets').where('id', ticket.id).update({
-                        ultima_mensagem: tipoInterno === 'texto' ? textoMensagem : `[${tipoInterno.toUpperCase()}]`,
-                        nao_lidas: ticket.nao_lidas + 1,
+                        ultima_mensagem: fromMe ? `Você: ${textoMensagem}` : textoMensagem,
+                        nao_lidas: ticket.nao_lidas + incrementoNaoLidas,
                         atualizado_em: new Date()
                     });
+                    // Recarrega dados atualizados
+                    ticket.nao_lidas += incrementoNaoLidas; 
                 }
 
+                // Insere Mensagem com o REMETENTE CORRETO
                 const [msgDb] = await trx('chat_mensagens').insert({
                     ticket_id: ticket.id,
-                    remetente: 'PACIENTE',
+                    remetente: quemEnviou, // <--- AQUI ESTAVA O PROBLEMA (Estava fixo 'PACIENTE')
                     tipo: tipoInterno,
                     conteudo: conteudoFinal,
                     criado_em: new Date()
@@ -375,25 +373,34 @@ module.exports = {
 
                 await trx.commit();
 
-                // SOCKETS
+                // -------------------------------------------------------------
+                // SOCKETS (REALTIME)
+                // -------------------------------------------------------------
                 const payloadSocket = { ...msgDb };
+                
+                // Se fui EU que enviei pelo celular, reseta o contador visualmente se eu estiver com o chat aberto?
+                // A lógica abaixo garante que quem estiver com o chat aberto veja a mensagem (azul ou branca)
                 
                 if (ehNovoTicket) {
                     req.io.emit('novo_ticket_fila', ticket);
                 } else {
                     if (ticket.status === 'ATENDIMENTO') {
+                        // Envia para a sala do ticket
                         req.io.to(ticket.id.toString()).emit('nova_mensagem', payloadSocket);
+                        
+                        // Atualiza lista lateral
                         req.io.emit('atualizar_lista_meus', {
                             ticketId: ticket.id,
-                            msg: tipoInterno === 'texto' ? textoMensagem : `📎 ${tipoInterno}`,
-                            nao_lidas: ticket.nao_lidas + 1
+                            msg: fromMe ? `Você: ${textoMensagem}` : textoMensagem,
+                            nao_lidas: ticket.nao_lidas
                         });
                     } else {
+                        // Se está na fila e chegou msg nova, atualiza contador da fila
                         req.io.emit('novo_ticket_fila', ticket);
                     }
                 }
 
-                res.status(200).send('Recebido Mídia');
+                res.status(200).send('Recebido e Sincronizado');
 
             } catch (errorTrx) {
                 await trx.rollback();
@@ -403,10 +410,9 @@ module.exports = {
 
         } catch (error) {
             console.error("❌ Erro Geral Webhook:", error);
-            res.status(200).send('Erro processado');
+            res.status(200).send('Erro processado'); // Retorna 200 pro Z-API não ficar tentando reenviar
         }
     },
-
 
     // =================================================================
     // 📞 INICIAR CONTATO ATIVO (ATUALIZADO)

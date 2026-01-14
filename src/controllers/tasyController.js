@@ -79,36 +79,78 @@ module.exports = {
         }
     },
 
-    // 4. DROPDOWN 4: RECURSOS (MÉDICOS)
+    // 4. DROPDOWN 4: RECURSOS (MÉDICOS) - *** ATUALIZADO ***
     listarRecursos: async (req, res) => {
         try {
             const { tipo, especialidade, convenio } = req.query; 
 
             let sql = `
-                SELECT DISTINCT
-                    CD_AGENDA AS CD_AGENDA,
-                    DS_AGENDA AS DS_AGENDA
-                FROM DC_CHAT_AGENDAS
-                WHERE 1=1 
+                    SELECT DISTINCT
+                        CD_AGENDA AS CD_AGENDA,
+                        DS_AGENDA AS DS_AGENDA
+                    FROM DC_CHAT_AGENDAS
+                    WHERE 1=1 
             `;
 
             const bindings = {};
 
+            // Filtro simples de Tipo
             if (tipo) {
                 sql += ` AND CD_TIPO = :tipo `;
                 bindings.tipo = tipo;
             }
 
+            // Lógica Especialidade: (Existe na regra com essa Esp) OR (Não tem regra nenhuma de Esp)
             if (especialidade) {
-                sql += ` AND CD_ESPECIALIDADE = :especialidade `;
+                sql += ` 
+                    AND (
+                        EXISTS (
+                            SELECT 1 
+                            FROM (
+                                SELECT CD_AGENDA, CD_ESPECIALIDADE FROM agenda_cons_especialidade
+                                UNION ALL
+                                SELECT CD_AGENDA, CD_ESPECIALIDADE FROM agenda WHERE CD_ESPECIALIDADE IS NOT NULL AND CD_TIPO_AGENDA = 3
+                            ) R
+                            WHERE R.CD_AGENDA = DC_CHAT_AGENDAS.CD_AGENDA
+                            AND R.CD_ESPECIALIDADE = :especialidade
+                        )
+                        OR
+                        NOT EXISTS (
+                            SELECT 1 
+                            FROM (
+                                SELECT CD_AGENDA, CD_ESPECIALIDADE FROM agenda_cons_especialidade
+                                UNION ALL
+                                SELECT CD_AGENDA, CD_ESPECIALIDADE FROM agenda WHERE CD_ESPECIALIDADE IS NOT NULL AND CD_TIPO_AGENDA = 3
+                            ) R
+                            WHERE R.CD_AGENDA = DC_CHAT_AGENDAS.CD_AGENDA
+                        )
+                    )
+                `;
                 bindings.especialidade = especialidade;
             }
 
+            // Lógica Convênio: (Existe na regra com esse Conv) OR (Não tem regra nenhuma de Conv)
             if (convenio) {
-                sql += ` AND CD_CONVENIO = :convenio `;
+                sql += ` 
+                    AND (
+                        EXISTS (
+                            SELECT 1 
+                            FROM REGRA_LIB_CONV_AGENDA R 
+                            WHERE R.CD_AGENDA = DC_CHAT_AGENDAS.CD_AGENDA 
+                            AND R.CD_CONVENIO = :convenio
+                        )
+                        OR
+                        NOT EXISTS (
+                            SELECT 1 
+                            FROM REGRA_LIB_CONV_AGENDA R 
+                            WHERE R.CD_AGENDA = DC_CHAT_AGENDAS.CD_AGENDA
+                        )
+                    )
+                `;
                 bindings.convenio = convenio;
             }
 
+            // Ordenação sempre no final
             sql += ` ORDER BY DS_AGENDA`;
 
             const dados = await db.oracle.raw(sql, bindings);
@@ -251,9 +293,9 @@ module.exports = {
             const sql = `
                 BEGIN
                     IF :tipo = 1 THEN
-                        UPDATE agenda_consulta SET nm_paciente = :pacienteNome, ie_status_agenda = 'A', ds_observacao = :obs, dt_atualizacao = SYSDATE, nm_usuario_agendou = 'DATACARE' WHERE nr_sequencia = :agendaId;
+                        UPDATE agenda_consulta SET nm_paciente = :pacienteNome, ie_status_agenda = 'A', ds_observacao = :obs, dt_atualizacao = SYSDATE, nm_usuario_origem = 'DATACARE' WHERE nr_sequencia = :agendaId;
                     ELSIF :tipo = 2 THEN
-                        UPDATE agenda_paciente SET nm_paciente = :pacienteNome, ie_status_agenda = 'A', ds_observacao = :obs, dt_atualizacao = SYSDATE, nm_usuario_agend = 'DATACARE' WHERE nr_sequencia = :agendaId;
+                        UPDATE agenda_paciente SET nm_paciente = :pacienteNome, ie_status_agenda = 'A', ds_observacao = :obs, dt_atualizacao = SYSDATE, nm_usuario_orig = 'DATACARE' WHERE nr_sequencia = :agendaId;
                     END IF;
                     COMMIT;
                 END;
@@ -332,18 +374,20 @@ module.exports = {
     listarContatosAtivos: async (req, res) => {
         try {
             const sql = `
-                SELECT 
+              SELECT 
+                    'Consulta'                                   as "ds_tipo",
                     a.cd_agenda                                  as "id",
                     a.nm_paciente                                as "nome",
                     obter_nome_medico(b.cd_pessoa_fisica, 'ps')  as "motivo", -- Nome do médico entra como motivo/descrição
                     TO_CHAR(a.dt_agenda, 'HH24:MI')              as "horario",
                     SUBSTR(REGEXP_REPLACE(a.nr_telefone, '[^0-9]', ''), 1, 11) as "whatsapp",
                     a.dt_agenda                                  as "data_original"
-                FROM agenda_consulta a
-                JOIN agenda b ON a.cd_agenda = b.cd_agenda
-                WHERE a.CD_AGENDA in (334)
-                AND a.IE_STATUS_AGENDA = 'N'
-                AND trunc(a.DT_AGENDA) = trunc(sysdate) + 1
+                    FROM agenda_consulta a
+                    JOIN agenda b ON a.cd_agenda = b.cd_agenda
+                    WHERE a.IE_STATUS_AGENDA = 'N'
+                    AND a.dt_agenda >= TRUNC(SYSDATE + 1)
+                    AND a.dt_agenda <= TRUNC(SYSDATE + 1)
+                                    + (SYSDATE - TRUNC(SYSDATE))
             `;
 
             const dados = await db.oracle.raw(sql);
@@ -355,4 +399,3 @@ module.exports = {
         }
     }
 };
-
