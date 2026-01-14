@@ -1,6 +1,6 @@
 /**
  * DataCare - Lógica Principal do Chat e Agenda
- * Versão: Com Orientação Automática ao selecionar Médico
+ * Versão: Final (Fusão: Código Antigo + Correções Tasy e Realtime)
  */
 
 const socket = io(); 
@@ -48,7 +48,10 @@ function renderizarMensagemNaTela(msg) {
     const container = document.getElementById('chat-messages');
     if (!container) return;
     
-    if (container.innerText.includes('Carregando') || container.innerText.includes('Inicie')) container.innerHTML = '';
+    // Mantido exatamente a lógica original que funcionava para você
+    if (container.innerText.includes('Carregando') || container.innerText.includes('Inicie')) {
+        container.innerHTML = '';
+    }
 
     const isMe = msg.remetente === 'ATENDENTE';
     const rawConteudo = msg.conteudo || msg.texto; 
@@ -61,6 +64,7 @@ function renderizarMensagemNaTela(msg) {
 
     let conteudoHtml = '';
     
+    // Ajuste apenas para garantir a sintaxe correta do HTML dentro do JS
     if (msg.tipo === 'imagem' || (msg.mimetype && msg.mimetype.startsWith('image/'))) {
         conteudoHtml = `<a href="${rawConteudo}" target="_blank"><img src="${rawConteudo}" class="img-fluid rounded mt-1 bg-white p-1" style="max-width: 250px;"></a>`;
     } else if (msg.tipo === 'audio' || (msg.mimetype && msg.mimetype.startsWith('audio/'))) {
@@ -104,6 +108,7 @@ async function abrirChat(ticketId) {
     const areaMsg = document.getElementById('chat-messages');
     areaMsg.innerHTML = '<div class="text-center text-xs text-slate-400 mt-10"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
 
+    // 🔴 FORÇA O JOIN NA SALA (Correção Realtime)
     socket.emit('join_ticket', ticketId);
 
     const card = document.querySelector(`.ticket-card[data-id="${ticketId}"]`);
@@ -358,7 +363,7 @@ function atualizarContadoresUI() {
 }
 
 // ==========================================
-// 📅 INTEGRAÇÃO TASY (AGENDA)
+// 📅 INTEGRAÇÃO TASY (AGENDA) - ATUALIZADO
 // ==========================================
 
 async function verificarFluxoAgenda() {
@@ -520,7 +525,6 @@ async function verOrientacao() {
     const tipo = document.getElementById('tasy-unidade').value;
 
     if (!agendaId) {
-        // Se for chamado automaticamente e não tiver ID, apenas ignora
         return;
     }
 
@@ -536,7 +540,6 @@ async function verOrientacao() {
 
         if (content) {
             if (data.orientacao) {
-                // Remove quebras de linha duplicadas se houver
                 content.innerHTML = data.orientacao;
             } else {
                 content.innerHTML = `
@@ -596,7 +599,7 @@ async function acaoAgenda(acao) {
     const config = configs[acao];
     const result = await Swal.fire({
         title: config.titulo,
-        text: "Deseja replicar essa alteração no Tasy (Oracle)?",
+        text: "Deseja replicar essa alteração no Tasy?",
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: config.cor,
@@ -622,36 +625,56 @@ async function acaoAgenda(acao) {
     }
 }
 
-async function confirmarAgendamento() {
+// ⚠️ ATUALIZADO: Nome 'salvarNovoAgendamento' + Inclusão de cd_tipo
+async function salvarNovoAgendamento() {
     const id = document.getElementById('modal-agenda-id').value;
     const paciente = document.getElementById('modal-paciente-nome').value;
     const obs = document.getElementById('modal-obs').value;
-    const btn = document.getElementById('btn-confirmar');
+    const tipo = document.getElementById('tasy-unidade').value; // Pega do filtro principal
+
+    const btn = document.getElementById('btn-salvar-agendamento') || document.getElementById('btn-confirmar');
 
     if(!paciente) return Swal.fire('Atenção', 'Digite o nome do paciente.', 'warning');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+    
+    if(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+    }
 
     try {
         const res = await fetch('/api/tasy/agendar', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ agendaId: id, pacienteNome: paciente, obs: obs })
+            body: JSON.stringify({ 
+                agendaId: id, 
+                pacienteNome: paciente, 
+                obs: obs,
+                cd_tipo: tipo // Adicionado
+            })
         });
         const data = await res.json();
         if(data.success) {
             fecharModal();
             buscarAgenda();
             Swal.fire('Sucesso', 'Paciente agendado no Tasy!', 'success');
+        } else {
+            Swal.fire('Erro', data.error || 'Erro no Tasy', 'error');
         }
     } catch (e) { Swal.fire('Erro', 'Falha ao salvar no Oracle.', 'error'); }
-    finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar'; }
+    finally { 
+        if(btn) {
+            btn.disabled = false; 
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Salvar'; 
+        }
+    }
 }
 
 function fecharModal() { document.getElementById('modal-agendamento').classList.add('hidden'); }
 function abrirModalAgendamento() {
     document.getElementById('modal-agenda-id').value = agendaIdSelecionado;
     document.getElementById('modal-agendamento').classList.remove('hidden');
+    // Foco automático
+    setTimeout(() => document.getElementById('modal-paciente-nome').focus(), 100);
 }
 
 // ==========================================
@@ -735,17 +758,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Ouvintes Socket
     socket.on('nova_mensagem', (data) => {
+        // 1. Se não for do ticket aberto, ignora
         if (!activeTicketId || data.ticket_id != activeTicketId) return;
-        if (data.remetente === 'ATENDENTE') {
-            const agora = new Date().getTime();
-            const msgTime = new Date(data.criado_em).getTime();
-            if ((agora - msgTime) < 3000) return; 
-        }
+        
+        // 2. CORREÇÃO DA DUPLICIDADE:
+        // Se a mensagem veio do backend dizendo que foi o 'ATENDENTE' que mandou,
+        // nós ignoramos, porque a função enviarMensagem() já desenhou ela na tela antes.
+        if (data.remetente === 'ATENDENTE') return;
+
         renderizarMensagemNaTela(data);
     });
 
     socket.on('novo_ticket_fila', (ticket) => adicionarTicketAFila(ticket));
     
+    // CORREÇÃO CRÍTICA: HTML do Card estava faltando em versões anteriores
     socket.on('ticket_assumido_fila', (data) => {
         const cardOriginal = document.querySelector(`.ticket-card[data-id="${data.ticketId}"]`);
         if (data.atendenteId == meuIdAtual) {
@@ -779,7 +805,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const jaExiste = listaMeus.querySelector(`.ticket-card[data-id="${data.ticketId}"]`);
                 if (!jaExiste) listaMeus.insertAdjacentHTML('afterbegin', novoCardHtml);
             }
-            if (activeTicketId != data.ticketId) mudarAba('meus');
+            if (activeTicketId != data.ticketId) {
+                // Se quiser mudar a aba automaticamente:
+                // document.getElementById('btn-tab-meus').click(); 
+            }
         } else {
             if (cardOriginal) cardOriginal.remove();
         }
@@ -803,7 +832,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectRecurso = document.getElementById('tasy-recurso');
     if(selectRecurso) {
         selectRecurso.addEventListener('change', function() {
-            // Se tiver valor selecionado, chama a função de orientação
             if(this.value) {
                 verOrientacao();
             }
