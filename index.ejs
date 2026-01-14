@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataCare - Atendimento Integrado</title>
+</head>
+<body class="bg-slate-100 overflow-hidden font-sans">
+
+<div class="flex h-[calc(100vh-64px)] overflow-hidden">
+    
+    <aside class="w-[320px] bg-white border-r border-slate-200 flex flex-col z-10 shrink-0">
+        
+        <div class="p-2 bg-slate-100 border-b border-slate-200 shrink-0">
+            <div class="grid grid-cols-3 bg-slate-200/50 p-1 rounded-lg gap-1">
+                
+                <button id="tab-meus" onclick="mudarAba('meus')" 
+                    class="px-2 py-1.5 text-xs font-bold rounded-md transition-all shadow bg-white text-slate-700 flex items-center justify-center gap-1">
+                    Meus <span id="count-meus" class="ml-1 opacity-60 text-[9px] bg-slate-100 px-1 rounded">0</span>
+                </button>
+
+                <button id="tab-fila" onclick="mudarAba('fila')" 
+                    class="px-2 py-1.5 text-xs font-bold rounded-md transition-all text-slate-500 hover:text-slate-700 flex items-center justify-center gap-1">
+                    Fila <span id="count-fila" class="ml-1 bg-slate-300 text-slate-600 px-1.5 rounded-full text-[9px]">0</span>
+                </button>
+
+                <button id="tab-ativos" onclick="mudarAba('ativos')" 
+                    class="px-2 py-1.5 text-xs font-bold rounded-md transition-all text-slate-500 hover:text-slate-700 flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-address-book text-[10px]"></i> Ativos
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto relative bg-white">
+            
+            <div id="lista-meus" class="divide-y divide-slate-50">
+                <div id="empty-meus" class="p-8 text-center text-slate-400 text-xs mt-10">
+                    <i class="fa-regular fa-comments text-2xl mb-2 opacity-50"></i><br>
+                    Nenhum atendimento em andamento.
+                </div>
+            </div>
+
+            <div id="lista-fila" class="hidden divide-y divide-slate-50">
+                <div class="p-8 text-center text-slate-400 text-xs mt-10">
+                    Fila vazia. ☕
+                </div>
+            </div>
+
+            <div id="lista-ativos" class="hidden divide-y divide-slate-50">
+                <div id="loading-ativos" class="hidden p-6 text-center text-xs text-slate-400">
+                    <i class="fa-solid fa-circle-notch fa-spin text-blue-500 mb-2"></i><br>Buscando pacientes...
+                </div>
+                <div id="container-ativos-list">
+                    </div>
+            </div>
+
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col bg-[#efeae2] relative min-w-[400px] border-r border-slate-300">
+        
+        <div id="chat-empty" class="flex-1 flex flex-col items-center justify-center text-slate-400">
+            <div class="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-4">
+                <i class="fa-brands fa-whatsapp text-3xl text-slate-400"></i>
+            </div>
+            <h2 class="font-bold text-slate-600">DataCare Chat</h2>
+            <p class="text-sm">Selecione um atendimento para começar.</p>
+        </div>
+
+        <div id="chat-header" class="h-14 bg-slate-50 border-b border-slate-200 flex items-center px-4 justify-between hidden shrink-0">
+            <div class="flex items-center gap-3">
+                <div id="chat-avatar" class="w-9 h-9 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold">U</div>
+                <div>
+                    <h3 id="chat-nome" class="font-bold text-sm text-slate-800">Nome do Paciente</h3>
+                    <p class="text-[10px] text-slate-500 flex items-center gap-1">
+                        Ticket #<span id="ticket-id-val">000</span> 
+                        <button onclick="copiarTicketId()" class="hover:text-blue-600"><i class="fa-regular fa-copy"></i></button>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3 hidden">
+            </div>
+
+        <div id="chat-input" class="bg-slate-100 p-3 border-t border-slate-200 hidden shrink-0">
+            <div class="flex gap-2">
+                <input type="text" id="input-msg" onkeypress="handleEnter(event)" 
+                    class="flex-1 border border-slate-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="Digite sua mensagem...">
+                <button onclick="enviarMensagem()" class="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center transition shadow-sm active:scale-95">
+                    <i class="fa-solid fa-paper-plane text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <aside class="w-[480px] bg-white flex flex-col shadow-xl z-20 border-l border-slate-200">
+        
+        <div class="h-14 bg-slate-800 text-white flex items-center px-4 gap-2 shadow-sm shrink-0">
+            <i class="fa-solid fa-hospital-user"></i>
+            <h2 class="font-bold text-sm tracking-wide">Integração Agenda</h2>
+        </div>
+        
+        <div class="p-4 bg-slate-50 border-b border-slate-200 space-y-3 shrink-0">
+            
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">1. Tipo de Agenda</label>
+                <select id="tasy-unidade" class="w-full text-xs border border-slate-300 rounded h-9 px-2 bg-white text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none transition" onchange="aoMudarTipoAgenda()">
+                    <option value="">Carregando...</option>
+                </select>
+            </div>
+
+            <div id="container-especialidade" class="animate-in fade-in slide-in-from-top-1 duration-300">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">2. Especialidade</label>
+                <select id="tasy-especialidade" class="w-full text-xs border border-slate-300 rounded h-9 px-2 bg-white text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-400 transition" disabled onchange="atualizarListaDeMedicos()">
+                    <option value="">Aguardando Tipo...</option>
+                </select>
+            </div>
+
+            <div id="container-convenio" class="animate-in fade-in slide-in-from-top-2 duration-500">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">3. Convênio</label>
+                <select id="tasy-convenio" class="w-full text-xs border border-slate-300 rounded h-9 px-2 bg-white text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-400 transition" disabled onchange="atualizarListaDeMedicos()">
+                    <option value="">Aguardando Tipo...</option>
+                </select>
+            </div>
+
+            <div class="animate-in fade-in slide-in-from-top-3 duration-700">
+                <label id="label-recurso" class="block text-[10px] font-bold text-slate-500 uppercase mb-1">4. Profissional</label>
+                <select id="tasy-recurso" class="w-full text-xs border border-slate-300 rounded h-9 px-2 bg-white text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-400 transition" disabled onchange="verificarOrientacao()">
+                    <option value="">Aguardando filtros...</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">DATA</label>
+                <div class="flex gap-2">
+                    <input type="date" id="tasy-data" class="flex-1 text-xs border border-slate-300 rounded h-9 px-2 text-slate-700 focus:ring-1 focus:ring-blue-500 outline-none shadow-sm">
+                    <button onclick="buscarAgenda()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded h-9 text-xs font-bold flex items-center gap-2 transition shadow-sm active:scale-95">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto bg-white relative">
+            <div class="sticky top-0 bg-slate-100 border-b border-slate-200 flex px-4 py-2 text-xs font-bold text-slate-600 z-10">
+                <div class="w-16">Hora</div>
+                <div class="flex-1">Paciente</div>
+                <div class="w-16">Status</div>
+            </div>
+            <div id="lista-agenda" class="divide-y divide-slate-100">
+                <div class="flex flex-col items-center justify-center h-40 text-slate-400">
+                    <i class="fa-regular fa-calendar text-2xl mb-2"></i>
+                    <span class="text-xs">Selecione os filtros</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+</div>
+
+<div id="context-menu" class="fixed hidden bg-white border border-slate-200 shadow-xl rounded-lg w-56 py-2 z-50 text-sm flex flex-col">
+    <button onclick="acaoAgenda('agendar')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
+        <div class="w-5 text-center"><i class="fa-regular fa-calendar-plus text-blue-600"></i></div>
+        <span>Agendar</span>
+    </button>
+    <button onclick="acaoAgenda('confirmar')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
+        <div class="w-5 text-center"><i class="fa-solid fa-check-double text-green-600"></i></div>
+        <span>Confirmar</span>
+    </button>
+    <button onclick="acaoAgenda('transferir')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
+        <div class="w-5 text-center"><i class="fa-solid fa-arrow-right-arrow-left text-orange-500"></i></div>
+        <span>Transferir</span>
+    </button>
+    <div class="border-t border-slate-100 my-1"></div>
+    <button onclick="acaoAgenda('bloquear')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
+        <div class="w-5 text-center"><i class="fa-solid fa-ban text-red-500"></i></div>
+        <span>Bloquear</span>
+    </button>
+    <button onclick="acaoAgenda('cancelar')" class="text-left px-4 py-2 hover:bg-red-50 text-red-600 flex items-center gap-3 transition">
+        <div class="w-5 text-center"><i class="fa-regular fa-calendar-xmark"></i></div>
+        <span>Cancelar</span>
+    </button>
+</div>
+
+<div id="modal-agendamento" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-lg shadow-2xl w-[400px] overflow-hidden transform transition-all scale-100">
+        <div class="bg-slate-800 text-white px-4 py-3 flex justify-between items-center">
+            <h3 class="font-bold text-sm"><i class="fa-regular fa-calendar-check mr-2"></i> Confirmar Agendamento</h3>
+            <button onclick="fecharModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+            <input type="hidden" id="modal-agenda-id">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Paciente</label>
+                <input type="text" id="modal-paciente-nome" class="w-full border border-slate-300 rounded px-3 py-2 text-sm bg-slate-50 font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Digite o nome do paciente...">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Observação / Convênio</label>
+                <textarea id="modal-obs" rows="3" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: Particular, Unimed..."></textarea>
+            </div>
+        </div>
+        <div class="bg-slate-50 px-6 py-3 flex justify-end gap-2 border-t border-slate-200">
+            <button onclick="fecharModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded">Cancelar</button>
+            <button onclick="confirmarAgendamento()" id="btn-confirmar" class="px-4 py-2 text-xs font-bold text-white bg-green-600 hover:bg-green-700 rounded shadow-sm flex items-center gap-2">
+                <i class="fa-solid fa-check"></i> Confirmar
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-orientacao-custom" 
+    class="fixed inset-0 bg-slate-900/60 z-[9999] hidden flex items-center justify-center backdrop-blur-sm transition-opacity"
+    onclick="fecharOrientacaoCustom(event)">
+
+    <div class="bg-white rounded-lg shadow-2xl w-[90%] md:w-[50%] h-[60vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="bg-blue-600 px-6 py-4 flex justify-between items-center shadow-md shrink-0">
+            <h3 class="text-white font-bold text-sm tracking-wide flex items-center gap-2">
+                <i class="fa-solid fa-circle-info"></i> ORIENTAÇÃO DA AGENDA
+            </h3>
+            <button onclick="fecharOrientacaoCustom(null, true)" class="text-blue-200 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6 bg-slate-50">
+            <div class="bg-white border border-slate-200 p-4 rounded-md shadow-sm">
+                <div id="texto-orientacao-dinamico" class="text-slate-700 text-sm leading-relaxed font-medium whitespace-pre-wrap"></div>
+            </div>
+            <div class="mt-4 text-right">
+                <span class="text-[10px] text-slate-400 italic">Clique fora para fechar</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const socket = io(); 
+    let activeTicketId = null;
+    let recursosGlobais = []; 
+    // Proteção caso 'user' não esteja renderizado pelo EJS
+    const meuIdAtual = "<%= typeof user !== 'undefined' ? user.id : '' %>"; 
+
+    // Controle da Aba Ativos
+    let listaAtivosCarregada = false;
+
+    // --- FUNÇÕES UTILITÁRIAS ---
+    function formatarHtmlTasy(textoSujo) {
+        if (!textoSujo) return '';
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(textoSujo, 'text/html');
+            let htmlLimpo = doc.body ? doc.body.innerHTML : textoSujo;
+
+            // Se não tiver tags HTML, substitui quebras de linha por <br>
+            if (!htmlLimpo.includes('<br>') && !htmlLimpo.includes('<p>')) {
+                htmlLimpo = htmlLimpo.replace(/\n/g, '<br>');
+            }
+            return htmlLimpo;
+        } catch (e) {
+            return textoSujo.replace(/\n/g, '<br>'); 
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Init Filtros
+        const inputData = document.getElementById('tasy-data');
+        if(inputData) inputData.valueAsDate = new Date();
+        carregarUnidades();
+
+        // Inicia na Aba "Meus"
+        mudarAba('meus');
+
+        // Socket Events
+        socket.on('connect', () => console.log('🟢 DataCare Socket Conectado'));
+        
+        socket.on('nova_mensagem', (msg) => {
+            const idDaMsg = msg.ticket_id || msg.ticketId;
+            if (activeTicketId && idDaMsg == activeTicketId) {
+                renderizarMensagemNaTela(msg);
+            }
+        });
+
+        socket.on('novo_ticket_fila', (ticket) => adicionarTicketAFila(ticket));
+
+        socket.on('ticket_assumido_fila', (data) => {
+            // Remove da fila
+            const cardOriginal = document.querySelector(`.ticket-card[data-id="${data.ticketId}"]`);
+            if (cardOriginal) {
+                // Se fui eu que assumi
+                if (data.atendenteId == meuIdAtual) {
+                    const nome = cardOriginal.querySelector('h3').innerText;
+                    adicionarChatNaMinhaLista({ id: data.ticketId, nome: nome });
+                    abrirChat(data.ticketId); 
+                    mudarAba('meus');
+                }
+                cardOriginal.remove();
+                atualizarContadoresUI();
+            }
+        });
+    });
+
+    // --- 1. GESTÃO DE ABAS ---
+    function mudarAba(aba) {
+        const abas = ['meus', 'fila', 'ativos'];
+        
+        abas.forEach(nome => {
+            const isActive = (nome === aba);
+            
+            // Alterna Listas
+            const divLista = document.getElementById(`lista-${nome}`);
+            if(divLista) divLista.classList.toggle('hidden', !isActive);
+            
+            // Alterna Estilos dos Botões
+            const btnTab = document.getElementById(`tab-${nome}`);
+            if(btnTab) {
+                if(isActive) {
+                    btnTab.classList.add('bg-white', 'shadow', 'text-slate-700');
+                    btnTab.classList.remove('text-slate-500');
+                } else {
+                    btnTab.classList.remove('bg-white', 'shadow', 'text-slate-700');
+                    btnTab.classList.add('text-slate-500');
+                }
+            }
+        });
+
+        // Carregar lista de ativos se for a primeira vez
+        if (aba === 'ativos' && !listaAtivosCarregada) {
+            carregarListaAtivos();
+        }
+    }
+
+    // --- 2. LISTA DE CONTATOS ATIVOS (BACKEND REAL) ---
+    async function carregarListaAtivos() {
+        const container = document.getElementById('container-ativos-list');
+        const loading = document.getElementById('loading-ativos');
+        
+        loading.classList.remove('hidden');
+        container.innerHTML = '';
+
+        try {
+            // URL ATUALIZADA: /api/tasy/ativos
+            const response = await fetch('/api/tasy/ativos');
+            
+            if (!response.ok) throw new Error('Falha na API');
+
+            const dadosReais = await response.json();
+            listaAtivosCarregada = true; 
+
+            if (dadosReais.length === 0) {
+                container.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">Nenhum contato pendente para amanhã.</div>';
+                return;
+            }
+
+            dadosReais.forEach(p => {
+                // Tratamento de WhatsApp para exibição
+                const zapLimpo = p.whatsapp ? p.whatsapp.replace(/\D/g, '') : '';
+                const zapFormatado = zapLimpo.length >= 10 
+                    ? `(${zapLimpo.slice(0,2)}) ${zapLimpo.slice(2,7)}-${zapLimpo.slice(7)}` 
+                    : 'Sem nº';
+
+                const html = `
+                    <div class="p-4 bg-white hover:bg-slate-50 transition group flex justify-between items-start gap-2 border-b border-slate-50">
+                        <div class="min-w-0">
+                            <h4 class="font-bold text-slate-700 text-sm truncate">${p.nome}</h4>
+                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wide mb-1 bg-blue-50 text-blue-600 inline-block px-1.5 py-0.5 rounded">
+                                ${p.motivo || 'Confirmar Agenda'}
+                            </p>
+                            <p class="text-xs text-slate-400">
+                                <i class="fa-brands fa-whatsapp mr-1 ${zapLimpo ? 'text-green-500' : 'text-slate-300'}"></i>
+                                ${zapFormatado}
+                            </p>
+                        </div>
+                        
+                        <button onclick="iniciarContatoAtivo(${p.id}, '${p.nome}', '${zapLimpo}')" 
+                            class="shrink-0 bg-white border border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white w-8 h-8 rounded-full flex items-center justify-center transition shadow-sm ${!zapLimpo ? 'opacity-50 cursor-not-allowed' : ''}"
+                            title="Iniciar Conversa"
+                            ${!zapLimpo ? 'disabled' : ''}>
+                            <i class="fa-solid fa-paper-plane text-xs"></i>
+                        </button>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+
+        } catch (e) {
+            container.innerHTML = '<div class="p-4 text-center text-xs text-red-400">Erro ao carregar lista.</div>';
+            console.error(e);
+        } finally {
+            loading.classList.add('hidden');
+        }
+    }
+
+    async function iniciarContatoAtivo(id, nome, whatsapp) {
+        const result = await Swal.fire({
+            title: `Contatar ${nome.split(' ')[0]}?`,
+            text: "Isso iniciará um atendimento ativo.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Iniciar Chat',
+            confirmButtonColor: '#2563eb',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                // Aqui você deve implementar o POST para criar o ticket no backend
+                // await fetch('/api/chat/iniciar', ...);
+
+                // SIMULAÇÃO DE SUCESSO:
+                Swal.fire({
+                    toast: true, position: 'top-end', icon: 'success', 
+                    title: 'Chat Iniciado!', showConfirmButton: false, timer: 1500
+                });
+
+                // Adiciona visualmente na lista "Meus"
+                adicionarChatNaMinhaLista({ id: 9000 + id, nome: nome });
+                abrirChat(9000 + id);
+                mudarAba('meus');
+                
+            } catch (e) {
+                Swal.fire('Erro', 'Não foi possível iniciar.', 'error');
+            }
+        }
+    }
+
+    // --- 3. UI E CHAT (Socket) ---
+
+    function adicionarChatNaMinhaLista(dados) {
+        const listaMeus = document.getElementById('lista-meus');
+        const emptyMeus = document.getElementById('empty-meus');
+        if (emptyMeus) emptyMeus.classList.add('hidden'); 
+
+        const iniciais = dados.nome ? dados.nome.charAt(0).toUpperCase() : '?';
+        const html = `
+            <div onclick="abrirChat(${dados.id})" 
+                class="cursor-pointer p-4 hover:bg-slate-50 transition flex gap-3 items-center group relative animate-in fade-in" 
+                data-id="${dados.id}">
+                <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm shrink-0">${iniciais}</div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between">
+                        <h3 class="font-bold text-slate-800 text-sm truncate">${dados.nome}</h3>
+                        <span class="text-[10px] text-slate-400">Agora</span>
+                    </div>
+                    <p class="text-xs text-slate-500 truncate">Atendimento ativo...</p>
+                </div>
+            </div>`;
+        
+        listaMeus.insertAdjacentHTML('afterbegin', html);
+        atualizarContadoresUI();
+    }
+
+    function atualizarContadoresUI() {
+        const qtdFila = document.querySelectorAll('#lista-fila .ticket-card').length;
+        const badgeFila = document.getElementById('count-fila');
+        if (badgeFila) badgeFila.innerText = qtdFila;
+
+        const listaMeus = document.getElementById('lista-meus');
+        const countMeus = listaMeus.querySelectorAll('div[onclick]').length;
+        const badgeMeus = document.getElementById('count-meus');
+        if (badgeMeus) badgeMeus.innerText = countMeus;
+    }
+
+    function renderizarMensagemNaTela(msg) {
+        const container = document.getElementById('chat-messages');
+        if (!container) return;
+        if (container.innerText.includes('Inicie') || container.innerText.includes('Nenhuma')) container.innerHTML = '';
+
+        const isMe = msg.remetente === 'ATENDENTE';
+        const conteudo = msg.conteudo || msg.texto;
+        const hora = new Date(msg.criado_em || new Date()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        const htmlMsg = `
+            <div class="flex ${isMe ? 'justify-end' : 'justify-start'} mb-3 animate-in fade-in slide-in-from-bottom-2">
+                <div class="max-w-[75%] px-4 py-2 rounded-2xl shadow-sm text-sm relative ${
+                    isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
+                }">
+                    <p class="leading-relaxed font-medium">${conteudo}</p>
+                    <div class="text-[10px] mt-1 flex items-center justify-end gap-1 ${isMe ? 'text-blue-100' : 'text-slate-400'}">
+                        ${hora} ${isMe ? '<i class="fa-solid fa-check-double text-[8px]"></i>' : ''}
+                    </div>
+                </div>
+            </div>`;
+        container.insertAdjacentHTML('beforeend', htmlMsg);
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }
+
+    async function abrirChat(ticketId) {
+        activeTicketId = ticketId;
+        document.getElementById('chat-empty').classList.add('hidden');
+        ['chat-header', 'chat-messages', 'chat-input'].forEach(id => document.getElementById(id)?.classList.remove('hidden'));
+        
+        const areaMsg = document.getElementById('chat-messages');
+        areaMsg.innerHTML = '<div class="text-center text-xs text-slate-400 mt-10"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
+
+        socket.emit('join_ticket', ticketId);
+
+        // Atualiza Header
+        const card = document.querySelector(`div[data-id="${ticketId}"]`);
+        if(card) {
+            const nome = card.querySelector('h3').innerText;
+            document.getElementById('chat-nome').innerText = nome;
+            document.getElementById('chat-avatar').innerText = nome.charAt(0);
+            document.getElementById('ticket-id-val').innerText = ticketId;
+        }
+
+        try {
+            const res = await fetch(`/api/chat/mensagens/${ticketId}`);
+            const mensagens = await res.json();
+            areaMsg.innerHTML = mensagens.length ? '' : '<div class="text-center text-xs text-slate-400 mt-10">Histórico carregado. Nenhuma mensagem recente.</div>';
+            mensagens.forEach(m => renderizarMensagemNaTela(m));
+        } catch (e) {
+            areaMsg.innerHTML = '<div class="text-center text-xs text-slate-300 mt-10">Início da conversa</div>';
+        }
+    }
+
+    function copiarTicketId() {
+        if(!activeTicketId) return;
+        navigator.clipboard.writeText(activeTicketId).then(() => {
+            const Toast = Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 2000 });
+            Toast.fire({ icon: 'success', title: `ID #${activeTicketId} copiado!` });
+        });
+    }
+
+    async function enviarMensagem() {
+        const input = document.getElementById('input-msg');
+        const conteudo = input.value.trim();
+        if (!conteudo || !activeTicketId) return;
+        input.value = ''; input.focus();
+
+        renderizarMensagemNaTela({ remetente: 'ATENDENTE', conteudo: conteudo, criado_em: new Date() });
+
+        try {
+            await fetch('/api/chat/enviar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticketId: activeTicketId, conteudo: conteudo }) });
+        } catch (e) { console.error("Erro envio", e); }
+    }
+
+    function handleEnter(e) { if (e.key === 'Enter') enviarMensagem(); }
+
+    function adicionarTicketAFila(ticket) {
+        const containerFila = document.getElementById('lista-fila');
+        if (containerFila) {
+            if (containerFila.innerText.includes('vazia')) containerFila.innerHTML = '';
+            const cardHtml = `
+                <div class="ticket-card p-4 flex justify-between items-center bg-white hover:bg-slate-50 transition border-b border-slate-50" data-id="${ticket.id}">
+                    <div>
+                        <h3 class="font-bold text-slate-700 text-sm">${ticket.nome_contato}</h3>
+                        <p class="text-xs text-slate-400">${ticket.numero_whatsapp}</p>
+                    </div>
+                    <button onclick="assumirTicket(${ticket.id})" class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-bold transition active:scale-95">Atender</button>
+                </div>`;
+            containerFila.insertAdjacentHTML('afterbegin', cardHtml);
+            atualizarContadoresUI();
+        }
+        Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Novo Paciente na Fila', showConfirmButton: false, timer: 3000 });
+    }
+
+    async function assumirTicket(ticketId) {
+        try {
+            await fetch('/api/chat/assumir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticketId }) });
+        } catch (e) { Swal.fire('Erro', 'Não foi possível assumir este ticket.', 'error'); }
+    }
+
+    // --- 4. TASY AGENDA (Lógica Mantida e Melhorada) ---
+
+    async function carregarUnidades() {
+        const select = document.getElementById('tasy-unidade');
+        try {
+            const res = await fetch('/api/tasy/unidades');
+            const dados = await res.json();
+            select.innerHTML = '<option value="">Selecione...</option>' + 
+                dados.map(d => `<option value="${d.CD_TIPO}">${d.DS_TIPO}</option>`).join('');
+        } catch (e) { select.innerHTML = '<option>Erro ao carregar</option>'; }
+    }
+
+    async function aoMudarTipoAgenda() {
+        const selectUnidade = document.getElementById('tasy-unidade');
+        const tipoId = selectUnidade.value;
+        const selEspecialidade = document.getElementById('tasy-especialidade');
+        const selConvenio = document.getElementById('tasy-convenio');
+        const selRecurso = document.getElementById('tasy-recurso');
+        
+        selEspecialidade.innerHTML = '<option value="">Carregando...</option>';
+        selConvenio.innerHTML = '<option value="">Carregando...</option>';
+        selRecurso.innerHTML = '<option value="">Carregando...</option>';
+
+        if(!tipoId) return;
+
+        selEspecialidade.disabled = false;
+        selConvenio.disabled = false;
+        selRecurso.disabled = false;
+
+        try {
+            const [resEsp, resConv, resRecursos] = await Promise.all([
+                fetch(`/api/tasy/especialidades/${tipoId}`),
+                fetch(`/api/tasy/convenios`), 
+                fetch(`/api/tasy/recursos?tipo=${tipoId}`)
+            ]);
+            const listaEsp = await resEsp.json();
+            const listaConv = await resConv.json();
+            const listaRecursos = await resRecursos.json();
+            recursosGlobais = listaRecursos;
+
+            selEspecialidade.innerHTML = '<option value="">Todas</option>' + listaEsp.map(d => `<option value="${d.CD_ESPECIALIDADE}">${d.DS_ESPECIALIDADE}</option>`).join('');
+            selConvenio.innerHTML = '<option value="">Todos</option>' + listaConv.map(d => `<option value="${d.CD_CONVENIO}">${d.DS_CONVENIO}</option>`).join('');
+            selRecurso.innerHTML = '<option value="">Selecione...</option>' + listaRecursos.map(d => `<option value="${d.CD_AGENDA}">${d.DS_AGENDA}</option>`).join('');
+        } catch (e) { selEspecialidade.innerHTML = '<option>Erro</option>'; }
+    }
+
+    async function atualizarListaDeMedicos() {
+        const tipoId = document.getElementById('tasy-unidade').value;
+        const espId = document.getElementById('tasy-especialidade').value;
+        const convId = document.getElementById('tasy-convenio').value;
+        const selRecurso = document.getElementById('tasy-recurso');
+
+        selRecurso.innerHTML = '<option value="">Filtrando...</option>';
+        selRecurso.disabled = true;
+
+        let url = `/api/tasy/recursos?tipo=${tipoId}`;
+        if (espId) url += `&especialidade=${espId}`;
+        if (convId) url += `&convenio=${convId}`;
+
+        try {
+            const res = await fetch(url);
+            const dados = await res.json();
+            recursosGlobais = dados;
+            if(dados.length > 0) {
+                selRecurso.innerHTML = '<option value="">Selecione...</option>' + dados.map(d => `<option value="${d.CD_AGENDA}">${d.DS_AGENDA}</option>`).join('');
+                selRecurso.disabled = false;
+            } else { selRecurso.innerHTML = '<option value="">Nenhum médico encontrado</option>'; }
+        } catch(e) { selRecurso.innerHTML = '<option>Erro no filtro</option>'; }
+    }
+
+    async function verificarOrientacao() {
+        const idAgenda = document.getElementById('tasy-recurso').value;
+        const tipoAgenda = document.getElementById('tasy-unidade').value; 
+        if (!idAgenda || !tipoAgenda) return;
+
+        document.getElementById('texto-orientacao-dinamico').innerHTML = '<em>Carregando orientação...</em>';
+        try {
+            const res = await fetch(`/api/tasy/orientacao?agendaId=${idAgenda}&tipo=${tipoAgenda}`);
+            const data = await res.json();
+            if (data.orientacao && data.orientacao.trim() !== "") {
+                const htmlLimpo = formatarHtmlTasy(data.orientacao);
+                document.getElementById('texto-orientacao-dinamico').innerHTML = htmlLimpo;
+                document.getElementById('modal-orientacao-custom').classList.remove('hidden');
+            }
+        } catch (error) { console.error("Erro orientacao", error); }
+    }
+    
+    function fecharOrientacaoCustom(event, force = false) {
+        const modal = document.getElementById('modal-orientacao-custom');
+        if (force || event.target === modal) modal.classList.add('hidden');
+    }
+
+    async function buscarAgenda() {
+        const recurso = document.getElementById('tasy-recurso').value;
+        const data = document.getElementById('tasy-data').value;
+        const container = document.getElementById('lista-agenda');
+        
+        if(!recurso) return Swal.fire('Atenção', 'Selecione um profissional.', 'warning');
+        if(!data) return Swal.fire('Atenção', 'Selecione uma data.', 'warning');
+
+        container.innerHTML = '<div class="p-8 text-center text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+        try {
+            const res = await fetch('/api/tasy/agenda', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ recurso, data }) });
+            const agenda = await res.json();
+            
+            container.innerHTML = agenda.length ? '' : '<div class="p-8 text-center text-xs text-slate-400">Nenhum horário disponível.</div>';
+            agenda.forEach(slot => {
+                const statusClass = slot.IE_STATUS === 'L' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700';
+                container.innerHTML += 
+                    `<div class="flex items-center px-4 py-3 border-b border-slate-50 cursor-pointer hover:bg-slate-50 group transition" oncontextmenu="abrirMenuContexto(event, ${slot.ID})">
+                        <div class="w-14 font-bold text-slate-600 text-xs">${slot.HORA}</div>
+                        <div class="flex-1 flex items-center gap-2 min-w-0">
+                            <span class="truncate font-bold text-slate-800 text-xs">${slot.PACIENTE || 'Livre'}</span>
+                            ${slot.CONVENIO ? `<span class="shrink-0 text-[10px] text-slate-400 font-medium">(${slot.CONVENIO})</span>` : ''}
+                        </div>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${statusClass}">${slot.STATUS_DESC || slot.IE_STATUS}</span>
+                    </div>`;
+            });
+        } catch (e) { container.innerHTML = 'Erro na consulta do Tasy.'; }
+    }
+
+    let agendaIdSelecionado = null;
+    function abrirMenuContexto(e, idAgenda) { e.preventDefault(); agendaIdSelecionado = idAgenda; const menu = document.getElementById('context-menu'); menu.style.top = `${e.clientY}px`; menu.style.left = `${e.clientX}px`; menu.classList.remove('hidden'); }
+    document.addEventListener('click', () => { document.getElementById('context-menu')?.classList.add('hidden'); });
+
+    async function acaoAgenda(acao) {
+        document.getElementById('context-menu').classList.add('hidden');
+        if (acao === 'agendar') return abrirModalAgendamento();
+
+        const configs = { confirmar: { titulo: 'Confirmar?', cor: '#16a34a', endpoint: '/api/tasy/confirmar' }, cancelar: { titulo: 'Cancelar?', cor: '#dc2626', endpoint: '/api/tasy/cancelar' }, bloquear: { titulo: 'Bloquear?', cor: '#ea580c', endpoint: '/api/tasy/bloquear' } };
+        const config = configs[acao];
+
+        const result = await Swal.fire({ title: config.titulo, text: "Replicar no Tasy?", icon: 'question', showCancelButton: true, confirmButtonColor: config.cor, cancelButtonColor: '#64748b', confirmButtonText: 'Sim', cancelButtonText: 'Voltar' });
+        if (result.isConfirmed) {
+            const toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            toast.fire({ icon: 'info', title: 'Processando...' });
+            fetch(config.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agendaId: agendaIdSelecionado }) })
+            .then(res => res.json()).then(data => { if (data.success) { toast.fire({ icon: 'success', title: 'Atualizado!' }); buscarAgenda(); } });
+        }
+    }
+
+    async function confirmarAgendamento() {
+        const id = document.getElementById('modal-agenda-id').value;
+        const paciente = document.getElementById('modal-paciente-nome').value;
+        const obs = document.getElementById('modal-obs').value;
+        const btn = document.getElementById('btn-confirmar');
+        if(!paciente) return Swal.fire('Atenção', 'Digite o nome do paciente.', 'warning');
+        btn.disabled = true; btn.innerHTML = 'Salvando...';
+        try {
+            const res = await fetch('/api/tasy/agendar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ agendaId: id, pacienteNome: paciente, obs: obs }) });
+            const data = await res.json();
+            if(data.success) { fecharModal(); buscarAgenda(); Swal.fire('Sucesso', 'Agendado!', 'success'); }
+        } catch (e) { Swal.fire('Erro', 'Falha ao salvar.', 'error'); } 
+        finally { btn.disabled = false; btn.innerHTML = 'Confirmar'; }
+    }
+    function fecharModal() { document.getElementById('modal-agendamento').classList.add('hidden'); }
+    function abrirModalAgendamento() { document.getElementById('modal-agenda-id').value = agendaIdSelecionado; document.getElementById('modal-agendamento').classList.remove('hidden'); }
+</script>
+
+</body>
+</html>
