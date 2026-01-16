@@ -2,9 +2,9 @@ const router = require('express').Router();
 const tasyController = require('../controllers/tasyController'); 
 const loginRequired = require('../middlewares/loginRequired');
 
-// ... (seus outros imports ou rotas de chat/login, se houver neste arquivo) ...
-
-// === 1. ROTAS DE DROPDOWNS E LISTAGEM ===
+// ==================================================================
+// 1. ROTAS DE DROPDOWNS E LISTAGEM
+// ==================================================================
 
 // Unidades (Tipos de Agenda)
 router.get('/api/tasy/unidades', loginRequired, tasyController.listarUnidades);
@@ -21,20 +21,44 @@ router.get('/api/tasy/recursos', loginRequired, tasyController.listarRecursos);
 // Orientação
 router.get('/api/tasy/orientacao', loginRequired, tasyController.obterOrientacao);
 
-// === NOVA ROTA: Contatos Ativos (Aba "Ativos") ===
-// Essa rota busca os pacientes de amanhã para confirmar
+
+// ==================================================================
+// 2. ROTA DE CONSULTA DA AGENDA E ATIVOS
+// ==================================================================
+
+// Busca os pacientes de amanhã para confirmar (Aba "Ativos")
 router.get('/api/tasy/ativos', loginRequired, tasyController.listarContatosAtivos);
 
-
-// === 2. ROTA DE CONSULTA DA AGENDA (GRID) ===
+// Busca a grade de horários (Grid principal)
 router.post('/api/tasy/agenda', loginRequired, tasyController.listarAgenda);
 
 
-// === 3. ROTAS DE AÇÃO (POST) ===
+// ==================================================================
+// 3. ROTAS DE AÇÃO RÁPIDA (Menu de Contexto)
+// ==================================================================
 router.post('/api/tasy/confirmar', loginRequired, tasyController.confirmar);
 router.post('/api/tasy/cancelar', loginRequired, tasyController.cancelar);
 router.post('/api/tasy/bloquear', loginRequired, tasyController.bloquear);
-router.post('/api/tasy/agendar', loginRequired, tasyController.agendarNovo);
+// Esta rota 'agendar' antiga pode ser mantida ou substituída pela nova lógica abaixo, dependendo do seu uso
+router.post('/api/tasy/agendar', loginRequired, tasyController.agendarNovo); 
 router.post('/api/tasy/transferir', loginRequired, tasyController.transferir);
+
+
+// ==================================================================
+// 4. [NOVO] GESTÃO DE PACIENTES E AGENDAMENTO COMPLETO
+// ==================================================================
+
+// Busca de Pacientes (Autocomplete)
+// IMPORTANTE: Esta rota deve vir ANTES de /pacientes/:id para não confundir "buscar" com um ID
+router.get('/api/tasy/pacientes/buscar', loginRequired, tasyController.buscarPacientes);
+
+// Detalhes do Paciente (Para preencher o modal de edição/cadastro)
+router.get('/api/tasy/pacientes/:id', loginRequired, tasyController.getDetalhesPaciente);
+
+// Salvar ou Atualizar Paciente (Upsert via PL/SQL)
+router.post('/api/tasy/pacientes/salvar', loginRequired, tasyController.salvarPaciente);
+
+// Confirmar Agendamento (Lógica robusta que diferencia Consulta/Exame)
+router.post('/api/tasy/agendar/confirmar', loginRequired, tasyController.confirmarAgendamento);
 
 module.exports = router;

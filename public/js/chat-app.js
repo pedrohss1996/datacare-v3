@@ -1,6 +1,6 @@
 /**
  * DataCare - Lógica Principal do Chat e Agenda
- * Versão: Final (Fusão: Código Antigo + Correções Tasy e Realtime)
+ * Versão: Final (Fusão: Código Antigo + Correções Tasy e Realtime + Novos Modais)
  */
 
 const socket = io(); 
@@ -9,6 +9,9 @@ let activeTicketId = null;
 // Variáveis vindas do objeto global (definido no HTML)
 const meuIdAtual = window.DATA_CARE ? window.DATA_CARE.userId : null; 
 const meuNomeAtual = window.DATA_CARE ? window.DATA_CARE.userName : 'Atendente';
+
+// Variável global para o Timer de busca (Autocomplete)
+let timerBuscaPaciente = null;
 
 // ==========================================
 // 🛠️ FUNÇÕES UTILITÁRIAS (HELPERS)
@@ -48,7 +51,7 @@ function renderizarMensagemNaTela(msg) {
     const container = document.getElementById('chat-messages');
     if (!container) return;
     
-    // Mantido exatamente a lógica original que funcionava para você
+    // Evita limpar o chat se o usuário digitar "Carregando"
     if (container.innerText.includes('Carregando') || container.innerText.includes('Inicie')) {
         container.innerHTML = '';
     }
@@ -64,7 +67,6 @@ function renderizarMensagemNaTela(msg) {
 
     let conteudoHtml = '';
     
-    // Ajuste apenas para garantir a sintaxe correta do HTML dentro do JS
     if (msg.tipo === 'imagem' || (msg.mimetype && msg.mimetype.startsWith('image/'))) {
         conteudoHtml = `<a href="${rawConteudo}" target="_blank"><img src="${rawConteudo}" class="img-fluid rounded mt-1 bg-white p-1" style="max-width: 250px;"></a>`;
     } else if (msg.tipo === 'audio' || (msg.mimetype && msg.mimetype.startsWith('audio/'))) {
@@ -362,7 +364,7 @@ function adicionarTicketAFila(ticket) {
 function atualizarContadoresUI() {
     // --- Lógica da Fila ---
     const qtdFila = document.querySelectorAll('#lista-fila .ticket-card').length;
-    const badgeFila = document.getElementById('count-fila'); // O JS busca esse ID aqui!
+    const badgeFila = document.getElementById('count-fila'); 
     if (badgeFila) {
         badgeFila.innerText = qtdFila;
         
@@ -373,15 +375,13 @@ function atualizarContadoresUI() {
         }
     }
 
-    // --- Lógica dos Meus Tickets (CORREÇÃO) ---
+    // --- Lógica dos Meus Tickets ---
     const qtdMeus = document.querySelectorAll('#lista-meus .ticket-card').length;
     const badgeMeus = document.getElementById('count-meus');
     
     if (badgeMeus) {
         badgeMeus.innerText = qtdMeus;
         
-        // Se for 0, adiciona a classe 'hidden' (some visualmente)
-        // Se for > 0, remove a classe 'hidden' (aparece)
         if (qtdMeus === 0) {
             badgeMeus.classList.add('hidden');
         } else {
@@ -653,57 +653,246 @@ async function acaoAgenda(acao) {
     }
 }
 
-// ⚠️ ATUALIZADO: Nome 'salvarNovoAgendamento' + Inclusão de cd_tipo
-async function salvarNovoAgendamento() {
-    const id = document.getElementById('modal-agenda-id').value;
-    const paciente = document.getElementById('modal-paciente-nome').value;
-    const obs = document.getElementById('modal-obs').value;
-    const tipo = document.getElementById('tasy-unidade').value; // Pega do filtro principal
+// ==========================================
+// 1. LÓGICA DO MODAL DE AGENDAMENTO (NOVO)
+// ==========================================
 
-    const btn = document.getElementById('btn-salvar-agendamento') || document.getElementById('btn-confirmar');
+// Função chamada pelo botão "Agendar" no Menu de Contexto
+function abrirModalAgendamento() {
+    // Pega o ID da agenda selecionada (variável global que definimos no menu de contexto)
+    if (!agendaIdSelecionado) return;
 
-    if(!paciente) return Swal.fire('Atenção', 'Digite o nome do paciente.', 'warning');
-    
-    if(btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+    // Tenta encontrar o elemento visual do slot para pegar a Hora e Nome (se tiver)
+    const slotEl = document.querySelector(`div[oncontextmenu*="${agendaIdSelecionado}"]`);
+    let horaSelecionada = '';
+    let pacienteAtual = '';
+
+    if (slotEl) {
+        // Tenta pegar a hora da div .w-14 (primeira coluna do slot)
+        const horaDiv = slotEl.querySelector('.w-14');
+        if(horaDiv) horaSelecionada = horaDiv.innerText.trim();
+        
+        // Verifica se já tem paciente (caso seja edição)
+        const pacienteDiv = slotEl.querySelector('.flex-1 span');
+        if(pacienteDiv && pacienteDiv.innerText !== 'Livre') {
+            pacienteAtual = pacienteDiv.innerText;
+        }
     }
+
+    // 1. Popula campos Hidden e Visuais
+    document.getElementById('agenda-id-hidden').value = agendaIdSelecionado;
+    
+    // Define Data e Hora nos inputs novos
+    const dataSelecionada = document.getElementById('tasy-data').value;
+    document.getElementById('ag-data').value = dataSelecionada;
+    document.getElementById('ag-hora').value = horaSelecionada;
+
+    // Define o Tipo (Baseado no Select principal da tela)
+    const tipoUnidade = document.getElementById('tasy-unidade').value;
+    document.getElementById('select-tipo-agenda').value = tipoUnidade == '2' ? '2' : '1'; 
+    document.getElementById('agenda-tipo-hidden').value = tipoUnidade == '2' ? '2' : '1';
+
+    // 2. Reset de Tela
+    document.getElementById('input-busca-paciente').value = '';
+    document.getElementById('lista-resultados-paciente').innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Digite acima para buscar...</div>';
+    document.getElementById('txt-obs-agenda').value = '';
+    document.getElementById('select-convenio-agenda').value = ''; // Reset convênio
+
+    // Se já tinha paciente no slot (Edição), preenche o display
+    if(pacienteAtual) {
+        document.getElementById('ag-paciente-display').value = pacienteAtual;
+    } else {
+        limparSelecaoPaciente();
+    }
+
+    document.getElementById('modal-agendamento').classList.remove('hidden');
+    
+    // Foco na busca
+    setTimeout(() => document.getElementById('input-busca-paciente').focus(), 100);
+}
+
+function fecharModalAgendamento() {
+    document.getElementById('modal-agendamento').classList.add('hidden');
+}
+
+// Busca de Pacientes com Debounce
+function buscarPacientes(termo) {
+    clearTimeout(timerBuscaPaciente);
+    const lista = document.getElementById('lista-resultados-paciente');
+    
+    if (termo.length < 3) return;
+
+    timerBuscaPaciente = setTimeout(async () => {
+        try {
+            lista.innerHTML = '<div class="p-4 text-center text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Buscando no Tasy...</div>';
+
+            const res = await fetch(`/api/tasy/pacientes/buscar?termo=${encodeURIComponent(termo)}`);
+            const dados = await res.json();
+
+            if (dados.length === 0) {
+                lista.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Nenhum paciente encontrado.</div>';
+            } else {
+                // Renderiza linhas estilo tabela
+                lista.innerHTML = dados.map(p => `
+                    <div onclick="selecionarPacienteBusca(${p.CD_PESSOA_FISICA}, '${p.NM_PESSOA_FISICA}', '${p.NR_CPF || ''}', '${p.NR_TELEFONE_CELULAR || ''}')" 
+                         class="grid grid-cols-12 gap-2 px-4 py-2 border-b border-slate-50 hover:bg-blue-50 cursor-pointer text-xs items-center transition group">
+                        <div class="col-span-6 font-bold text-slate-700 group-hover:text-blue-700">${p.NM_PESSOA_FISICA}</div>
+                        <div class="col-span-3 text-slate-500">${p.NR_CPF || '-'}</div>
+                        <div class="col-span-3 text-slate-500">${p.DT_NASCIMENTO ? new Date(p.DT_NASCIMENTO).toLocaleDateString('pt-BR') : '-'}</div>
+                    </div>
+                `).join('');
+            }
+        } catch (e) {
+            console.error(e);
+            lista.innerHTML = '<div class="p-4 text-center text-xs text-red-400">Erro na busca.</div>';
+        }
+    }, 500);
+}
+
+// Seleciona paciente da lista e preenche a UI
+function selecionarPacienteBusca(id, nome, cpf, tel) {
+    // Guarda o ID
+    document.getElementById('paciente-id-selecionado').value = id;
+    
+    // Atualiza o Input Visual
+    const display = document.getElementById('ag-paciente-display');
+    display.value = nome;
+    display.classList.remove('bg-blue-50', 'text-blue-800');
+    display.classList.add('bg-green-50', 'text-green-800', 'border-green-200');
+    
+    // Limpa a busca
+    document.getElementById('input-busca-paciente').value = '';
+    document.getElementById('lista-resultados-paciente').innerHTML = '<div class="p-4 text-center text-xs text-green-600"><i class="fa-solid fa-check mr-1"></i>Paciente selecionado!</div>';
+}
+
+function limparSelecaoPaciente() {
+    document.getElementById('paciente-id-selecionado').value = '';
+    const display = document.getElementById('ag-paciente-display');
+    display.value = '';
+    display.classList.remove('bg-green-50', 'text-green-800', 'border-green-200');
+    display.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-200');
+}
+
+// ==========================================
+// 2. LÓGICA DO MODAL DE CADASTRO
+// ==========================================
+
+function abrirModalCadastro() {
+    // Se quiser editar alguém já selecionado
+    const idAtual = document.getElementById('paciente-id-selecionado').value;
+    
+    document.getElementById('form-cadastro-paciente').reset();
+    document.getElementById('cad-id').value = '';
+    
+    if(idAtual) {
+        carregarDadosEdicao(idAtual);
+    }
+    
+    document.getElementById('modal-cadastro-paciente').classList.remove('hidden');
+}
+
+async function carregarDadosEdicao(id) {
+    try {
+        const res = await fetch(`/api/tasy/pacientes/${id}`);
+        const data = await res.json();
+        
+        // Preencher campos essenciais
+        document.getElementById('cad-id').value = data.CD_PESSOA_FISICA;
+        document.getElementById('cad-nome').value = data.NM_PESSOA_FISICA;
+        document.getElementById('cad-cpf').value = data.NR_CPF;
+        document.getElementById('cad-tel').value = data.NR_TELEFONE_CELULAR;
+        // Preencher outros campos se necessário...
+    } catch(e) { console.error('Erro ao carregar paciente', e); }
+}
+
+function fecharModalCadastro() {
+    document.getElementById('modal-cadastro-paciente').classList.add('hidden');
+}
+
+async function salvarCadastroPaciente() {
+    const form = document.getElementById('form-cadastro-paciente');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries()); 
+    
+    if(!data.nome || !data.cpf) return Swal.fire('Erro', 'Preencha Nome e CPF', 'warning');
 
     try {
-        const res = await fetch('/api/tasy/agendar', {
+        Swal.showLoading();
+        const res = await fetch('/api/tasy/pacientes/salvar', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                agendaId: id, 
-                pacienteNome: paciente, 
-                obs: obs,
-                cd_tipo: tipo // Adicionado
-            })
+            body: JSON.stringify(data)
         });
-        const data = await res.json();
-        if(data.success) {
-            fecharModal();
-            buscarAgenda();
-            Swal.fire('Sucesso', 'Paciente agendado no Tasy!', 'success');
+        
+        const result = await res.json();
+        
+        if (result.success) {
+            Swal.fire({icon: 'success', title: 'Salvo!', timer: 1500, showConfirmButton: false});
+            
+            // Fluxo Inteligente: Já seleciona o paciente no modal de agendamento
+            selecionarPacienteBusca(
+                data.cd_pessoa_fisica || 0, // Se a procedure retornar ID, ideal usar ele.
+                data.nome, 
+                data.cpf, 
+                data.telefone
+            );
+            
+            fecharModalCadastro();
         } else {
-            Swal.fire('Erro', data.error || 'Erro no Tasy', 'error');
+            Swal.fire('Erro', result.error || 'Falha ao salvar', 'error');
         }
-    } catch (e) { Swal.fire('Erro', 'Falha ao salvar no Oracle.', 'error'); }
-    finally { 
-        if(btn) {
-            btn.disabled = false; 
-            btn.innerHTML = '<i class="fa-solid fa-check"></i> Salvar'; 
-        }
+    } catch (e) {
+        console.error(e);
+        Swal.fire('Erro', 'Erro de comunicação', 'error');
     }
 }
 
-function fecharModal() { document.getElementById('modal-agendamento').classList.add('hidden'); }
-function abrirModalAgendamento() {
-    document.getElementById('modal-agenda-id').value = agendaIdSelecionado;
-    document.getElementById('modal-agendamento').classList.remove('hidden');
-    // Foco automático
-    setTimeout(() => document.getElementById('modal-paciente-nome').focus(), 100);
+// ==========================================
+// 3. FINALIZAR AGENDAMENTO (CONFIRMAR)
+// ==========================================
+
+async function confirmarAgendamento() {
+    const pacienteId = document.getElementById('paciente-id-selecionado').value;
+    
+    if (!pacienteId) return Swal.fire('Atenção', 'Selecione um paciente primeiro.', 'warning');
+
+    const payload = {
+        agendaId: document.getElementById('agenda-id-hidden').value,
+        cd_tipo: document.getElementById('agenda-tipo-hidden').value,
+        pacienteId: pacienteId,
+        pacienteNome: document.getElementById('ag-paciente-display').value,
+        convenio: document.getElementById('select-convenio-agenda').value,
+        obs: document.getElementById('txt-obs-agenda').value,
+        // Dados extras
+        telefone: '', // Se tiver o campo no modal, pegue aqui
+    };
+
+    try {
+        const btn = document.querySelector('button[onclick="confirmarAgendamento()"]');
+        if(btn) btn.disabled = true;
+
+        const res = await fetch('/api/tasy/agendar/confirmar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+            Swal.fire('Sucesso', 'Agendamento Confirmado!', 'success');
+            fecharModalAgendamento();
+            buscarAgenda(); // Recarrega a lista de horários
+        } else {
+            Swal.fire('Erro Tasy', result.error, 'error');
+        }
+    } catch (e) {
+        Swal.fire('Erro', 'Falha na requisição', 'error');
+    } finally {
+        const btn = document.querySelector('button[onclick="confirmarAgendamento()"]');
+        if(btn) btn.disabled = false;
+    }
 }
+
 
 // ==========================================
 // 🚀 INICIALIZAÇÃO E EVENT LISTENERS
@@ -786,20 +975,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Ouvintes Socket
     socket.on('nova_mensagem', (data) => {
-        // 1. Se não for do ticket aberto, ignora
         if (!activeTicketId || data.ticket_id != activeTicketId) return;
-        
-        // 2. CORREÇÃO DA DUPLICIDADE:
-        // Se a mensagem veio do backend dizendo que foi o 'ATENDENTE' que mandou,
-        // nós ignoramos, porque a função enviarMensagem() já desenhou ela na tela antes.
         if (data.remetente === 'ATENDENTE') return;
-
         renderizarMensagemNaTela(data);
     });
 
     socket.on('novo_ticket_fila', (ticket) => adicionarTicketAFila(ticket));
     
-    // CORREÇÃO CRÍTICA: HTML do Card estava faltando em versões anteriores
     socket.on('ticket_assumido_fila', (data) => {
         const cardOriginal = document.querySelector(`.ticket-card[data-id="${data.ticketId}"]`);
         if (data.atendenteId == meuIdAtual) {
@@ -833,10 +1015,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const jaExiste = listaMeus.querySelector(`.ticket-card[data-id="${data.ticketId}"]`);
                 if (!jaExiste) listaMeus.insertAdjacentHTML('afterbegin', novoCardHtml);
             }
-            if (activeTicketId != data.ticketId) {
-                // Se quiser mudar a aba automaticamente:
-                // document.getElementById('btn-tab-meus').click(); 
-            }
         } else {
             if (cardOriginal) cardOriginal.remove();
         }
@@ -856,7 +1034,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // [NOVO] Auto-abrir orientações ao selecionar o médico
+    // Auto-abrir orientações ao selecionar o médico
     const selectRecurso = document.getElementById('tasy-recurso');
     if(selectRecurso) {
         selectRecurso.addEventListener('change', function() {

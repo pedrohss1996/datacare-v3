@@ -19,6 +19,7 @@ const rotaIndicadores = require('./routes/indicadores.routes');
 const rotaIndicadoresIA = require('./routes/ia.routes');
 const rotaQuerisIA = require('./routes/queries.routes');
 const rotaTasy = require('./routes/tasy.routes')
+const rotaAdminChat = require('./routes/admin_chat.routes');
 
 // Inicializa o app
 const app = express();
@@ -79,6 +80,7 @@ app.use('/', rotaQuerisIA);
 //app.use('/', whatsappRoutes);
 app.use('/', rotaChat);
 app.use('/', rotaTasy);
+app.use('/', rotaAdminChat);
 
 // 6. Tratamento de Erros
 app.use((req, res, next) => {

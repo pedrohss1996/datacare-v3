@@ -1,0 +1,393 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<div class="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden font-sans w-full">
+
+    <aside class="w-[300px] bg-white border-r border-slate-200 flex flex-col z-20 shrink-0 shadow-lg">
+        <div class="h-16 bg-slate-50 border-b border-slate-200 flex items-center px-4 shrink-0 justify-between">
+            <h2 class="font-bold text-slate-700 text-lg flex items-center gap-2">
+                <i class="fas fa-inbox text-blue-600"></i> Inbox
+            </h2>
+            <span id="badge-total" class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">0</span>
+        </div>
+        
+        <div class="p-2 border-b border-slate-100 bg-white">
+            <div class="relative">
+                <i class="fas fa-search absolute left-3 top-3 text-slate-400 text-xs"></i>
+                <input type="text" onkeyup="filtrarListaLateral(this.value)" placeholder="Filtrar conversa..." class="w-full bg-slate-100 pl-8 pr-3 py-2 text-sm rounded-md focus:ring-1 focus:ring-blue-500 outline-none transition">
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto scrollbar-thin" id="lista-tickets-sidebar">
+            </div>
+    </aside>
+
+    <section id="panel-chat" class="w-0 overflow-hidden flex flex-col border-r border-slate-300 bg-[#efeae2] transition-[width] duration-300 ease-in-out relative shadow-2xl z-10">
+        
+        <div class="h-16 bg-slate-100 border-b border-slate-200 flex items-center justify-between px-4 shrink-0 min-w-[580px]"> <div class="flex items-center gap-3">
+                <button onclick="fecharChat()" class="text-slate-500 hover:text-red-600 transition p-2 hover:bg-slate-200 rounded-full" title="Fechar Chat">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+                <div class="w-10 h-10 rounded-full bg-slate-300 flex items-center justify-center overflow-hidden border border-slate-300">
+                    <img id="chat-header-foto" src="" class="w-full h-full object-cover hidden">
+                    <i id="chat-header-icon" class="fas fa-user text-slate-500"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <h3 class="font-bold text-slate-800 text-sm leading-tight truncate w-64" id="chat-header-nome">...</h3> <p class="text-xs text-slate-500 truncate" id="chat-header-tel">...</p>
+                </div>
+            </div>
+            <div id="chat-header-badges"></div>
+        </div>
+
+        <div id="chat-area-msgs" class="flex-1 overflow-y-auto p-4 space-y-3 min-w-[580px]" 
+             style="background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');">
+            </div>
+
+        <div class="p-3 bg-slate-100 border-t border-slate-200 min-w-[580px]">
+            <div class="flex gap-2">
+                <input type="text" placeholder="Digite uma anotação interna ou resposta..." class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" disabled title="Envio desabilitado na visualização de histórico">
+                <button class="bg-blue-600 text-white px-4 rounded-lg hover:bg-blue-700 transition disabled:opacity-50" disabled><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </section>
+
+    <main id="panel-dashboard" class="flex-1 overflow-y-auto bg-slate-50 scrollbar-thin min-w-[400px]">
+        <div class="p-6 space-y-6">
+            
+            <div class="flex flex-col xl:flex-row justify-between xl:items-end gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800">Monitoramento</h1>
+                    <p class="text-slate-500 text-xs">Visão geral da operação em tempo real</p>
+                </div>
+                
+                <div class="flex flex-wrap gap-2 items-end">
+                    <div class="w-40">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Período</label>
+                        <input type="text" id="filtroData" placeholder="Hoje" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:border-blue-500">
+                    </div>
+                     <div class="w-32">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Status</label>
+                        <select id="filtroStatus" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:border-blue-500">
+                            <option value="">Todos</option>
+                            <option value="FINALIZADO">Finalizados</option>
+                            <option value="ABERTO">Em Aberto</option>
+                        </select>
+                    </div>
+                    <button onclick="aplicarFiltros()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-bold transition h-[26px]">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-blue-500">
+                    <div class="flex justify-between">
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">Total</p>
+                            <h3 class="text-2xl font-bold text-slate-700" id="kpi-total">0</h3>
+                        </div>
+                        <i class="fas fa-ticket-alt text-blue-100 text-2xl"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-green-500">
+                    <div class="flex justify-between">
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">Finalizados</p>
+                            <h3 class="text-2xl font-bold text-slate-700" id="kpi-finalizados">0</h3>
+                        </div>
+                        <i class="fas fa-check-circle text-green-100 text-2xl"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-yellow-500">
+                    <div class="flex justify-between">
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">Espera Média</p>
+                            <h3 class="text-2xl font-bold text-slate-700" id="kpi-espera">-</h3>
+                        </div>
+                        <i class="fas fa-clock text-yellow-100 text-2xl"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-purple-500">
+                    <div class="flex justify-between">
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">Msgs Trocadas</p>
+                            <h3 class="text-2xl font-bold text-slate-700" id="kpi-msgs">0</h3>
+                        </div>
+                        <i class="fas fa-comments text-purple-100 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                    <h4 class="text-xs font-bold text-slate-600 mb-4 uppercase tracking-wider">Volume de Atendimentos (Hora)</h4>
+                    <div class="relative h-64 w-full">
+                        <canvas id="chartVolume"></canvas>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                    <h4 class="text-xs font-bold text-slate-600 mb-4 uppercase tracking-wider">Distribuição</h4>
+                    <div class="relative h-64 w-full flex justify-center">
+                        <canvas id="chartStatus"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-700 text-sm">Detalhamento</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-white text-slate-400 text-[10px] uppercase font-bold tracking-wider border-b border-slate-100">
+                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3">Paciente</th>
+                                <th class="px-4 py-3 text-center">Início</th>
+                                <th class="px-4 py-3 text-center text-orange-500">Espera</th>
+                                <th class="px-4 py-3 text-center text-blue-500">Duração</th>
+                                <th class="px-4 py-3 text-center">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-corpo" class="text-xs text-slate-600 divide-y divide-slate-50">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="h-10"></div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // --- 1. CONFIGURAÇÃO DE DADOS (CORRIGIDA) ---
+    // AQUI ESTÁ A CORREÇÃO DO JSON.PARSE QUE VOCÊ PEDIU:
+    // Envolvemos o EJS em aspas simples e escapamos caracteres perigosos para evitar o erro visual do VS Code.
+    const dadosBrutos = JSON.parse('<%- JSON.stringify(dados || []).replace(/\\/g, "\\\\").replace(/\'/g, "\\\'") %>');
+    
+    let ticketsProcessados = [];
+    
+    // Configura Calendário
+    flatpickr("#filtroData", { mode: "range", dateFormat: "d/m/Y", locale: { rangeSeparator: " até " } });
+
+    // --- 2. PROCESSAMENTO ---
+    function processarDados() {
+        const map = {};
+        dadosBrutos.forEach(row => {
+            const id = row.ticket_id || row.ticket_real_id;
+            if(!map[id]) {
+                map[id] = {
+                    id: id,
+                    nome: row.nome_contato || 'Desconhecido',
+                    whatsapp: row.numero_whatsapp,
+                    foto: row.foto_perfil,
+                    status: row.status,
+                    criadoEm: new Date(row.ticket_inicio || row.criado_em),
+                    finalizadoEm: row.finalizado_em ? new Date(row.finalizado_em) : null,
+                    atendidoEm: row.atendido_em ? new Date(row.atendido_em) : null,
+                    mensagens: []
+                };
+            }
+            map[id].mensagens.push({
+                remetente: row.remetente,
+                conteudo: row.conteudo,
+                tipo: row.tipo,
+                data: new Date(row.msg_data || row.criado_em)
+            });
+        });
+
+        ticketsProcessados = Object.values(map).map(t => {
+            t.mensagens.sort((a,b) => a.data - b.data);
+            if (!t.atendidoEm) {
+                const primeiraAtendente = t.mensagens.find(m => m.remetente === 'ATENDENTE');
+                if (primeiraAtendente) t.atendidoEm = primeiraAtendente.data;
+            }
+            const diffEspera = t.atendidoEm ? (t.atendidoEm - t.criadoEm) : 0;
+            const diffDuracao = t.finalizadoEm ? (t.finalizadoEm - t.criadoEm) : (new Date() - t.criadoEm);
+            return { ...t, diffEspera, diffDuracao };
+        }).sort((a,b) => b.criadoEm - a.criadoEm);
+    }
+
+    // --- 3. UI - SIDEBAR ---
+    function renderizarSidebar(lista = ticketsProcessados) {
+        const container = document.getElementById('lista-tickets-sidebar');
+        container.innerHTML = '';
+        document.getElementById('badge-total').innerText = lista.length;
+
+        lista.forEach(t => {
+            const el = document.createElement('div');
+            el.className = "p-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition flex gap-3 items-center group";
+            el.onclick = () => abrirChat(t.id);
+            
+            const statusDot = t.status === 'FINALIZADO' ? 'bg-green-500' : 'bg-yellow-500';
+            
+            el.innerHTML = `
+                <div class="relative w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
+                     ${t.foto ? `<img src="${t.foto}" class="w-full h-full object-cover">` : '<i class="fas fa-user text-slate-400 text-xs"></i>'}
+                     <div class="absolute bottom-0 right-0 w-3 h-3 border-2 border-white rounded-full ${statusDot}"></div>
+                </div>
+                <div class="overflow-hidden">
+                    <h4 class="text-xs font-bold text-slate-700 truncate group-hover:text-blue-600">${t.nome}</h4>
+                    <p class="text-[10px] text-slate-400 truncate">${t.whatsapp}</p>
+                </div>
+            `;
+            container.appendChild(el);
+        });
+    }
+
+    // --- 4. UI - CHAT E SPLIT VIEW ---
+    function abrirChat(id) {
+        const t = ticketsProcessados.find(x => x.id === id);
+        if(!t) return;
+
+        // EFEITO SPLIT: AUMENTADO PARA 600px
+        const panelChat = document.getElementById('panel-chat');
+        panelChat.classList.remove('w-0');
+        panelChat.classList.add('w-[600px]'); // <--- AQUI A MUDANÇA (Maior largura)
+        
+        // Dados do Header
+        document.getElementById('chat-header-nome').innerText = t.nome;
+        document.getElementById('chat-header-tel').innerText = t.whatsapp;
+        
+        const badge = t.status === 'FINALIZADO' 
+            ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">FINALIZADO</span>' 
+            : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-700">ABERTO</span>';
+        document.getElementById('chat-header-badges').innerHTML = badge;
+
+        // Mensagens
+        const area = document.getElementById('chat-area-msgs');
+        area.innerHTML = '';
+        
+        t.mensagens.forEach(msg => {
+            const isUser = msg.remetente === 'PACIENTE';
+            const isSys = msg.remetente === 'SISTEMA';
+            
+            if(isSys) {
+                area.innerHTML += `<div class="flex justify-center my-2"><span class="bg-slate-200/80 text-slate-600 text-[9px] px-2 py-1 rounded shadow-sm font-semibold">${msg.conteudo}</span></div>`;
+                return;
+            }
+
+            const align = isUser ? 'justify-start' : 'justify-end';
+            const bg = isUser ? 'bg-white text-slate-800 rounded-tr-md rounded-br-md rounded-bl-md' : 'bg-[#d9fdd3] text-slate-900 rounded-tl-md rounded-bl-md rounded-br-md';
+            const hora = msg.data.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+            let content = `<p class="text-xs leading-relaxed">${msg.conteudo}</p>`;
+            if(msg.tipo === 'imagem') content = `<img src="${msg.conteudo}" class="max-w-[200px] rounded cursor-pointer" onclick="window.open(this.src)">`;
+            if(msg.tipo === 'audio') content = `<audio controls class="h-6 w-40"><source src="${msg.conteudo}"></audio>`;
+
+            area.innerHTML += `
+                <div class="flex ${align}">
+                    <div class="${bg} p-2 shadow-sm max-w-[80%] min-w-[80px] relative">
+                        ${content}
+                        <div class="text-[9px] text-slate-400/80 text-right mt-1">${hora}</div>
+                    </div>
+                </div>`;
+        });
+        
+        setTimeout(() => area.scrollTop = area.scrollHeight, 100);
+    }
+
+    function fecharChat() {
+        const panelChat = document.getElementById('panel-chat');
+        panelChat.classList.remove('w-[600px]'); // <--- AQUI TAMBÉM (Removendo a classe nova)
+        panelChat.classList.add('w-0');
+    }
+
+    // --- 5. UI - DASHBOARD (GRÁFICOS E TABELA) ---
+    let chartVol = null;
+    let chartStat = null;
+
+    function atualizarDashboard(lista = ticketsProcessados) {
+        // KPIs
+        const total = lista.length;
+        const finalizados = lista.filter(t => t.status === 'FINALIZADO').length;
+        const msgs = lista.reduce((acc, t) => acc + t.mensagens.length, 0);
+        const atendidos = lista.filter(t => t.atendidoEm);
+        const mediaEsperaMs = atendidos.length ? atendidos.reduce((acc, t) => acc + t.diffEspera, 0) / atendidos.length : 0;
+        const mediaMin = Math.floor(mediaEsperaMs / 60000);
+
+        document.getElementById('kpi-total').innerText = total;
+        document.getElementById('kpi-finalizados').innerText = finalizados;
+        document.getElementById('kpi-msgs').innerText = msgs;
+        document.getElementById('kpi-espera').innerText = mediaMin + "m";
+
+        // Tabela
+        const tbody = document.getElementById('tabela-corpo');
+        tbody.innerHTML = '';
+        
+        lista.forEach(t => {
+            const fmtDuracao = ms => {
+                if(!ms || ms < 0) return '-';
+                const min = Math.floor(ms / 60000);
+                const h = Math.floor(min / 60);
+                return h > 0 ? `${h}h ${min%60}m` : `${min}m`;
+            };
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-blue-50 transition group";
+            tr.innerHTML = `
+                <td class="px-4 py-3"><div class="w-2 h-2 rounded-full ${t.status === 'FINALIZADO' ? 'bg-green-500' : 'bg-yellow-500'}"></div></td>
+                <td class="px-4 py-3 font-bold text-slate-700">${t.nome}</td>
+                <td class="px-4 py-3 text-center text-slate-500">${t.criadoEm.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
+                <td class="px-4 py-3 text-center text-orange-600 font-bold">${fmtDuracao(t.diffEspera)}</td>
+                <td class="px-4 py-3 text-center text-blue-600 font-bold">${fmtDuracao(t.diffDuracao)}</td>
+                <td class="px-4 py-3 text-center"><button onclick="abrirChat(${t.id})" class="text-blue-600 hover:text-blue-800"><i class="fas fa-eye"></i></button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Gráficos
+        const horas = Array(24).fill(0);
+        lista.forEach(t => horas[t.criadoEm.getHours()]++);
+
+        const ctxVol = document.getElementById('chartVolume').getContext('2d');
+        if(chartVol) chartVol.destroy();
+        chartVol = new Chart(ctxVol, {
+            type: 'bar',
+            data: { labels: horas.map((_, i) => `${i}h`), datasets: [{ label: 'Tickets', data: horas, backgroundColor: '#3b82f6', borderRadius: 2 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { display: false } } }
+        });
+
+        const ctxStat = document.getElementById('chartStatus').getContext('2d');
+        if(chartStat) chartStat.destroy();
+        chartStat = new Chart(ctxStat, {
+            type: 'doughnut',
+            data: { labels: ['Finalizados', 'Abertos'], datasets: [{ data: [finalizados, total-finalizados], backgroundColor: ['#22c55e', '#f59e0b'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 6 } } } }
+        });
+    }
+
+    // --- 6. FILTRAGEM ---
+    function filtrarListaLateral(termo) {
+        const t = termo.toLowerCase();
+        const filt = ticketsProcessados.filter(x => x.nome.toLowerCase().includes(t) || x.whatsapp.includes(t));
+        renderizarSidebar(filt);
+    }
+
+    function aplicarFiltros() {
+        const status = document.getElementById('filtroStatus').value;
+        const datas = document.getElementById('filtroData')._flatpickr.selectedDates;
+        
+        const filtrados = ticketsProcessados.filter(t => {
+            const matchStatus = status ? t.status === status : true;
+            let matchData = true;
+            if (datas.length === 2) {
+                const fim = datas[1]; fim.setHours(23,59,59,999);
+                matchData = t.criadoEm >= datas[0] && t.criadoEm <= fim;
+            }
+            return matchStatus && matchData;
+        });
+        
+        renderizarSidebar(filtrados);
+        atualizarDashboard(filtrados);
+    }
+
+    // INIT
+    processarDados();
+    renderizarSidebar();
+    atualizarDashboard();
+
+</script>

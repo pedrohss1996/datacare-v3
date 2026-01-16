@@ -95,47 +95,213 @@
     </button>
 </div>
 
-<div id="modal-agendamento" class="fixed inset-0 bg-black/60 z-[90] hidden flex items-center justify-center backdrop-blur-sm">
-    <div class="bg-white rounded-lg shadow-2xl w-[400px] overflow-hidden transform transition-all scale-100 animate-in fade-in zoom-in duration-200">
+<div id="modal-agendamento" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
         
-        <div class="bg-blue-600 text-white px-4 py-3 flex justify-between items-center border-b border-blue-700">
-            <h3 class="font-bold text-sm flex items-center gap-2">
-                <i class="fa-regular fa-calendar-plus"></i> Novo Agendamento
-            </h3>
-            <button onclick="fecharModalAgendamento()" class="text-white/70 hover:text-white transition">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+        <div class="bg-blue-600 px-6 py-3 flex justify-between items-center shrink-0">
+            <h3 class="text-white font-bold text-lg"><i class="fa-solid fa-calendar-days mr-2"></i>Agendamento de Paciente</h3>
+            <button onclick="fecharModalAgendamento()" class="text-white/80 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
         </div>
 
-        <div class="p-6 space-y-4 bg-white">
-            <input type="hidden" id="modal-agenda-id">
-            <input type="hidden" id="modal-agenda-tipo">
+        <div class="p-6 overflow-y-auto custom-scrollbar">
+            <input type="hidden" id="agenda-id-hidden">
+            <input type="hidden" id="agenda-tipo-hidden">
+            <input type="hidden" id="paciente-id-selecionado">
+            
+            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
+                <label class="block text-xs font-bold text-slate-600 mb-1">Localizar Paciente (Nome, CPF ou Prontuário)</label>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="input-busca-paciente" onkeyup="buscarPacientes(this.value)" 
+                           class="flex-1 border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                           placeholder="Digite para buscar...">
+                    <button onclick="buscarPacientes(document.getElementById('input-busca-paciente').value)" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-bold text-sm transition shadow-sm">
+                        Filtrar
+                    </button>
+                </div>
 
-            <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nome do Paciente <span class="text-red-500">*</span></label>
-                <input type="text" id="modal-paciente-nome" 
-                    class="w-full border border-slate-300 rounded px-3 py-2 text-sm bg-slate-50 font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none uppercase" 
-                    placeholder="DIGITE O NOME COMPLETO...">
+                <div class="border border-slate-200 rounded bg-white overflow-hidden relative min-h-[100px]">
+                    <div class="grid grid-cols-12 gap-2 bg-slate-100 px-4 py-2 border-b border-slate-200 text-xs font-bold text-slate-600">
+                        <div class="col-span-6">Nome</div>
+                        <div class="col-span-3">CPF</div>
+                        <div class="col-span-3">Dt. Nasc</div>
+                    </div>
+                    
+                    <div id="lista-resultados-paciente" class="max-h-32 overflow-y-auto">
+                        <div class="p-8 text-center text-xs text-slate-400">
+                            Nenhum paciente encontrado.
+                        </div>
+                    </div>
+                    
+                    </div>
+
+                <div class="flex justify-end mt-3">
+                    <button onclick="abrirModalCadastro()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded font-bold text-xs flex items-center gap-2 shadow-sm transition">
+                        <i class="fa-solid fa-plus"></i> Novo Cadastro Completo
+                    </button>
+                </div>
             </div>
 
-            <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Observação</label>
-                <textarea id="modal-obs" rows="3" 
-                    class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none" 
-                    placeholder="Ex: Particular, Telefone..."></textarea>
+            <h4 class="text-blue-600 font-bold text-sm uppercase mb-3 border-b border-blue-100 pb-1">Dados do Agendamento</h4>
+            
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
+                <div class="col-span-3">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data</label>
+                    <input type="date" id="ag-data" class="w-full bg-slate-100 border border-slate-300 text-slate-500 rounded px-3 py-1.5 text-sm cursor-not-allowed" readonly>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Hora</label>
+                    <input type="time" id="ag-hora" class="w-full bg-slate-100 border border-slate-300 text-slate-500 rounded px-3 py-1.5 text-sm font-bold cursor-not-allowed" readonly>
+                </div>
+                <div class="col-span-7">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Paciente Selecionado</label>
+                    <input type="text" id="ag-paciente-display" class="w-full bg-blue-50 border border-blue-200 text-blue-800 font-bold rounded px-3 py-1.5 text-sm cursor-not-allowed" placeholder="Selecione na busca acima..." readonly>
+                </div>
+
+                <div class="col-span-4">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Convênio</label>
+                    <select id="select-convenio-agenda" class="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:border-blue-500 outline-none bg-white">
+                        <option value="">Selecione...</option>
+                        </select>
+                </div>
+                <div class="col-span-4">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Plano / Categoria</label>
+                    <select id="select-plano-agenda" class="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:border-blue-500 outline-none bg-white">
+                        <option value="">Básico (Padrão)</option>
+                        <option value="">Executivo</option>
+                        </select>
+                </div>
+                <div class="col-span-4">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tipo</label>
+                    <select id="select-tipo-agenda" class="w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:border-blue-500 outline-none bg-white">
+                        <option value="1">Consulta</option>
+                        <option value="2">Exame / Procedimento</option>
+                    </select>
+                </div>
+
+                <div class="col-span-12">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Observações / Queixa Principal</label>
+                    <textarea id="txt-obs-agenda" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none resize-none"></textarea>
+                </div>
             </div>
         </div>
 
-        <div class="bg-slate-50 px-6 py-3 flex justify-end gap-2 border-t border-slate-200">
-            <button onclick="fecharModalAgendamento()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded transition">
-                Cancelar
-            </button>
-            <button onclick="salvarNovoAgendamento()" id="btn-salvar-agendamento" class="px-4 py-2 text-xs font-bold text-white bg-green-600 hover:bg-green-700 rounded shadow-sm flex items-center gap-2 transition transform active:scale-95">
-                <i class="fa-solid fa-check"></i> Salvar
+        <div class="bg-slate-50 px-6 py-4 flex justify-end gap-3 border-t border-slate-200 shrink-0">
+            <button onclick="fecharModalAgendamento()" class="px-5 py-2 bg-white border border-slate-300 text-slate-600 font-bold hover:bg-slate-50 rounded shadow-sm transition">Cancelar</button>
+            <button onclick="confirmarAgendamento()" class="px-6 py-2 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded shadow-sm transition flex items-center gap-2">
+                Confirmar Agendamento
             </button>
         </div>
     </div>
 </div>
+
+<div id="modal-cadastro-paciente" class="fixed inset-0 bg-black/50 hidden z-[60] flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+        <div class="bg-slate-800 px-6 py-4 flex justify-between items-center shrink-0">
+            <h3 class="text-white font-bold text-lg"><i class="fa-solid fa-user-plus mr-2"></i>Ficha Cadastral do Paciente</h3>
+            <button onclick="fecharModalCadastro()" class="text-white/70 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6 bg-slate-50">
+            <form id="form-cadastro-paciente" class="space-y-6">
+                <input type="hidden" name="cd_pessoa_fisica" id="cad-id">
+
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                    <h4 class="text-blue-600 font-bold text-sm border-b pb-2 mb-4">1. IDENTIFICAÇÃO PESSOAL</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="col-span-2">
+                            <label class="lbl-form">Nome Completo *</label>
+                            <input type="text" name="nome" id="cad-nome" class="input-form" required>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="lbl-form">Nome Social</label>
+                            <input type="text" name="nome_social" id="cad-nome-social" class="input-form">
+                        </div>
+                        <div>
+                            <label class="lbl-form">CPF *</label>
+                            <input type="text" name="cpf" id="cad-cpf" class="input-form" placeholder="000.000.000-00">
+                        </div>
+                        <div>
+                            <label class="lbl-form">Data Nascimento</label>
+                            <input type="date" name="nascimento" id="cad-nasc" class="input-form">
+                        </div>
+                        <div>
+                            <label class="lbl-form">Sexo</label>
+                            <select name="sexo" id="cad-sexo" class="input-form">
+                                <option value="M">Masculino</option>
+                                <option value="F">Feminino</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="lbl-form">Altura (cm)</label>
+                            <input type="number" name="altura" id="cad-altura" class="input-form">
+                        </div>
+                        <div>
+                            <label class="lbl-form">Peso (kg)</label>
+                            <input type="number" name="peso" id="cad-peso" class="input-form">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                    <h4 class="text-blue-600 font-bold text-sm border-b pb-2 mb-4">2. CONTATO</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="lbl-form">Celular / WhatsApp *</label>
+                            <input type="text" name="telefone" id="cad-tel" class="input-form" placeholder="(00) 00000-0000">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="lbl-form">E-mail</label>
+                            <input type="email" name="email" id="cad-email" class="input-form">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                    <h4 class="text-blue-600 font-bold text-sm border-b pb-2 mb-4">3. ENDEREÇO</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="lbl-form">CEP</label>
+                            <input type="text" name="cep" id="cad-cep" class="input-form" onblur="buscarCep(this.value)">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="lbl-form">Logradouro</label>
+                            <input type="text" name="endereco" id="cad-logradouro" class="input-form">
+                        </div>
+                        <div>
+                            <label class="lbl-form">Número</label>
+                            <input type="text" name="numero" id="cad-numero" class="input-form">
+                        </div>
+                        <div>
+                            <label class="lbl-form">Bairro</label>
+                            <input type="text" name="bairro" id="cad-bairro" class="input-form">
+                        </div>
+                        <div>
+                            <label class="lbl-form">Cidade</label>
+                            <input type="text" name="cidade" id="cad-cidade" class="input-form">
+                        </div>
+                        <div>
+                            <label class="lbl-form">UF</label>
+                            <input type="text" name="uf" id="cad-uf" class="input-form">
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="bg-white px-6 py-4 flex justify-end gap-3 border-t border-slate-200 shrink-0">
+            <button onclick="fecharModalCadastro()" class="btn-secondary">Cancelar</button>
+            <button onclick="salvarCadastroPaciente()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-bold shadow-sm transition">
+                <i class="fa-solid fa-save mr-2"></i>Salvar Ficha & Selecionar
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .lbl-form { @apply block text-[10px] font-bold text-slate-500 uppercase mb-1; }
+    .input-form { @apply w-full border border-slate-300 rounded px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition; }
+    .btn-secondary { @apply px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg transition; }
+</style>
 
 <div id="modal-orientacao" class="fixed inset-0 bg-black/60 z-[90] hidden flex items-center justify-center backdrop-blur-sm">
     <div class="bg-white rounded-lg shadow-2xl w-[600px] max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 border border-slate-200">
