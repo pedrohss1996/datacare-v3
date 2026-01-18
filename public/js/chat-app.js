@@ -647,13 +647,15 @@ async function acaoAgenda(acao) {
     const configs = {
         confirmar: { titulo: 'Confirmar Agendamento?', cor: '#16a34a', endpoint: '/api/tasy/confirmar' },
         cancelar: { titulo: 'Cancelar Agendamento?', cor: '#dc2626', endpoint: '/api/tasy/cancelar' },
-        bloquear: { titulo: 'Bloquear Horário?', cor: '#ea580c', endpoint: '/api/tasy/bloquear' }
+        bloquear: { titulo: 'Bloquear Horário?', cor: '#ea580c', endpoint: '/api/tasy/bloquear' },
+        encaixe: { titulo: 'Gerar Encaixe?', cor: '#9333ea', endpoint: '/api/tasy/encaixe' 
+        }
     };
 
     const config = configs[acao];
     const result = await Swal.fire({
         title: config.titulo,
-        text: "Deseja replicar essa alteração no Tasy?",
+        text: "Deseja realizar essa ação?",
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: config.cor,
@@ -664,7 +666,7 @@ async function acaoAgenda(acao) {
 
     if (result.isConfirmed) {
         const toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
-        toast.fire({ icon: 'info', title: 'Processando no Tasy...' });
+        toast.fire({ icon: 'info', title: 'Processando' });
         
         fetch(config.endpoint, {
             method: 'POST',
