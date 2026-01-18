@@ -1,15 +1,16 @@
 // src/routes/index.routes.js
 const express = require('express');
 const router = express.Router();
+const loginRequired = require('../middlewares/loginRequired');
 
-router.get('/', (req, res) => {
+router.get('/', loginRequired, (req, res) => {
+    
+    const user = req.user || {};
+
     res.render('pages/index', {
         title: 'Home - DataCare',
-        user: req.user // Passa o usuário (ou undefined se não tiver)
+        user: user
     });
 });
-
-
-
 
 module.exports = router;

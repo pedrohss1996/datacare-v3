@@ -1,9 +1,13 @@
+// src/middlewares/loginRequired.js
 module.exports = (req, res, next) => {
-    // Verifica se existe um usuário salvo na sessão
     if (req.session && req.session.user) {
-        // Se tiver, deixa passar para a próxima função (o controller)
+
+        req.user = req.session.user;
+        res.locals.user = req.session.user;
+
         return next();
     }
     
+    // Se não tiver sessão, manda pro login
     return res.redirect('/login');
 };

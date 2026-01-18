@@ -77,22 +77,41 @@
 </aside>
 
 <div id="context-menu" class="fixed hidden bg-white border border-slate-200 shadow-xl rounded-lg w-56 py-2 z-50 text-sm flex flex-col animate-in fade-in zoom-in duration-100">
+    
     <button onclick="acaoAgenda('agendar')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
-        <div class="w-5 text-center"><i class="fa-regular fa-calendar-plus text-blue-600"></i></div> <span>Agendar</span>
+        <div class="w-5 text-center"><i class="fa-regular fa-calendar-plus text-blue-600"></i></div> 
+        <span>Agendar</span>
     </button>
-    <button onclick="acaoAgenda('confirmar')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
-        <div class="w-5 text-center"><i class="fa-solid fa-check-double text-green-600"></i></div> <span>Confirmar</span>
+
+    <button onclick="acaoAgenda('encaixe')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
+        <div class="w-5 text-center"><i class="fa-solid fa-user-plus text-purple-600"></i></div> 
+        <span>Gerar Encaixe</span>
     </button>
-    <button onclick="acaoAgenda('transferir')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
-        <div class="w-5 text-center"><i class="fa-solid fa-arrow-right-arrow-left text-orange-500"></i></div> <span>Transferir</span>
-    </button>
+
     <div class="border-t border-slate-100 my-1"></div>
+
+    <button onclick="acaoAgenda('confirmar')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
+        <div class="w-5 text-center"><i class="fa-solid fa-check-double text-green-600"></i></div> 
+        <span>Confirmar</span>
+    </button>
+
+    <button onclick="acaoAgenda('transferir')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
+        <div class="w-5 text-center"><i class="fa-solid fa-arrow-right-arrow-left text-orange-500"></i></div> 
+        <span>Transferir</span>
+    </button>
+
+    <div class="border-t border-slate-100 my-1"></div>
+
     <button onclick="acaoAgenda('bloquear')" class="text-left px-4 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-3 transition">
-        <div class="w-5 text-center"><i class="fa-solid fa-ban text-red-500"></i></div> <span>Bloquear</span>
+        <div class="w-5 text-center"><i class="fa-solid fa-ban text-red-500"></i></div> 
+        <span>Bloquear</span>
     </button>
+
     <button onclick="acaoAgenda('cancelar')" class="text-left px-4 py-2 hover:bg-red-50 text-red-600 flex items-center gap-3 transition">
-        <div class="w-5 text-center"><i class="fa-regular fa-calendar-xmark"></i></div> <span>Cancelar</span>
+        <div class="w-5 text-center"><i class="fa-regular fa-calendar-xmark"></i></div> 
+        <span>Cancelar</span>
     </button>
+
 </div>
 
 <div id="modal-agendamento" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center backdrop-blur-sm">

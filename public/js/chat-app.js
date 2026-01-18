@@ -604,9 +604,35 @@ function abrirMenuContexto(e, idAgenda) {
     e.preventDefault(); 
     agendaIdSelecionado = idAgenda;
     const menu = document.getElementById('context-menu');
-    menu.style.top = `${e.clientY}px`;
-    menu.style.left = `${e.clientX}px`;
+
+    // 1. IMPORTANTE: Removemos o hidden PRIMEIRO para o navegador calcular a altura real
     menu.classList.remove('hidden');
+
+    // 2. Pegamos as medidas
+    const menuHeight = menu.offsetHeight;
+    const menuWidth = menu.offsetWidth;
+    const windowHeight = window.innerHeight;
+    const windowWidth = window.innerWidth;
+
+    // 3. Lógica Vertical (Evita cortar embaixo)
+    // Se a posição do mouse + altura do menu ultrapassar o fim da tela...
+    if (e.clientY + menuHeight > windowHeight) {
+        // ...posiciona o menu PARA CIMA do mouse
+        menu.style.top = `${e.clientY - menuHeight}px`;
+    } else {
+        // ...senão, posiciona PARA BAIXO (padrão)
+        menu.style.top = `${e.clientY}px`;
+    }
+
+    // 4. Lógica Horizontal (Evita cortar na direita - Bônus)
+    // Se a posição do mouse + largura do menu ultrapassar a largura da tela...
+    if (e.clientX + menuWidth > windowWidth) {
+        // ...joga o menu para a ESQUERDA do mouse
+        menu.style.left = `${e.clientX - menuWidth}px`;
+    } else {
+        // ...senão, posiciona na direita (padrão)
+        menu.style.left = `${e.clientX}px`;
+    }
 }
 
 document.addEventListener('click', () => {

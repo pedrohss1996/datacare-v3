@@ -9,6 +9,8 @@ const PORT = process.env.PORT || 3000;
 // 1. Criação do Servidor HTTP explícito (acoplando o Express)
 const server = http.createServer(app);
 
+console.log('Iniciando o servidor na porta', PORT);
+
 // 2. Configuração do Socket.io
 const io = new Server(server, {
     cors: {

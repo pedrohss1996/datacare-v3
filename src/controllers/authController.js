@@ -18,96 +18,72 @@ module.exports = {
     login: async (req, res) => {
         let { usuario, senha } = req.body;
 
-        // Limpeza básica: se o usuário digitou o email completo, removemos o dominio
-        // para usar apenas o uid na montagem do DN LDAP.
-        if (usuario.includes('@')) {
-            usuario = usuario.split('@')[0];
-        }
+        if (usuario.includes('@')) usuario = usuario.split('@')[0];
 
-        const client = ldap.createClient({
-            url: process.env.LDAP_URL,
-            timeout: 5000,
-            connectTimeout: 5000
-        });
-
-        client.on('error', (err) => console.error('LDAP Client Error:', err.message));
-
-        // --- DEFINIÇÃO DAS BASES POSSÍVEIS ---
-        // Vamos tentar autenticar nestes caminhos, em ordem.
+        // --- Lógica LDAP ---
+        const client = ldap.createClient({ url: process.env.LDAP_URL, timeout: 5000, connectTimeout: 5000 });
+        client.on('error', (err) => console.error('LDAP Error:', err.message));
+        
         const dnMappings = [
-            // 1. Tenta na Intranet (intranet.arh.com.br)
             `uid=${usuario},ou=people,dc=intranet,dc=arh,dc=com,dc=br`,
-            
-            // 2. Tenta na Raiz (arh.com.br) - O que validamos no teste anterior
             `uid=${usuario},ou=people,dc=arh,dc=com,dc=br`
         ];
 
-        // Função auxiliar para tentar o Bind em uma lista de DNs
-        const tentarAutenticacao = async () => {
-            // Percorre todas as possibilidades de DN
+        try {
+            // 1. Tenta Autenticar no LDAP
+            let ldapSuccess = false;
             for (const dn of dnMappings) {
                 try {
-                    console.log(`--- Tentando autenticar em: ${dn} ---`);
-                    
                     await new Promise((resolve, reject) => {
-                        client.bind(dn, senha, (err) => {
-                            if (err) return reject(err);
-                            resolve(true);
-                        });
+                        client.bind(dn, senha, (err) => err ? reject(err) : resolve(true));
                     });
-                    
-                    // Se chegou aqui, é sucesso!
-                    console.log('✅ SUCESSO! Login validado no DN:', dn);
-                    return true; 
-
-                } catch (error) {
-                    // Apenas loga que falhou neste domínio, mas NÃO joga o erro pra fora.
-                    // O loop vai continuar para a próxima tentativa.
-                    console.log(`❌ Falha na tentativa (${dn}): ${error.message}`);
-                }
+                    ldapSuccess = true;
+                    break;
+                } catch (e) {}
             }
-
-            // Se o loop terminou e a função não retornou "true", então falhou em todos.
-            throw new Error('Credenciais inválidas em todos os domínios configurados.');
-        };
-
-        try {
-            // 1. Executa a cascata de tentativas LDAP
-            await tentarAutenticacao();
+            if (!ldapSuccess) throw new Error('Credenciais inválidas.');
             client.unbind();
 
-            // 2. Login LDAP OK -> Busca dados no DataCare (Banco SQL)
-            // Aqui usamos o login limpo (sem @dominio) para buscar
-            const userDb = await db('usuarios').where({ nm_usuario: usuario }).first();
+            // 2. Busca no Postgres (Tabela usuarios SIMPLES)
+            // Como a coluna ds_usuario já está aqui, não precisamos de JOIN!
+            const userDb = await db('usuarios')
+                .whereRaw('UPPER(nm_usuario) = ?', [usuario.toUpperCase()])
+                .first();
 
             if (!userDb) {
                 return res.render('pages/auth/login', {
                     title: 'Login - DataCare',
                     layout: 'layouts/auth',
-                    erro: 'Usuário autenticado na rede, mas sem cadastro no DataCare.'
+                    erro: 'Usuário sem cadastro no DataCare.'
                 });
             }
 
-            // 3. Gera Token
+            // 3. Define o Nome para Exibição (AQUI ESTÁ A CHAVE 🔑)
+            // Priorizamos 'ds_usuario' (Marlon Braga) > 'nm_usuario' (Login) > 'Usuário'
+            const nomeParaSessao = userDb.ds_usuario || userDb.nm_usuario || 'Usuário';
+
+            // 4. Gera Token
             const token = jwt.sign({
                 id: userDb.cd_usuario,
-                username: userDb.ds_usuario,
-                role: 'TI' // Placeholder
+                username: userDb.nm_usuario,
+                role: 'TI'
             }, process.env.JWT_SECRET, { expiresIn: '8h' });
 
+            // 5. Salva na Sessão
             req.session.user = {
                 id: userDb.cd_usuario,
-                name: userDb.nm_usuario || userDb.ds_usuario || 'Usuário',
+                name: nomeParaSessao, // <--- Vai salvar o conteúdo de ds_usuario
                 token: token
             };
 
-            return res.redirect('/');
+            // 6. Salva e Redireciona
+            req.session.save(() => {
+                return res.redirect('/');
+            });
 
         } catch (error) {
             try { client.unbind(); } catch(e) {}
-            
             console.error('Falha Auth:', error.message);
-            
             return res.render('pages/auth/login', {
                 title: 'Login - DataCare',
                 layout: 'layouts/auth',
@@ -115,6 +91,7 @@ module.exports = {
             });
         }
     },
+
 
     logout: (req, res) => {
         req.session.destroy(() => {

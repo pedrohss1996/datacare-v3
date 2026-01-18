@@ -1,24 +1,32 @@
 <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full bg-slate-50 min-h-screen">
     <div class="space-y-10">
 
-
-        
         <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
 
             <%
-            function capitalizeName(name) {
-                // SE NÃO TIVER NOME, RETORNA UM PADRÃO E NÃO QUEBRA
-                if (!name) return 'Usuário'; 
-
-                // O código original que estava dando erro:
-                return name.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+            // --- FUNÇÃO PARA FORMATAR O NOME ---
+            function capitalizeName(texto) {
+                if (!texto) return 'Usuário'; 
+                const str = String(texto);
+                return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
             }
+            
+            // --- LÓGICA INTELIGENTE DE SELEÇÃO DE NOME ---
+            // 1. Pega o objeto user (se existir)
+            const u = (typeof user !== 'undefined' && user) ? user : {};
+            
+            // 2. Tenta achar o nome em TODAS as variações possíveis que seu sistema gera
+            // username: é como está vindo agora (do token JWT)
+            // name: é como salvamos na sessão
+            // nome: é como vem do banco as vezes
+            const nomeParaMostrar = u.name || u.nome || u.username || u.nm_usuario || u.login || 'Visitante';
             %>
+
             <div>
                 <h1 class="text-xl font-bold text-slate-800">
                     Olá,
                     <span class="text-blue-600">
-                        <%= (typeof user !== 'undefined' && user) ? capitalizeName(user.name) : 'Visitante' %>
+                        <%= capitalizeName(nomeParaMostrar) %>
                     </span>
                 </h1>
                 <p class="text-slate-500 text-sm mt-1">
