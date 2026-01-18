@@ -641,18 +641,33 @@ document.addEventListener('click', () => {
 });
 
 async function acaoAgenda(acao) {
+    // 1. Fecha o menu de contexto
     document.getElementById('context-menu').classList.add('hidden');
+
+    // 2. [NOVO] Se for "Mais Dados", abre o modal e encerra a função aqui
+    if (acao === 'mais_dados') {
+        // Chama a função que criamos no passo anterior
+        return abrirModalMaisDados(agendaIdSelecionado);
+    }
+
+    // 3. Se for "Agendar", abre o modal de agendamento (Mantido)
     if (acao === 'agendar') return abrirModalAgendamento();
 
+    // 4. Configurações das Ações (Mantido e adicionado 'transferir')
     const configs = {
         confirmar: { titulo: 'Confirmar Agendamento?', cor: '#16a34a', endpoint: '/api/tasy/confirmar' },
         cancelar: { titulo: 'Cancelar Agendamento?', cor: '#dc2626', endpoint: '/api/tasy/cancelar' },
         bloquear: { titulo: 'Bloquear Horário?', cor: '#ea580c', endpoint: '/api/tasy/bloquear' },
-        encaixe: { titulo: 'Gerar Encaixe?', cor: '#9333ea', endpoint: '/api/tasy/encaixe' 
-        }
+        encaixe: { titulo: 'Gerar Encaixe?', cor: '#9333ea', endpoint: '/api/tasy/encaixe' },
+        transferir: { titulo: 'Transferir Agendamento?', cor: '#f97316', endpoint: '/api/tasy/transferir' } // Adicionei para não quebrar se clicar no botão laranja
     };
 
     const config = configs[acao];
+
+    // Segurança: se a ação não existir no config, para por aqui
+    if (!config) return;
+
+    // 5. SweetAlert e Fetch (Mantido Original)
     const result = await Swal.fire({
         title: config.titulo,
         text: "Deseja realizar essa ação?",
@@ -668,18 +683,29 @@ async function acaoAgenda(acao) {
         const toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
         toast.fire({ icon: 'info', title: 'Processando' });
         
-        fetch(config.endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ agendaId: agendaIdSelecionado })
-        }).then(res => res.json()).then(data => {
+        // Adicionei um try/catch simples apenas para garantir que erros de rede não travem o botão
+        try {
+            const response = await fetch(config.endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agendaId: agendaIdSelecionado })
+            });
+            
+            const data = await response.json();
+            
             if (data.success) {
                 toast.fire({ icon: 'success', title: 'Atualizado!' });
                 buscarAgenda(); 
+            } else {
+                toast.fire({ icon: 'error', title: data.message || 'Erro ao atualizar' });
             }
-        });
+        } catch (error) {
+            console.error('Erro na requisição:', error);
+            toast.fire({ icon: 'error', title: 'Erro de conexão' });
+        }
     }
 }
+
 
 // ==========================================
 // 1. LÓGICA DO MODAL DE AGENDAMENTO (NOVO)
@@ -920,6 +946,55 @@ async function confirmarAgendamento() {
         if(btn) btn.disabled = false;
     }
 }
+
+
+// ==========================================
+// 4. MODAL PARA EXIBIR MAIS DADOS DO PACIENTE
+// ==========================================
+
+function abrirModalMaisDados(id) {
+    const modal = document.getElementById('modal-mais-dados');
+    modal.classList.remove('hidden');
+
+    // Feedback visual de carregamento
+    document.getElementById('view-agenda-id').innerText = id || '---';
+    document.getElementById('view-paciente-nome').innerText = 'Carregando informações...';
+
+    // AQUI VOCÊ FARIA O FETCH NO SEU BACKEND
+    // fetch(`/api/tasy/detalhes/${id}`).then(...)
+    
+    // SIMULAÇÃO DE DADOS (Para testar UI agora)
+    setTimeout(() => {
+        // Preenche os dados na tela
+        document.getElementById('view-agenda-id').innerText = `#${id}`;
+        document.getElementById('view-paciente-nome').innerText = 'Jose Mendes Nogueira Filho';
+        document.getElementById('view-paciente-cpf').innerText = '123.456.789-00';
+        document.getElementById('view-paciente-nasc').innerText = '15/04/1985';
+        document.getElementById('view-paciente-mae').innerText = 'Maria Mendes';
+        document.getElementById('view-paciente-cel').innerText = '(62) 99999-8888';
+        
+        document.getElementById('view-convenio').innerText = 'Unimed Goiânia';
+        document.getElementById('view-procedimento').innerText = 'Consulta Eletiva';
+        document.getElementById('view-medico').innerText = 'Dr. Vilmondes Goncalves';
+        document.getElementById('view-status').innerText = 'Confirmado';
+        
+        document.getElementById('view-audit-criacao').innerText = '10/01/2026 08:00';
+        document.getElementById('view-audit-user').innerText = 'recepcao_01';
+    }, 300); // Pequeno delay para parecer real
+}
+
+function fecharModalMaisDados() {
+    document.getElementById('modal-mais-dados').classList.add('hidden');
+}
+
+// Fecha se clicar fora do modal (no backdrop escuro)
+document.getElementById('modal-mais-dados').addEventListener('click', function(e) {
+    if (e.target === this.firstElementChild) { // Verifica se clicou no backdrop
+        fecharModalMaisDados();
+    }
+});
+
+
 
 
 // ==========================================
