@@ -1,0 +1,431 @@
+<div class="flex flex-col h-screen bg-white overflow-hidden font-sans">
+
+    <header class="h-16 border-b border-gray-200 bg-white flex justify-between items-center px-6 shadow-sm z-20">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 text-white p-2 rounded-lg">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold text-gray-800">Chat - Construtor de Páginas</h1>
+                <p class="text-xs text-gray-500">Crie dashboards hospitalares com ajuda da IA</p>
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <button onclick="openQueryManager()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 border border-gray-300">
+                <i class="fas fa-database"></i> Gerenciar Queries
+            </button>
+            <button onclick="saveCurrentPage()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center gap-2">
+                <i class="fas fa-save"></i> Salvar Página
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+
+        <aside class="w-96 border-r border-gray-200 bg-gray-50 flex flex-col justify-between">
+            <div class="p-4 border-b border-gray-200 bg-white">
+                <h2 class="text-sm font-bold text-gray-700 flex items-center gap-2">
+                    <i class="fas fa-comments text-blue-500"></i> Assistente IA
+                </h2>
+            </div>
+
+            <div id="chatHistory" class="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                        <i class="fas fa-robot text-xs"></i>
+                    </div>
+                    <div class="bg-white p-3 rounded-tr-xl rounded-br-xl rounded-bl-xl shadow-sm border border-gray-100 text-sm text-gray-600">
+                        Olá! Primeiro, selecione uma consulta no botão <b>"Gerenciar Queries"</b>. Depois, me diga como quer ver os dados.
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-white border-t border-gray-200 space-y-3">
+                <div id="activeQueryIndicator" class="hidden text-[10px] text-green-600 bg-green-50 p-2 rounded border border-green-100 flex justify-between items-center">
+                    <span><i class="fas fa-check-circle mr-1"></i> Query Ativa: <b id="lblActiveQuery">Nome</b></span>
+                    <button onclick="clearActiveQuery()" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">
+                        <i class="fas fa-filter mr-1"></i> Filtros (Opcional)
+                    </label>
+                    <input id="filterInput" type="text" class="w-full bg-gray-50 border border-gray-200 text-xs p-2 rounded hover:bg-white focus:ring-1 focus:ring-blue-500 outline-none" 
+                    placeholder="Ex: Filtrar ano 2025...">
+                </div>
+
+                <div class="relative">
+                    <textarea id="promptInput" rows="3" class="w-full bg-gray-50 border border-gray-200 text-sm p-3 pr-10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none resize-none" 
+                    placeholder="Ex: 'Criar gráficos de linha e cards de KPI'"></textarea>
+                    <button onclick="sendMessage()" class="absolute bottom-2 right-2 bg-blue-600 hover:bg-blue-700 text-white w-8 h-8 rounded-full flex items-center justify-center transition shadow-sm">
+                        <i class="fas fa-paper-plane text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 bg-gray-100 p-8 overflow-y-auto relative flex flex-col">
+            
+            <div class="bg-white p-4 rounded-t-xl border-b border-gray-100 flex justify-between items-center shadow-sm">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800" id="dashboardTitle">Dashboard em Branco</h2>
+                    <p class="text-xs text-gray-500 mt-1">Status: Aguardando instruções</p>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <div class="bg-gray-100 p-1 rounded-lg flex text-xs font-bold border border-gray-200">
+                        <button onclick="toggleView('visual')" id="btnViewVisual" class="px-3 py-1.5 rounded-md bg-white text-blue-600 shadow-sm transition-all">
+                            <i class="fas fa-eye mr-1"></i> Visual
+                        </button>
+                        <button onclick="toggleView('code')" id="btnViewCode" class="px-3 py-1.5 rounded-md text-gray-500 hover:text-gray-700 transition-all">
+                            <i class="fas fa-code mr-1"></i> HTML
+                        </button>
+                    </div>
+
+                    <div class="flex gap-2 text-xs text-gray-400 border px-2 py-1 rounded bg-gray-50 h-8 items-center">
+                        <i class="fas fa-database"></i> <span id="dataSourceName">Nenhuma fonte</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white flex-1 rounded-b-xl shadow-sm relative min-h-[500px] flex flex-col">
+                
+                <div id="dashboardContainer" class="p-6 flex-grow h-full overflow-y-auto">
+                    <div class="h-full flex flex-col items-center justify-center text-gray-300">
+                        <i class="fas fa-chart-line text-6xl mb-4 opacity-20"></i>
+                        <p class="text-sm">Selecione uma query e envie um comando no chat.</p>
+                    </div>
+                </div>
+
+                <div id="codeContainer" class="hidden flex-grow h-full bg-slate-900 p-0 rounded-b-xl overflow-hidden relative">
+                    <textarea id="htmlOutput" readonly class="w-full h-full bg-slate-900 text-blue-300 font-mono text-xs p-6 outline-none resize-none leading-relaxed" spellcheck="false"></textarea>
+                    
+                    <button onclick="copyHtmlCode()" class="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded text-xs font-bold backdrop-blur-md transition border border-white/10">
+                        <i class="far fa-copy mr-1"></i> Copiar
+                    </button>
+                </div>
+            </div>
+            
+            <div id="loadingOverlay" class="hidden absolute inset-0 bg-white/80 z-50 flex flex-col items-center justify-center backdrop-blur-sm rounded-xl">
+                <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-100 border-t-blue-600 mb-4"></div>
+                <p class="text-gray-600 font-medium animate-pulse">Processando com IA...</p>
+            </div>
+        </main>
+    </div>
+</div>
+
+<div id="queryModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity"
+     onclick="if(event.target === this) closeQueryManager()">
+    
+    <div class="bg-white rounded-xl shadow-2xl w-[900px] h-[85vh] flex flex-col overflow-hidden animate-fade-in-up">
+        
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+            <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-database text-blue-600"></i> Gerenciador de Consultas
+            </h3>
+            <button onclick="closeQueryManager()" class="text-gray-400 hover:text-red-500 transition px-2">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <div class="flex flex-1 overflow-hidden">
+            <div class="w-1/3 border-r border-gray-200 bg-gray-50 flex flex-col">
+                <div class="p-3 border-b border-gray-200">
+                    <button onclick="resetEditor()" class="w-full text-xs bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-2 rounded font-medium shadow-sm transition">
+                        <i class="fas fa-plus mr-1"></i> Nova Consulta
+                    </button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-2 space-y-1" id="savedQueriesList">
+                    <% if (savedWidgets && savedWidgets.length > 0) { %>
+                        <% savedWidgets.forEach(widget => { %>
+                            <div class="group flex items-center justify-between p-3 rounded hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200 transition cursor-pointer"
+                                 onclick="loadQueryIntoEditor('<%= widget.id %>', `<%= widget.oracle_sql_query %>`, `<%= widget.title %>`)">
+                                
+                                <div class="flex-1 min-w-0 pr-2">
+                                    <div class="font-semibold text-sm text-gray-700 truncate"><%= widget.title %></div>
+                                    <div class="text-[10px] text-gray-400 truncate"><%= widget.description || 'SQL Personalizado' %></div>
+                                </div>
+                                
+                                <button onclick="deleteQuery('<%= widget.id %>', event)" 
+                                        class="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition"
+                                        title="Excluir Query">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        <% }) %>
+                    <% } else { %>
+                        <p class="text-xs text-center text-gray-400 mt-4">Nenhuma query salva.</p>
+                    <% } %>
+                </div>
+            </div>
+
+            <div class="w-2/3 flex flex-col bg-slate-900 relative">
+                <div class="px-4 py-2 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
+                    <input type="text" id="queryNameInput" class="bg-slate-700 text-white text-sm px-2 py-1 rounded border border-slate-600 focus:border-blue-500 outline-none w-1/2" placeholder="Nome da Consulta (Ex: Ocupação UTI)">
+                    <div class="flex gap-2">
+                        <button onclick="runTestInModal()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded font-bold transition">
+                            <i class="fas fa-play mr-1"></i> TESTAR
+                        </button>
+                        <button onclick="saveQueryToLibrary()" class="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded font-bold transition">
+                            <i class="fas fa-save mr-1"></i> SALVAR
+                        </button>
+                    </div>
+                </div>
+
+                <textarea id="modalSqlInput" class="flex-1 w-full bg-slate-900 text-green-400 font-mono text-sm p-4 outline-none resize-none" spellcheck="false" placeholder="Cole sua query Oracle aqui..."></textarea>
+                
+                <div id="modalStatusArea" class="h-32 bg-slate-950 border-t border-slate-800 p-2 overflow-auto font-mono text-xs text-gray-400">
+                    > Selecione uma query ou escreva uma nova...
+                </div>
+            </div>
+        </div>
+
+        <div class="px-6 py-3 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
+            <span class="text-xs text-gray-500" id="selectionStatus">Nenhuma query selecionada.</span>
+            
+            <button onclick="applyQueryToDashboard()" id="btnApply" disabled 
+                    class="bg-gray-300 text-gray-500 px-6 py-2 rounded-lg font-bold text-sm transition cursor-not-allowed flex items-center gap-2">
+                <i class="fas fa-check"></i> USAR ESTA QUERY
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // ESTADO
+    let activeSql = '';
+    let activeQueryName = '';
+    let currentHtmlCode = '';
+
+    // --- FUNÇÕES DE VISUALIZAÇÃO (Toggle Visual/Code) ---
+    function toggleView(mode) {
+        const visualBtn = document.getElementById('btnViewVisual');
+        const codeBtn = document.getElementById('btnViewCode');
+        const visualContainer = document.getElementById('dashboardContainer');
+        const codeContainer = document.getElementById('codeContainer');
+
+        if (mode === 'visual') {
+            // Ativa Visual
+            visualBtn.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+            visualBtn.classList.remove('text-gray-500');
+            codeBtn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
+            codeBtn.classList.add('text-gray-500');
+
+            visualContainer.classList.remove('hidden');
+            codeContainer.classList.add('hidden');
+        } else {
+            // Ativa Código
+            codeBtn.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+            codeBtn.classList.remove('text-gray-500');
+            visualBtn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
+            visualBtn.classList.add('text-gray-500');
+
+            visualContainer.classList.add('hidden');
+            codeContainer.classList.remove('hidden');
+            
+            // Atualiza o textarea com o HTML atual
+            document.getElementById('htmlOutput').value = currentHtmlCode || '';
+        }
+    }
+
+    function copyHtmlCode() {
+        const copyText = document.getElementById("htmlOutput");
+        copyText.select();
+        document.execCommand("copy"); // Fallback simples
+        alert("Código HTML copiado para a área de transferência!");
+    }
+
+    // --- CHAT LOGIC ---
+    async function sendMessage() {
+        const prompt = document.getElementById('promptInput').value;
+        const filters = document.getElementById('filterInput').value;
+        
+        if (!prompt) return;
+        if (!activeSql) {
+            botReply("⚠️ Por favor, abra o 'Gerenciar Queries' e selecione uma consulta para usar.");
+            return;
+        }
+
+        addMessage(prompt, 'user', filters);
+        document.getElementById('promptInput').value = '';
+        toggleLoading(true);
+
+        try {
+            const response = await fetch('/api/analytics/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    prompt: prompt + (filters ? `. Filtros: ${filters}` : ''),
+                    sqlQuery: activeSql 
+                })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                currentHtmlCode = data.previewHtml; // Salva para exibir no modo código
+                renderDashboard(data.previewHtml);
+                botReply("Dashboard atualizado com sucesso!");
+                // Se estiver no modo código, atualiza o textarea em tempo real
+                if(!document.getElementById('codeContainer').classList.contains('hidden')) {
+                     document.getElementById('htmlOutput').value = currentHtmlCode;
+                }
+            } else {
+                botReply("Erro: " + data.message);
+            }
+        } catch (e) {
+            botReply("Erro de conexão.");
+        } finally {
+            toggleLoading(false);
+        }
+    }
+
+    function addMessage(text, type, subtitle = '') {
+        const history = document.getElementById('chatHistory');
+        const isUser = type === 'user';
+        const html = `
+            <div class="flex items-start gap-3 ${isUser ? 'justify-end' : ''} animate-fade-in">
+                ${!isUser ? `<div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><i class="fas fa-robot text-xs"></i></div>` : ''}
+                <div class="${isUser ? 'bg-blue-600 text-white rounded-tl-xl rounded-tr-xl rounded-bl-xl' : 'bg-white text-gray-600 rounded-tr-xl rounded-br-xl rounded-bl-xl border border-gray-100'} p-3 shadow-sm text-sm max-w-[85%]">
+                    ${text}
+                    ${subtitle ? `<div class="mt-1 pt-1 border-t ${isUser ? 'border-white/20' : 'border-gray-100'} text-[10px] opacity-80"><i class="fas fa-filter"></i> ${subtitle}</div>` : ''}
+                </div>
+                ${isUser ? `<div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 flex-shrink-0"><i class="fas fa-user text-xs"></i></div>` : ''}
+            </div>
+        `;
+        history.insertAdjacentHTML('beforeend', html);
+        history.scrollTop = history.scrollHeight;
+    }
+
+    function botReply(text) { addMessage(text, 'bot'); }
+
+    // --- MODAL LOGIC ---
+    function openQueryManager() { document.getElementById('queryModal').classList.remove('hidden'); }
+    function closeQueryManager() { document.getElementById('queryModal').classList.add('hidden'); }
+
+    function resetEditor() {
+        document.getElementById('modalSqlInput').value = '';
+        document.getElementById('queryNameInput').value = '';
+        document.getElementById('modalStatusArea').innerText = '> Novo editor limpo.';
+        document.getElementById('btnApply').disabled = true;
+    }
+
+    function loadQueryIntoEditor(id, sql, title) {
+        document.getElementById('modalSqlInput').value = sql;
+        document.getElementById('queryNameInput').value = title;
+        document.getElementById('modalStatusArea').innerText = `> Query "${title}" carregada. Teste antes de usar.`;
+        enableApplyButton(title);
+    }
+
+    function enableApplyButton(title) {
+        const btn = document.getElementById('btnApply');
+        btn.disabled = false;
+        btn.classList.remove('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+        btn.classList.add('bg-blue-600', 'text-white', 'hover:bg-blue-700', 'cursor-pointer');
+        document.getElementById('selectionStatus').innerHTML = `Query selecionada: <b>${title}</b>`;
+    }
+
+    // --- AÇÃO DE TESTAR (MODAL) ---
+    async function runTestInModal() {
+        const sql = document.getElementById('modalSqlInput').value;
+        const status = document.getElementById('modalStatusArea');
+        if(!sql) return;
+        
+        status.innerText = "> Testando no Oracle...";
+        try {
+            const res = await fetch('/api/analytics/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sqlQuery: sql, prompt: 'Teste' })
+            });
+            const data = await res.json();
+            
+            if(data.success && data.rawResult) {
+                status.innerHTML = `<span class="text-green-400">SUCESSO: ${data.rawResult.length} linhas retornadas.</span>`;
+                enableApplyButton(document.getElementById('queryNameInput').value || 'Sem Título');
+            } else {
+                status.innerHTML = `<span class="text-red-400">ERRO:</span> ${data.message}`;
+            }
+        } catch(e) { status.innerText = "Erro fatal de execução."; }
+    }
+
+    // --- AÇÃO DE EXCLUIR (MODAL) ---
+    async function deleteQuery(id, event) {
+        event.stopPropagation(); // Impede que o clique carregue a query no editor
+        
+        if(!confirm('Tem certeza que deseja excluir esta query permanentemente?')) return;
+
+        try {
+            const res = await fetch(`/api/analytics/delete/${id}`, { method: 'POST' });
+            if(res.ok) {
+                // Remove visualmente ou recarrega
+                window.location.reload();
+            } else {
+                alert('Erro ao excluir query.');
+            }
+        } catch(e) { alert('Erro de conexão ao excluir.'); }
+    }
+
+    // --- AÇÃO DE SALVAR QUERY ---
+    async function saveQueryToLibrary() {
+        const title = document.getElementById('queryNameInput').value;
+        const sql = document.getElementById('modalSqlInput').value;
+        if(!title || !sql) return alert('Preencha Título e SQL');
+
+        const res = await fetch('/api/analytics/save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ title, sqlQuery: sql, prompt: 'Manual' })
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert('Salvo na biblioteca!');
+            window.location.reload();
+        }
+    }
+
+    function applyQueryToDashboard() {
+        activeSql = document.getElementById('modalSqlInput').value;
+        activeQueryName = document.getElementById('queryNameInput').value || 'Consulta Personalizada';
+        
+        document.getElementById('dataSourceName').innerText = activeQueryName;
+        document.getElementById('dashboardTitle').innerText = activeQueryName;
+        
+        document.getElementById('activeQueryIndicator').classList.remove('hidden');
+        document.getElementById('lblActiveQuery').innerText = activeQueryName;
+        
+        closeQueryManager();
+        botReply(`Query <b>"${activeQueryName}"</b> carregada. O que vamos criar?`);
+    }
+
+    function clearActiveQuery() {
+        activeSql = '';
+        document.getElementById('activeQueryIndicator').classList.add('hidden');
+        document.getElementById('dataSourceName').innerText = 'Nenhuma fonte';
+        botReply("Desconectei a query.");
+    }
+
+    function renderDashboard(html) {
+        const container = document.getElementById('dashboardContainer');
+        container.innerHTML = html;
+        const scripts = container.getElementsByTagName("script");
+        for(let i=0; i<scripts.length; i++) {
+            const s = document.createElement("script");
+            if (scripts[i].src) s.src = scripts[i].src;
+            else s.text = scripts[i].innerHTML;
+            document.body.appendChild(s);
+        }
+    }
+    
+    function toggleLoading(show) {
+        const el = document.getElementById('loadingOverlay');
+        if(show) el.classList.remove('hidden'); else el.classList.add('hidden');
+    }
+
+    function saveCurrentPage() {
+        if(!currentHtmlCode) return alert('Gere uma página primeiro.');
+        // Aqui você pode implementar salvar o HTML final em outra tabela
+        alert('Funcionalidade de exportação em breve.');
+    }
+</script>

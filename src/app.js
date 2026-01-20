@@ -16,11 +16,11 @@ const indexRoutes = require('./routes/index.routes');
 const authRoutes = require('./routes/auth.routes');
 const rotasPessoas = require('./routes/pessoas.routes');
 const rotaIndicadores = require('./routes/indicadores.routes');
-const rotaIndicadoresIA = require('./routes/ia.routes');
-const rotaQuerisIA = require('./routes/queries.routes');
 const rotaTasy = require('./routes/tasy.routes')
 const rotaAdminChat = require('./routes/admin_chat.routes');
 
+// ---- Criador de Pagina IA ----
+const analyticsRoutes = require('./routes/analytics.routes');
 // Inicializa o app
 const app = express();
 
@@ -75,12 +75,12 @@ app.use('/', authRoutes);
 app.use('/', rotasPessoas);    
 app.use('/', rotaIndicadores);
 app.use('/', indexRoutes); 
-app.use('/', rotaIndicadoresIA);
-app.use('/', rotaQuerisIA);
 //app.use('/', whatsappRoutes);
 app.use('/', rotaChat);
 app.use('/', rotaTasy);
 app.use('/', rotaAdminChat);
+app.use('/', analyticsRoutes);
+
 
 // 6. Tratamento de Erros
 app.use((req, res, next) => {
