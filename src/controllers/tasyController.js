@@ -570,6 +570,124 @@ module.exports = {
     },
 
     // =========================================================================
+    // 4.1. DETALHES COMPLETOS DO AGENDAMENTO (PARA MODAL MAIS_DADOS)
+    // =========================================================================
+    getDetalhesAgendamento: async (req, res) => {
+        if (!db.oracle) return res.status(500).json({ error: 'Conexão Oracle não configurada.' });
+
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: 'ID do agendamento obrigatório.' });
+
+        try {
+            // Primeiro busca na view DC_CHAT_AGENDAS para pegar dados básicos
+            const sqlBase = `
+                SELECT 
+                    NR_SEQUENCIA AS ID_AGENDA,
+                    HR_AGENDA AS HORA,
+                    IE_STATUS_AGENDA AS STATUS,
+                    DS_STATUS_AGENDA AS STATUS_DESC,
+                    NM_PACIENTE AS NOME_PACIENTE,
+                    CD_CONVENIO AS COD_CONVENIO,
+                    DS_CONVENIO AS CONVENIO,
+                    DT_AGENDA AS DATA_AGENDA,
+                    CD_AGENDA AS CD_AGENDA
+                FROM DC_CHAT_AGENDAS
+                WHERE NR_SEQUENCIA = :id
+            `;
+
+            const baseResult = await db.oracle.raw(sqlBase, { id });
+            const baseRows = getRows(baseResult);
+            
+            if (baseRows.length === 0) {
+                return res.status(404).json({ error: 'Agendamento não encontrado.' });
+            }
+
+            const dadosBase = baseRows[0];
+            
+            // Agora busca dados detalhados tentando primeiro agenda_consulta, depois agenda_paciente
+            let sqlDetalhes = `
+                SELECT 
+                    ac.CD_PESSOA_FISICA,
+                    ac.DT_AGENDAMENTO,
+                    ac.DT_ATUALIZACAO,
+                    ac.NM_USUARIO,
+                    ac.DS_OBSERVACAO,
+                    ag.DS_AGENDA AS NOME_MEDICO,
+                    pf.NM_PESSOA_FISICA AS NOME_COMPLETO,
+                    pf.NR_CPF AS CPF,
+                    pf.DT_NASCIMENTO,
+                    pf.NR_DDD_CELULAR || pf.NR_TELEFONE_CELULAR AS CELULAR,
+                    (SELECT nm_pessoa_fisica FROM pessoa_fisica WHERE cd_pessoa_fisica = pf.cd_pessoa_mae) AS NOME_MAE
+                FROM agenda_consulta ac
+                LEFT JOIN agenda ag ON ac.CD_AGENDA = ag.CD_AGENDA
+                LEFT JOIN pessoa_fisica pf ON ac.CD_PESSOA_FISICA = pf.CD_PESSOA_FISICA
+                WHERE ac.NR_SEQUENCIA = :id
+            `;
+
+            let detalhesResult = await db.oracle.raw(sqlDetalhes, { id });
+            let detalhesRows = getRows(detalhesResult);
+            
+            // Se não encontrou em agenda_consulta, tenta agenda_paciente
+            if (detalhesRows.length === 0) {
+                sqlDetalhes = `
+                    SELECT 
+                        ap.CD_PESSOA_FISICA,
+                        ap.DT_AGENDAMENTO,
+                        ap.DT_ATUALIZACAO,
+                        ap.NM_USUARIO,
+                        ap.DS_OBSERVACAO,
+                        ag.DS_AGENDA AS NOME_MEDICO,
+                        pf.NM_PESSOA_FISICA AS NOME_COMPLETO,
+                        pf.NR_CPF AS CPF,
+                        pf.DT_NASCIMENTO,
+                        pf.NR_DDD_CELULAR || pf.NR_TELEFONE_CELULAR AS CELULAR,
+                        (SELECT nm_pessoa_fisica FROM pessoa_fisica WHERE cd_pessoa_fisica = pf.cd_pessoa_mae) AS NOME_MAE
+                    FROM agenda_paciente ap
+                    LEFT JOIN agenda ag ON ap.CD_AGENDA = ag.CD_AGENDA
+                    LEFT JOIN pessoa_fisica pf ON ap.CD_PESSOA_FISICA = pf.CD_PESSOA_FISICA
+                    WHERE ap.NR_SEQUENCIA = :id
+                `;
+                detalhesResult = await db.oracle.raw(sqlDetalhes, { id });
+                detalhesRows = getRows(detalhesResult);
+            }
+
+            const dados = detalhesRows.length > 0 ? detalhesRows[0] : {};
+            
+            // Formata os dados para o frontend
+            const response = {
+                id: dadosBase.ID_AGENDA,
+                hora: dadosBase.HORA,
+                status: dadosBase.STATUS,
+                statusDesc: dadosBase.STATUS_DESC,
+                paciente: {
+                    nome: dados.NOME_COMPLETO || dadosBase.NOME_PACIENTE || 'Não informado',
+                    cpf: dados.CPF || 'Não informado',
+                    dataNascimento: dados.DT_NASCIMENTO ? new Date(dados.DT_NASCIMENTO).toLocaleDateString('pt-BR') : 'Não informado',
+                    mae: dados.NOME_MAE || 'Não informado',
+                    celular: dados.CELULAR || 'Não informado',
+                    id: dados.CD_PESSOA_FISICA
+                },
+                clinico: {
+                    convenio: dadosBase.CONVENIO || 'Não informado',
+                    procedimento: dados.NOME_MEDICO || 'Consulta',
+                    medico: dados.NOME_MEDICO || 'Não informado',
+                    observacao: dados.DS_OBSERVACAO || ''
+                },
+                auditoria: {
+                    criadoEm: dados.DT_AGENDAMENTO ? new Date(dados.DT_AGENDAMENTO).toLocaleString('pt-BR') : 'Não informado',
+                    atualizadoEm: dados.DT_ATUALIZACAO ? new Date(dados.DT_ATUALIZACAO).toLocaleString('pt-BR') : 'Não informado',
+                    usuario: dados.NM_USUARIO || 'Sistema'
+                }
+            };
+
+            res.json(response);
+        } catch (error) {
+            console.error('Erro ao buscar detalhes do agendamento:', error);
+            res.status(500).json({ error: error.message });
+        }
+    },
+
+    // =========================================================================
     // 4. CONFIRMAR AGENDAMENTO (CONSULTA OU EXAME)
     // =========================================================================
     confirmarAgendamento: async (req, res) => {

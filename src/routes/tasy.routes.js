@@ -61,4 +61,7 @@ router.post('/api/tasy/pacientes/salvar', loginRequired, tasyController.salvarPa
 // Confirmar Agendamento (Lógica robusta que diferencia Consulta/Exame)
 router.post('/api/tasy/agendar/confirmar', loginRequired, tasyController.confirmarAgendamento);
 
+// Detalhes completos do agendamento (Para modal mais_dados)
+router.get('/api/tasy/agenda/:id/detalhes', loginRequired, tasyController.getDetalhesAgendamento);
+
 module.exports = router;

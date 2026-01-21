@@ -653,12 +653,14 @@ async function acaoAgenda(acao) {
     // 3. Se for "Agendar", abre o modal de agendamento (Mantido)
     if (acao === 'agendar') return abrirModalAgendamento();
 
+    // 3.1. Se for "Encaixe", abre o modal de encaixe (NOVO)
+    if (acao === 'encaixe') return abrirModalEncaixe();
+
     // 4. Configurações das Ações (Mantido e adicionado 'transferir')
     const configs = {
         confirmar: { titulo: 'Confirmar Agendamento?', cor: '#16a34a', endpoint: '/api/tasy/confirmar' },
         cancelar: { titulo: 'Cancelar Agendamento?', cor: '#dc2626', endpoint: '/api/tasy/cancelar' },
         bloquear: { titulo: 'Bloquear Horário?', cor: '#ea580c', endpoint: '/api/tasy/bloquear' },
-        encaixe: { titulo: 'Gerar Encaixe?', cor: '#9333ea', endpoint: '/api/tasy/encaixe' },
         transferir: { titulo: 'Transferir Agendamento?', cor: '#f97316', endpoint: '/api/tasy/transferir' } // Adicionei para não quebrar se clicar no botão laranja
     };
 
@@ -947,40 +949,312 @@ async function confirmarAgendamento() {
     }
 }
 
+// ==========================================
+// 3.1. LÓGICA DO MODAL DE ENCAIXE
+// ==========================================
+
+function abrirModalEncaixe() {
+    if (!agendaIdSelecionado) return;
+
+    // Pega a hora e data do slot selecionado
+    const slotEl = document.querySelector(`div[oncontextmenu*="${agendaIdSelecionado}"]`);
+    let horaSelecionada = '';
+    
+    if (slotEl) {
+        const horaDiv = slotEl.querySelector('.w-14');
+        if(horaDiv) horaSelecionada = horaDiv.innerText.trim();
+    }
+
+    const dataSelecionada = document.getElementById('tasy-data').value;
+    
+    // Salva o ID da agenda
+    document.getElementById('encaixe-agenda-id-hidden').value = agendaIdSelecionado;
+    
+    // Preenche hora (converte formato HH:mm para input time)
+    if (horaSelecionada) {
+        const [hora, minuto] = horaSelecionada.split(':');
+        document.getElementById('encaixe-hora').value = `${hora.padStart(2, '0')}:${minuto || '00'}`;
+    }
+    
+    // Limpa campos
+    document.getElementById('encaixe-duracao').value = '5';
+    document.getElementById('encaixe-prontuario').value = '';
+    document.getElementById('encaixe-paciente-codigo').value = '';
+    document.getElementById('encaixe-paciente-nome').value = '';
+    document.getElementById('encaixe-paciente-id-hidden').value = '';
+    document.getElementById('encaixe-convenio').value = '';
+    document.getElementById('encaixe-categoria').value = '';
+    document.getElementById('encaixe-plano').value = '';
+    document.getElementById('encaixe-requisitante-codigo').value = '';
+    document.getElementById('encaixe-requisitante-nome').value = '';
+    document.getElementById('encaixe-requisitante-id-hidden').value = '';
+    document.getElementById('encaixe-observacao').value = '';
+    document.getElementById('encaixe-classificacao').value = 'encaixe';
+    document.getElementById('encaixe-motivo').value = '';
+    document.getElementById('input-busca-paciente-encaixe').value = '';
+    document.getElementById('lista-resultados-paciente-encaixe').innerHTML = '';
+    document.getElementById('lista-resultados-paciente-encaixe').classList.add('hidden');
+    
+    // Carrega convênios
+    carregarConveniosEncaixe();
+    
+    // Abre o modal
+    document.getElementById('modal-encaixe').classList.remove('hidden');
+    
+    // Foco no campo de busca
+    setTimeout(() => document.getElementById('input-busca-paciente-encaixe').focus(), 100);
+}
+
+function fecharModalEncaixe() {
+    document.getElementById('modal-encaixe').classList.add('hidden');
+}
+
+// Busca pacientes para o modal de encaixe
+let timerBuscaPacienteEncaixe = null;
+function buscarPacientesEncaixe(termo) {
+    clearTimeout(timerBuscaPacienteEncaixe);
+    const lista = document.getElementById('lista-resultados-paciente-encaixe');
+    
+    if (termo.length < 3) {
+        lista.classList.add('hidden');
+        return;
+    }
+
+    timerBuscaPacienteEncaixe = setTimeout(async () => {
+        try {
+            lista.innerHTML = '<div class="p-4 text-center text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Buscando no Tasy...</div>';
+            lista.classList.remove('hidden');
+
+            const res = await fetch(`/api/tasy/pacientes/buscar?termo=${encodeURIComponent(termo)}`);
+            const dados = await res.json();
+
+            if (dados.length === 0) {
+                lista.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Nenhum paciente encontrado.</div>';
+            } else {
+                lista.innerHTML = dados.map(p => `
+                    <div onclick="selecionarPacienteEncaixe(${p.CD_PESSOA_FISICA}, '${p.NM_PESSOA_FISICA}', '${p.NR_CPF || ''}', '${p.NR_PRONTUARIO || ''}')" 
+                         class="grid grid-cols-12 gap-2 px-4 py-2 border-b border-slate-50 hover:bg-purple-50 cursor-pointer text-xs items-center transition group">
+                        <div class="col-span-6 font-bold text-slate-700 group-hover:text-purple-700">${p.NM_PESSOA_FISICA}</div>
+                        <div class="col-span-3 text-slate-500">${p.NR_CPF || '-'}</div>
+                        <div class="col-span-3 text-slate-500">${p.DT_NASCIMENTO ? new Date(p.DT_NASCIMENTO).toLocaleDateString('pt-BR') : '-'}</div>
+                    </div>
+                `).join('');
+            }
+        } catch (e) {
+            console.error(e);
+            lista.innerHTML = '<div class="p-8 text-center text-xs text-red-400">Erro ao buscar.</div>';
+        }
+    }, 500);
+}
+
+// Seleciona paciente no modal de encaixe
+function selecionarPacienteEncaixe(cdPessoa, nome, cpf, prontuario) {
+    document.getElementById('encaixe-paciente-id-hidden').value = cdPessoa;
+    document.getElementById('encaixe-paciente-nome').value = nome;
+    document.getElementById('encaixe-paciente-codigo').value = prontuario || cdPessoa;
+    document.getElementById('encaixe-prontuario').value = prontuario || '';
+    document.getElementById('lista-resultados-paciente-encaixe').classList.add('hidden');
+    document.getElementById('input-busca-paciente-encaixe').value = '';
+}
+
+// Busca paciente por código/prontuário
+async function buscarPacienteEncaixe() {
+    const codigo = document.getElementById('encaixe-paciente-codigo').value.trim();
+    if (!codigo) return Swal.fire('Atenção', 'Digite o código ou prontuário', 'warning');
+    
+    try {
+        const res = await fetch(`/api/tasy/pacientes/buscar?termo=${encodeURIComponent(codigo)}`);
+        const dados = await res.json();
+        
+        if (dados.length > 0) {
+            const paciente = dados[0];
+            selecionarPacienteEncaixe(
+                paciente.CD_PESSOA_FISICA,
+                paciente.NM_PESSOA_FISICA,
+                paciente.NR_CPF || '',
+                paciente.NR_PRONTUARIO || ''
+            );
+        } else {
+            Swal.fire('Não encontrado', 'Paciente não localizado', 'info');
+        }
+    } catch (e) {
+        console.error(e);
+        Swal.fire('Erro', 'Erro ao buscar paciente', 'error');
+    }
+}
+
+// Busca requisitante
+async function buscarRequisitanteEncaixe() {
+    const codigo = document.getElementById('encaixe-requisitante-codigo').value.trim();
+    if (!codigo) return Swal.fire('Atenção', 'Digite o código do requisitante', 'warning');
+    
+    try {
+        // TODO: Implementar busca de requisitante na API
+        // Por enquanto, apenas um placeholder
+        Swal.fire('Info', 'Funcionalidade em desenvolvimento', 'info');
+    } catch (e) {
+        console.error(e);
+        Swal.fire('Erro', 'Erro ao buscar requisitante', 'error');
+    }
+}
+
+// Carrega convênios no modal de encaixe
+async function carregarConveniosEncaixe() {
+    try {
+        const convenioSelect = document.getElementById('encaixe-convenio');
+        const convenioPrincipal = document.getElementById('tasy-convenio');
+        
+        // Reaproveita os convênios já carregados no select principal
+        if (convenioPrincipal && convenioPrincipal.options.length > 1) {
+            convenioSelect.innerHTML = '<option value="">Selecione o convênio...</option>';
+            Array.from(convenioPrincipal.options).slice(1).forEach(opt => {
+                convenioSelect.appendChild(opt.cloneNode(true));
+            });
+        }
+    } catch (e) {
+        console.error('Erro ao carregar convênios:', e);
+    }
+}
+
+// Confirma o encaixe
+async function confirmarEncaixe() {
+    const pacienteId = document.getElementById('encaixe-paciente-id-hidden').value;
+    const hora = document.getElementById('encaixe-hora').value;
+    const duracao = document.getElementById('encaixe-duracao').value;
+    
+    if (!pacienteId) return Swal.fire('Atenção', 'Selecione um paciente primeiro.', 'warning');
+    if (!hora) return Swal.fire('Atenção', 'Informe a hora do encaixe.', 'warning');
+    
+    const payload = {
+        agendaId: document.getElementById('encaixe-agenda-id-hidden').value,
+        pacienteId: pacienteId,
+        hora: hora,
+        duracao: parseInt(duracao) || 5,
+        prontuario: document.getElementById('encaixe-prontuario').value,
+        convenio: document.getElementById('encaixe-convenio').value,
+        categoria: document.getElementById('encaixe-categoria').value,
+        plano: document.getElementById('encaixe-plano').value,
+        requisitanteId: document.getElementById('encaixe-requisitante-id-hidden').value || null,
+        requisitanteNome: document.getElementById('encaixe-requisitante-nome').value,
+        observacao: document.getElementById('encaixe-observacao').value,
+        classificacao: document.getElementById('encaixe-classificacao').value,
+        motivo: document.getElementById('encaixe-motivo').value
+    };
+
+    try {
+        const btn = document.querySelector('button[onclick="confirmarEncaixe()"]');
+        if(btn) btn.disabled = true;
+
+        const res = await fetch('/api/tasy/encaixe', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+            Swal.fire('Sucesso', 'Encaixe confirmado!', 'success');
+            fecharModalEncaixe();
+            buscarAgenda(); // Recarrega a lista de horários
+        } else {
+            Swal.fire('Erro', result.error || 'Falha ao confirmar encaixe', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        Swal.fire('Erro', 'Falha na requisição', 'error');
+    } finally {
+        const btn = document.querySelector('button[onclick="confirmarEncaixe()"]');
+        if(btn) btn.disabled = false;
+    }
+}
+
 
 // ==========================================
 // 4. MODAL PARA EXIBIR MAIS DADOS DO PACIENTE
 // ==========================================
 
-function abrirModalMaisDados(id) {
+async function abrirModalMaisDados(id) {
     const modal = document.getElementById('modal-mais-dados');
     modal.classList.remove('hidden');
 
     // Feedback visual de carregamento
     document.getElementById('view-agenda-id').innerText = id || '---';
     document.getElementById('view-paciente-nome').innerText = 'Carregando informações...';
+    document.getElementById('view-paciente-cpf').innerText = '...';
+    document.getElementById('view-paciente-nasc').innerText = '...';
+    document.getElementById('view-paciente-mae').innerText = '...';
+    document.getElementById('view-paciente-cel').innerText = '...';
+    document.getElementById('view-convenio').innerText = '...';
+    document.getElementById('view-procedimento').innerText = '...';
+    document.getElementById('view-medico').innerText = '...';
+    document.getElementById('view-status').innerText = '...';
+    document.getElementById('view-audit-criacao').innerText = '...';
+    document.getElementById('view-audit-user').innerText = '...';
 
-    // AQUI VOCÊ FARIA O FETCH NO SEU BACKEND
-    // fetch(`/api/tasy/detalhes/${id}`).then(...)
-    
-    // SIMULAÇÃO DE DADOS (Para testar UI agora)
-    setTimeout(() => {
+    try {
+        const res = await fetch(`/api/tasy/agenda/${id}/detalhes`);
+        
+        if (!res.ok) {
+            throw new Error('Erro ao buscar detalhes do agendamento');
+        }
+
+        const dados = await res.json();
+
         // Preenche os dados na tela
-        document.getElementById('view-agenda-id').innerText = `#${id}`;
-        document.getElementById('view-paciente-nome').innerText = 'Jose Mendes Nogueira Filho';
-        document.getElementById('view-paciente-cpf').innerText = '123.456.789-00';
-        document.getElementById('view-paciente-nasc').innerText = '15/04/1985';
-        document.getElementById('view-paciente-mae').innerText = 'Maria Mendes';
-        document.getElementById('view-paciente-cel').innerText = '(62) 99999-8888';
+        document.getElementById('view-agenda-id').innerText = `#${dados.id}`;
+        document.getElementById('view-paciente-nome').innerText = dados.paciente.nome;
+        document.getElementById('view-paciente-cpf').innerText = dados.paciente.cpf;
+        document.getElementById('view-paciente-nasc').innerText = dados.paciente.dataNascimento;
+        document.getElementById('view-paciente-mae').innerText = dados.paciente.mae;
+        document.getElementById('view-paciente-cel').innerText = dados.paciente.celular;
         
-        document.getElementById('view-convenio').innerText = 'Unimed Goiânia';
-        document.getElementById('view-procedimento').innerText = 'Consulta Eletiva';
-        document.getElementById('view-medico').innerText = 'Dr. Vilmondes Goncalves';
-        document.getElementById('view-status').innerText = 'Confirmado';
+        document.getElementById('view-convenio').innerText = dados.clinico.convenio;
+        document.getElementById('view-procedimento').innerText = dados.clinico.procedimento;
+        document.getElementById('view-medico').innerText = dados.clinico.medico;
         
-        document.getElementById('view-audit-criacao').innerText = '10/01/2026 08:00';
-        document.getElementById('view-audit-user').innerText = 'recepcao_01';
-    }, 300); // Pequeno delay para parecer real
+        // Status com cores dinâmicas
+        const statusEl = document.getElementById('view-status');
+        statusEl.innerText = dados.statusDesc;
+        
+        // Remove classes anteriores
+        statusEl.className = 'inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset mt-1';
+        
+        // Aplica cor baseada no status
+        if (dados.status === 'CN' || dados.status === 'A') {
+            statusEl.classList.add('bg-green-50', 'text-green-700', 'ring-green-600/20');
+        } else if (dados.status === 'C') {
+            statusEl.classList.add('bg-red-50', 'text-red-700', 'ring-red-600/20');
+        } else if (dados.status === 'B') {
+            statusEl.classList.add('bg-yellow-50', 'text-yellow-700', 'ring-yellow-600/20');
+        } else {
+            statusEl.classList.add('bg-slate-50', 'text-slate-700', 'ring-slate-600/20');
+        }
+        
+        document.getElementById('view-audit-criacao').innerText = dados.auditoria.criadoEm;
+        document.getElementById('view-audit-user').innerText = dados.auditoria.usuario;
+        document.getElementById('view-audit-atualizacao').innerHTML = `🔄 Última alteração: <span class="font-mono text-slate-700">${dados.auditoria.atualizadoEm}</span>`;
+
+    } catch (error) {
+        console.error('Erro ao buscar detalhes:', error);
+        
+        // Mensagem de erro
+        document.getElementById('view-paciente-nome').innerText = 'Erro ao carregar dados';
+        document.getElementById('view-paciente-cpf').innerText = 'Erro';
+        document.getElementById('view-paciente-nasc').innerText = 'Erro';
+        document.getElementById('view-paciente-mae').innerText = 'Erro';
+        document.getElementById('view-paciente-cel').innerText = 'Erro';
+        document.getElementById('view-convenio').innerText = 'Erro ao carregar';
+        document.getElementById('view-procedimento').innerText = 'Erro ao carregar';
+        document.getElementById('view-medico').innerText = 'Erro ao carregar';
+        document.getElementById('view-status').innerText = 'Erro';
+        
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro',
+            text: 'Não foi possível carregar os detalhes do agendamento. Verifique se o registro existe.',
+            timer: 3000
+        });
+    }
 }
 
 function fecharModalMaisDados() {
