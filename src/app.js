@@ -74,12 +74,11 @@ app.use((req, res, next) => {
 app.use('/', authRoutes);      
 app.use('/', rotasPessoas);    
 app.use('/', rotaIndicadores);
+app.use('/', analyticsRoutes);  // Analytics Builder com IA
 app.use('/', indexRoutes); 
-//app.use('/', whatsappRoutes);
 app.use('/', rotaChat);
 app.use('/', rotaTasy);
 app.use('/', rotaAdminChat);
-app.use('/', analyticsRoutes);
 
 
 // 6. Tratamento de Erros

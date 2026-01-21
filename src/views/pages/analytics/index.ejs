@@ -12,9 +12,15 @@
         </div>
 
         <div class="flex gap-3">
+            <button onclick="openTemplatesModal()" class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 border border-purple-300">
+                <i class="fas fa-magic"></i> Templates
+            </button>
             <button onclick="openQueryManager()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 border border-gray-300">
                 <i class="fas fa-database"></i> Gerenciar Queries
             </button>
+            <a href="/analytics/lista" class="bg-green-100 hover:bg-green-200 text-green-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 border border-green-300">
+                <i class="fas fa-list"></i> Meus Dashboards
+            </a>
             <button onclick="saveCurrentPage()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center gap-2">
                 <i class="fas fa-save"></i> Salvar Página
             </button>
@@ -192,6 +198,36 @@
     </div>
 </div>
 
+<!-- MODAL DE TEMPLATES -->
+<div id="templatesModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity"
+     onclick="if(event.target === this) closeTemplatesModal()">
+    
+    <div class="bg-white rounded-xl shadow-2xl w-[1100px] max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+        
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-purple-50 to-pink-50">
+            <h3 class="font-bold text-gray-800 flex items-center gap-2 text-xl">
+                <i class="fas fa-magic text-purple-600"></i> Templates de Dashboard
+            </h3>
+            <button onclick="closeTemplatesModal()" class="text-gray-400 hover:text-red-500 transition px-2">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto flex-1">
+            <div id="templatesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Templates serão carregados dinamicamente aqui -->
+            </div>
+        </div>
+
+        <div class="px-6 py-3 border-t border-gray-200 bg-gray-50">
+            <p class="text-xs text-gray-500">
+                <i class="fas fa-info-circle mr-1"></i>
+                Os templates são pré-configurados com layouts profissionais. Selecione um e conecte com sua query.
+            </p>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     // ESTADO
@@ -242,8 +278,18 @@
         const prompt = document.getElementById('promptInput').value;
         const filters = document.getElementById('filterInput').value;
         
-        if (!prompt) return;
+        console.log('🚀 [FRONTEND] sendMessage() chamado');
+        console.log('📝 [FRONTEND] Prompt:', prompt);
+        console.log('🔧 [FRONTEND] Filters:', filters);
+        console.log('💾 [FRONTEND] Active SQL:', activeSql);
+        
+        if (!prompt) {
+            console.warn('⚠️ [FRONTEND] Prompt vazio');
+            return;
+        }
+        
         if (!activeSql) {
+            console.warn('⚠️ [FRONTEND] Nenhuma query ativa');
             botReply("⚠️ Por favor, abra o 'Gerenciar Queries' e selecione uma consulta para usar.");
             return;
         }
@@ -252,30 +298,44 @@
         document.getElementById('promptInput').value = '';
         toggleLoading(true);
 
+        console.log('📡 [FRONTEND] Enviando request para /api/analytics/preview...');
+
         try {
+            const requestBody = { 
+                prompt: prompt + (filters ? `. Filtros: ${filters}` : ''),
+                sqlQuery: activeSql 
+            };
+            
+            console.log('📦 [FRONTEND] Body do request:', requestBody);
+            
             const response = await fetch('/api/analytics/preview', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    prompt: prompt + (filters ? `. Filtros: ${filters}` : ''),
-                    sqlQuery: activeSql 
-                })
+                body: JSON.stringify(requestBody)
             });
+            
+            console.log('✅ [FRONTEND] Response recebido, status:', response.status);
+            
             const data = await response.json();
+            
+            console.log('📊 [FRONTEND] Data parsed:', data);
 
             if (data.success) {
-                currentHtmlCode = data.previewHtml; // Salva para exibir no modo código
+                console.log('✅ [FRONTEND] Dashboard gerado com sucesso!');
+                currentHtmlCode = data.previewHtml;
                 renderDashboard(data.previewHtml);
-                botReply("Dashboard atualizado com sucesso!");
-                // Se estiver no modo código, atualiza o textarea em tempo real
+                botReply("✅ Dashboard atualizado com sucesso!");
+                
                 if(!document.getElementById('codeContainer').classList.contains('hidden')) {
                      document.getElementById('htmlOutput').value = currentHtmlCode;
                 }
             } else {
-                botReply("Erro: " + data.message);
+                console.error('❌ [FRONTEND] Erro retornado:', data.message);
+                botReply("❌ Erro: " + (data.message || 'Desconhecido'));
             }
         } catch (e) {
-            botReply("Erro de conexão.");
+            console.error('❌ [FRONTEND] Erro na requisição:', e);
+            botReply("❌ Erro de conexão: " + e.message);
         } finally {
             toggleLoading(false);
         }
@@ -373,15 +433,23 @@
         const sql = document.getElementById('modalSqlInput').value;
         if(!title || !sql) return alert('Preencha Título e SQL');
 
+        // Salva apenas a query (sem HTML ainda)
         const res = await fetch('/api/analytics/save', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ title, sqlQuery: sql, prompt: 'Manual' })
+            body: JSON.stringify({ 
+                title, 
+                sqlQuery: sql, 
+                prompt: 'Query cadastrada manualmente',
+                htmlTemplate: '<div>Dashboard será gerado pela IA</div>' // Placeholder
+            })
         });
         const data = await res.json();
         if(data.success) {
-            alert('Salvo na biblioteca!');
+            alert('Query salva na biblioteca!');
             window.location.reload();
+        } else {
+            alert('Erro ao salvar: ' + (data.message || 'Desconhecido'));
         }
     }
 
@@ -423,9 +491,152 @@
         if(show) el.classList.remove('hidden'); else el.classList.add('hidden');
     }
 
-    function saveCurrentPage() {
-        if(!currentHtmlCode) return alert('Gere uma página primeiro.');
-        // Aqui você pode implementar salvar o HTML final em outra tabela
-        alert('Funcionalidade de exportação em breve.');
+    // --- TEMPLATES MODAL ---
+    let availableTemplates = [];
+
+    async function openTemplatesModal() {
+        document.getElementById('templatesModal').classList.remove('hidden');
+        
+        if (availableTemplates.length === 0) {
+            try {
+                const res = await fetch('/api/analytics/templates');
+                const data = await res.json();
+                if (data.success) {
+                    availableTemplates = data.templates;
+                    renderTemplates();
+                }
+            } catch (e) {
+                console.error('Erro ao carregar templates:', e);
+            }
+        }
+    }
+
+    function closeTemplatesModal() {
+        document.getElementById('templatesModal').classList.add('hidden');
+    }
+
+    function renderTemplates() {
+        const grid = document.getElementById('templatesGrid');
+        grid.innerHTML = '';
+
+        availableTemplates.forEach(template => {
+            const card = `
+                <div class="bg-white border-2 border-gray-200 rounded-xl p-5 hover:border-purple-500 hover:shadow-xl transition-all duration-300 cursor-pointer group"
+                     onclick="selectTemplate('${template.id}')">
+                    
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="p-3 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg group-hover:from-purple-200 group-hover:to-pink-200 transition-all">
+                            <i class="fas ${template.icone} text-2xl text-purple-600"></i>
+                        </div>
+                        <span class="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
+                            Template
+                        </span>
+                    </div>
+
+                    <h4 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-purple-700 transition-colors">
+                        ${template.nome}
+                    </h4>
+                    
+                    <p class="text-sm text-gray-600 mb-3 line-clamp-2">
+                        ${template.descricao}
+                    </p>
+
+                    <div class="bg-gray-50 rounded-lg p-2 border border-gray-200 mb-3">
+                        <p class="text-xs text-gray-500">
+                            <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
+                            <b>Exemplo:</b> ${template.exemplo}
+                        </p>
+                    </div>
+
+                    <button class="w-full py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold text-sm hover:from-purple-700 hover:to-pink-700 transition-all shadow-sm group-hover:shadow-md">
+                        <i class="fas fa-check mr-1"></i> Usar Este Template
+                    </button>
+                </div>
+            `;
+            grid.insertAdjacentHTML('beforeend', card);
+        });
+    }
+
+    async function selectTemplate(templateId) {
+        if (!activeSql) {
+            closeTemplatesModal();
+            botReply("⚠️ Primeiro selecione uma query no 'Gerenciar Queries' antes de usar um template.");
+            return;
+        }
+
+        const template = availableTemplates.find(t => t.id === templateId);
+        if (!template) return;
+
+        closeTemplatesModal();
+        
+        botReply(`🎨 Aplicando template "${template.nome}"... Aguarde enquanto a IA cria seu dashboard.`);
+        
+        toggleLoading(true);
+
+        try {
+            const response = await fetch('/api/analytics/apply-template', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    templateId: templateId,
+                    sqlQuery: activeSql 
+                })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                currentHtmlCode = data.previewHtml;
+                renderDashboard(data.previewHtml);
+                botReply(`✅ Template "${template.nome}" aplicado com sucesso!`);
+                
+                if(!document.getElementById('codeContainer').classList.contains('hidden')) {
+                     document.getElementById('htmlOutput').value = currentHtmlCode;
+                }
+            } else {
+                botReply("❌ Erro ao aplicar template: " + data.message);
+            }
+        } catch (e) {
+            botReply("❌ Erro de conexão ao aplicar template.");
+        } finally {
+            toggleLoading(false);
+        }
+    }
+
+    async function saveCurrentPage() {
+        if(!currentHtmlCode || !activeSql) {
+            return alert('Você precisa gerar um dashboard primeiro! Use o chat para criar visualizações.');
+        }
+
+        const title = prompt('Digite um nome para este dashboard:', activeQueryName);
+        if(!title) return;
+
+        const description = prompt('Descrição (opcional):', '');
+
+        try {
+            const res = await fetch('/api/analytics/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    title, 
+                    prompt: description,
+                    sqlQuery: activeSql, 
+                    htmlTemplate: currentHtmlCode
+                })
+            });
+            
+            const data = await res.json();
+            
+            if(data.success) {
+                alert(`✅ Dashboard "${title}" salvo com sucesso!\n\nID: ${data.id}\n\nAcesse em: /api/analytics/view/${data.id}`);
+                
+                if(confirm('Deseja abrir o dashboard salvo em uma nova aba?')) {
+                    window.open(`/api/analytics/view/${data.id}`, '_blank');
+                }
+            } else {
+                alert('❌ Erro ao salvar: ' + (data.message || 'Desconhecido'));
+            }
+        } catch(e) {
+            alert('❌ Erro de conexão: ' + e.message);
+        }
     }
 </script>

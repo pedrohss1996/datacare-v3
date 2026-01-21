@@ -1,0 +1,275 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- HEADER -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-4xl font-extrabold text-slate-800 flex items-center gap-3">
+                    <div class="p-3 bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-xl shadow-lg">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    Dashboards BI
+                </h1>
+                <p class="text-slate-500 mt-2 ml-1">Dashboards criados com Inteligência Artificial</p>
+            </div>
+
+            <div class="flex gap-3">
+                <a href="/analytics" class="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-bold shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200">
+                    <i class="fas fa-plus-circle"></i>
+                    Criar Novo Dashboard
+                </a>
+            </div>
+        </div>
+
+        <!-- ESTATÍSTICAS RÁPIDAS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">Total de Dashboards</p>
+                        <p class="text-3xl font-bold text-slate-800 mt-1"><%= dashboards.length %></p>
+                    </div>
+                    <div class="p-4 bg-blue-100 text-blue-600 rounded-xl">
+                        <i class="fas fa-chart-bar text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">Dashboards Ativos</p>
+                        <p class="text-3xl font-bold text-green-600 mt-1"><%= dashboards.filter(d => d.ativo).length %></p>
+                    </div>
+                    <div class="p-4 bg-green-100 text-green-600 rounded-xl">
+                        <i class="fas fa-check-circle text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">Criados com IA</p>
+                        <p class="text-3xl font-bold text-purple-600 mt-1"><%= dashboards.filter(d => d.grupo_modulo === 'Analytics IA').length %></p>
+                    </div>
+                    <div class="p-4 bg-purple-100 text-purple-600 rounded-xl">
+                        <i class="fas fa-robot text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILTROS E BUSCA -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6">
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-slate-400"></i>
+                        </div>
+                        <input 
+                            type="text" 
+                            id="searchInput" 
+                            onkeyup="filterDashboards()"
+                            placeholder="Buscar por título ou descrição..."
+                            class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        >
+                    </div>
+                </div>
+
+                <select id="filterTipo" onchange="filterDashboards()" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    <option value="">Todos os Tipos</option>
+                    <option value="bar">Gráfico de Barras</option>
+                    <option value="line">Gráfico de Linha</option>
+                    <option value="pie">Gráfico de Pizza</option>
+                    <option value="mixed">Dashboard Misto</option>
+                </select>
+
+                <select id="filterGrupo" onchange="filterDashboards()" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    <option value="">Todos os Grupos</option>
+                    <option value="Analytics IA">Analytics IA</option>
+                    <option value="Geral">Geral</option>
+                    <option value="Financeiro">Financeiro</option>
+                    <option value="Operacional">Operacional</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- GRID DE DASHBOARDS -->
+        <div id="dashboardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <% if (!dashboards || dashboards.length === 0) { %>
+                <div class="col-span-full flex flex-col items-center justify-center py-20 bg-white rounded-xl shadow-sm border border-dashed border-slate-300">
+                    <i class="fas fa-chart-line text-6xl text-slate-300 mb-4"></i>
+                    <p class="text-slate-500 font-medium text-lg">Nenhum dashboard criado ainda</p>
+                    <a href="/analytics" class="mt-4 text-blue-600 hover:text-blue-700 font-semibold">
+                        Criar o primeiro dashboard →
+                    </a>
+                </div>
+            <% } %>
+
+            <% dashboards.forEach(function(dash) { %>
+                <div class="dashboard-card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1" 
+                     data-titulo="<%= dash.titulo.toLowerCase() %>" 
+                     data-descricao="<%= (dash.descricao || '').toLowerCase() %>"
+                     data-tipo="<%= dash.tipo_grafico %>"
+                     data-grupo="<%= dash.grupo_modulo %>">
+                    
+                    <!-- Badge de Tipo -->
+                    <div class="relative bg-gradient-to-r from-slate-100 to-slate-50 p-4 border-b border-slate-200">
+                        <% 
+                        let iconMap = {
+                            'bar': 'fa-chart-bar',
+                            'line': 'fa-chart-line',
+                            'pie': 'fa-chart-pie',
+                            'area': 'fa-chart-area',
+                            'mixed': 'fa-layer-group'
+                        };
+                        let colorMap = {
+                            'bar': 'text-blue-600',
+                            'line': 'text-green-600',
+                            'pie': 'text-purple-600',
+                            'area': 'text-orange-600',
+                            'mixed': 'text-indigo-600'
+                        };
+                        let icon = iconMap[dash.tipo_grafico] || 'fa-chart-bar';
+                        let color = colorMap[dash.tipo_grafico] || 'text-slate-600';
+                        %>
+                        <i class="fas <%= icon %> text-4xl <%= color %> opacity-20 absolute right-4 top-4"></i>
+                        
+                        <div class="relative z-10">
+                            <span class="inline-block px-3 py-1 text-xs font-bold uppercase tracking-wider bg-white text-slate-600 rounded-full border border-slate-300 shadow-sm">
+                                <i class="fas <%= icon %> mr-1"></i>
+                                <%= dash.tipo_grafico || 'Dashboard' %>
+                            </span>
+                            
+                            <% if (dash.grupo_modulo === 'Analytics IA') { %>
+                                <span class="inline-block ml-2 px-2 py-1 text-xs font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-sm">
+                                    <i class="fas fa-robot mr-1"></i>IA
+                                </span>
+                            <% } %>
+                        </div>
+                    </div>
+
+                    <!-- Conteúdo -->
+                    <div class="p-6">
+                        <h3 class="text-xl font-bold text-slate-800 mb-2 line-clamp-2"><%= dash.titulo %></h3>
+                        <p class="text-sm text-slate-500 mb-4 line-clamp-3"><%= dash.descricao || 'Sem descrição' %></p>
+
+                        <!-- Metadados -->
+                        <div class="flex items-center justify-between text-xs text-slate-400 mb-4 pb-4 border-b border-slate-100">
+                            <span><i class="far fa-calendar mr-1"></i> <%= new Date(dash.created_at).toLocaleDateString('pt-BR') %></span>
+                            <span class="px-2 py-1 rounded-full <%= dash.ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' %>">
+                                <i class="fas fa-circle text-[6px] mr-1"></i>
+                                <%= dash.ativo ? 'Ativo' : 'Inativo' %>
+                            </span>
+                        </div>
+
+                        <!-- Ações -->
+                        <div class="flex gap-2">
+                            <a href="/api/analytics/view/<%= dash.id %>" target="_blank" 
+                               class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow-md">
+                                <i class="fas fa-eye"></i>
+                                Visualizar
+                            </a>
+                            
+                            <button onclick="deleteDashboard(<%= dash.id %>, '<%= dash.titulo %>')" 
+                                    class="px-4 py-2.5 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100 transition-all border border-red-200">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+
+        <!-- MENSAGEM SE NENHUM RESULTADO -->
+        <div id="noResults" class="hidden col-span-full flex flex-col items-center justify-center py-20 bg-white rounded-xl shadow-sm border border-slate-200">
+            <i class="fas fa-search text-6xl text-slate-300 mb-4"></i>
+            <p class="text-slate-500 font-medium text-lg">Nenhum dashboard encontrado com os filtros aplicados</p>
+            <button onclick="clearFilters()" class="mt-4 text-blue-600 hover:text-blue-700 font-semibold">
+                Limpar filtros
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function filterDashboards() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const tipoFilter = document.getElementById('filterTipo').value.toLowerCase();
+        const grupoFilter = document.getElementById('filterGrupo').value.toLowerCase();
+        
+        const cards = document.querySelectorAll('.dashboard-card');
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const titulo = card.dataset.titulo;
+            const descricao = card.dataset.descricao;
+            const tipo = card.dataset.tipo;
+            const grupo = card.dataset.grupo.toLowerCase();
+
+            const matchSearch = !searchTerm || titulo.includes(searchTerm) || descricao.includes(searchTerm);
+            const matchTipo = !tipoFilter || tipo === tipoFilter;
+            const matchGrupo = !grupoFilter || grupo === grupoFilter;
+
+            if (matchSearch && matchTipo && matchGrupo) {
+                card.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+
+        // Mostra mensagem se nenhum resultado
+        document.getElementById('noResults').classList.toggle('hidden', visibleCount > 0);
+    }
+
+    function clearFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('filterTipo').value = '';
+        document.getElementById('filterGrupo').value = '';
+        filterDashboards();
+    }
+
+    async function deleteDashboard(id, titulo) {
+        if (!confirm(`Tem certeza que deseja excluir o dashboard "${titulo}"?\n\nEsta ação não pode ser desfeita.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/analytics/delete/${id}`, {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('✅ Dashboard excluído com sucesso!');
+                window.location.reload();
+            } else {
+                alert('❌ Erro ao excluir: ' + (data.message || 'Desconhecido'));
+            }
+        } catch (error) {
+            alert('❌ Erro de conexão: ' + error.message);
+        }
+    }
+</script>
+
+<style>
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .line-clamp-3 {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
