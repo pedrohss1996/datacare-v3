@@ -1,241 +1,400 @@
-<div class="flex flex-col h-screen bg-white overflow-hidden font-sans">
-
-    <header class="h-16 border-b border-gray-200 bg-white flex justify-between items-center px-6 shadow-sm z-20">
-        <div class="flex items-center gap-3">
-            <div class="bg-blue-600 text-white p-2 rounded-lg">
-                <i class="fas fa-robot"></i>
-            </div>
-            <div>
-                <h1 class="text-lg font-bold text-gray-800">Chat - Construtor de Páginas</h1>
-                <p class="text-xs text-gray-500">Crie dashboards hospitalares com ajuda da IA</p>
-            </div>
-        </div>
-
-        <div class="flex gap-3">
-            <button onclick="openTemplatesModal()" class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 border border-purple-300">
-                <i class="fas fa-magic"></i> Templates
-            </button>
-            <button onclick="openQueryManager()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 border border-gray-300">
-                <i class="fas fa-database"></i> Gerenciar Queries
-            </button>
-            <a href="/analytics/lista" class="bg-green-100 hover:bg-green-200 text-green-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 border border-green-300">
-                <i class="fas fa-list"></i> Meus Dashboards
-            </a>
-            <button onclick="saveCurrentPage()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center gap-2">
-                <i class="fas fa-save"></i> Salvar Página
-            </button>
-        </div>
-    </header>
-
-    <div class="flex-1 flex overflow-hidden">
-
-        <aside class="w-96 border-r border-gray-200 bg-gray-50 flex flex-col justify-between">
-            <div class="p-4 border-b border-gray-200 bg-white">
-                <h2 class="text-sm font-bold text-gray-700 flex items-center gap-2">
-                    <i class="fas fa-comments text-blue-500"></i> Assistente IA
-                </h2>
-            </div>
-
-            <div id="chatHistory" class="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
-                <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                        <i class="fas fa-robot text-xs"></i>
-                    </div>
-                    <div class="bg-white p-3 rounded-tr-xl rounded-br-xl rounded-bl-xl shadow-sm border border-gray-100 text-sm text-gray-600">
-                        Olá! Primeiro, selecione uma consulta no botão <b>"Gerenciar Queries"</b>. Depois, me diga como quer ver os dados.
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-4 bg-white border-t border-gray-200 space-y-3">
-                <div id="activeQueryIndicator" class="hidden text-[10px] text-green-600 bg-green-50 p-2 rounded border border-green-100 flex justify-between items-center">
-                    <span><i class="fas fa-check-circle mr-1"></i> Query Ativa: <b id="lblActiveQuery">Nome</b></span>
-                    <button onclick="clearActiveQuery()" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>
-                </div>
-
-                <div>
-                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">
-                        <i class="fas fa-filter mr-1"></i> Filtros (Opcional)
-                    </label>
-                    <input id="filterInput" type="text" class="w-full bg-gray-50 border border-gray-200 text-xs p-2 rounded hover:bg-white focus:ring-1 focus:ring-blue-500 outline-none" 
-                    placeholder="Ex: Filtrar ano 2025...">
-                </div>
-
-                <div class="relative">
-                    <textarea id="promptInput" rows="3" class="w-full bg-gray-50 border border-gray-200 text-sm p-3 pr-10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none resize-none" 
-                    placeholder="Ex: 'Criar gráficos de linha e cards de KPI'"></textarea>
-                    <button onclick="sendMessage()" class="absolute bottom-2 right-2 bg-blue-600 hover:bg-blue-700 text-white w-8 h-8 rounded-full flex items-center justify-center transition shadow-sm">
-                        <i class="fas fa-paper-plane text-xs"></i>
-                    </button>
-                </div>
-            </div>
-        </aside>
-
-        <main class="flex-1 bg-gray-100 p-8 overflow-y-auto relative flex flex-col">
-            
-            <div class="bg-white p-4 rounded-t-xl border-b border-gray-100 flex justify-between items-center shadow-sm">
-                <div>
-                    <h2 class="text-xl font-bold text-gray-800" id="dashboardTitle">Dashboard em Branco</h2>
-                    <p class="text-xs text-gray-500 mt-1">Status: Aguardando instruções</p>
-                </div>
+<!-- Analytics Builder - Interface Redesenhada para DataCare -->
+<div class="h-full bg-slate-50 flex flex-col">
+    
+    <!-- Header Principal -->
+    <div class="bg-white border-b border-slate-200 shadow-sm flex-shrink-0">
+        <div class="max-w-[1600px] mx-auto px-6 py-6">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 
+                <!-- Título e Descrição -->
                 <div class="flex items-center gap-4">
-                    <div class="bg-gray-100 p-1 rounded-lg flex text-xs font-bold border border-gray-200">
-                        <button onclick="toggleView('visual')" id="btnViewVisual" class="px-3 py-1.5 rounded-md bg-white text-blue-600 shadow-sm transition-all">
-                            <i class="fas fa-eye mr-1"></i> Visual
-                        </button>
-                        <button onclick="toggleView('code')" id="btnViewCode" class="px-3 py-1.5 rounded-md text-gray-500 hover:text-gray-700 transition-all">
-                            <i class="fas fa-code mr-1"></i> HTML
-                        </button>
+                    <div class="p-3 bg-blue-50 rounded-xl border border-blue-100">
+                        <i class="fas fa-lightbulb text-2xl text-blue-600"></i>
                     </div>
-
-                    <div class="flex gap-2 text-xs text-gray-400 border px-2 py-1 rounded bg-gray-50 h-8 items-center">
-                        <i class="fas fa-database"></i> <span id="dataSourceName">Nenhuma fonte</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white flex-1 rounded-b-xl shadow-sm relative min-h-[500px] flex flex-col">
-                
-                <div id="dashboardContainer" class="p-6 flex-grow h-full overflow-y-auto">
-                    <div class="h-full flex flex-col items-center justify-center text-gray-300">
-                        <i class="fas fa-chart-line text-6xl mb-4 opacity-20"></i>
-                        <p class="text-sm">Selecione uma query e envie um comando no chat.</p>
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-800">Analytics Builder</h1>
+                        <p class="text-sm text-slate-500 mt-1">
+                            <i class="fas fa-robot text-blue-500 mr-1"></i>
+                            Crie dashboards inteligentes com ajuda da IA
+                        </p>
                     </div>
                 </div>
 
-                <div id="codeContainer" class="hidden flex-grow h-full bg-slate-900 p-0 rounded-b-xl overflow-hidden relative">
-                    <textarea id="htmlOutput" readonly class="w-full h-full bg-slate-900 text-blue-300 font-mono text-xs p-6 outline-none resize-none leading-relaxed" spellcheck="false"></textarea>
+                <!-- Botões de Ação -->
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="openTemplatesModal()" 
+                            class="inline-flex items-center px-4 py-2.5 border border-purple-200 rounded-xl text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 transition-all shadow-sm hover:shadow-md">
+                        <i class="fas fa-magic mr-2"></i>
+                        Templates
+                    </button>
                     
-                    <button onclick="copyHtmlCode()" class="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded text-xs font-bold backdrop-blur-md transition border border-white/10">
-                        <i class="far fa-copy mr-1"></i> Copiar
+                    <button onclick="openQueryManager()" 
+                            class="inline-flex items-center px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-all shadow-sm hover:shadow-md">
+                        <i class="fas fa-database mr-2"></i>
+                        Gerenciar Queries
+                    </button>
+                    
+                    <a href="/analytics/lista" 
+                       class="inline-flex items-center px-4 py-2.5 border border-green-200 rounded-xl text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 transition-all shadow-sm hover:shadow-md">
+                        <i class="fas fa-list mr-2"></i>
+                        Meus Dashboards
+                    </a>
+                    
+                    <button onclick="saveCurrentPage()" 
+                            class="inline-flex items-center px-4 py-2.5 border border-transparent rounded-xl text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm hover:shadow-md">
+                        <i class="fas fa-save mr-2"></i>
+                        Salvar Dashboard
                     </button>
                 </div>
             </div>
-            
-            <div id="loadingOverlay" class="hidden absolute inset-0 bg-white/80 z-50 flex flex-col items-center justify-center backdrop-blur-sm rounded-xl">
-                <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-100 border-t-blue-600 mb-4"></div>
-                <p class="text-gray-600 font-medium animate-pulse">Processando com IA...</p>
-            </div>
-        </main>
+        </div>
+    </div>
+
+    <!-- Container Principal com Grid -->
+    <div class="flex-1 max-w-[1600px] mx-auto px-6 py-6 w-full overflow-hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+
+            <!-- SIDEBAR ESQUERDA - Chat IA -->
+            <aside class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+                
+                <!-- Header do Chat -->
+                <div class="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm">Assistente IA</h3>
+                            <p class="text-xs text-slate-500">Gemini 2.5 Flash</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Histórico de Mensagens -->
+                <div id="chatHistory" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
+                    <div class="flex items-start gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                            <i class="fas fa-robot text-xs"></i>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-600">
+                            Olá! 👋 Primeiro, clique em <b>"Gerenciar Queries"</b> para selecionar os dados. Depois, me diga como quer visualizar!
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Área de Input -->
+                <div class="p-4 bg-white border-t border-slate-100 space-y-3">
+                    
+                    <!-- Indicador de Query Ativa -->
+                    <div id="activeQueryIndicator" class="hidden bg-green-50 border border-green-200 rounded-lg p-2.5 flex justify-between items-center">
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                            <i class="fas fa-check-circle text-green-600 text-xs flex-shrink-0"></i>
+                            <span class="text-[10px] text-green-700 font-medium truncate">
+                                Query: <b id="lblActiveQuery">-</b>
+                            </span>
+                        </div>
+                        <button onclick="clearActiveQuery()" 
+                                class="text-red-400 hover:text-red-600 transition flex-shrink-0">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+
+                    <!-- Filtros Opcionais -->
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block flex items-center gap-1">
+                            <i class="fas fa-filter"></i> Filtros (Opcional)
+                        </label>
+                        <input id="filterInput" 
+                               type="text" 
+                               class="w-full bg-slate-50 border border-slate-200 text-xs p-2.5 rounded-lg hover:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" 
+                               placeholder="Ex: ano = 2025">
+                    </div>
+
+                    <!-- Textarea do Prompt -->
+                    <div class="relative">
+                        <textarea id="promptInput" 
+                                  rows="3" 
+                                  class="w-full bg-slate-50 border border-slate-200 text-sm p-3 pr-12 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white outline-none resize-none transition" 
+                                  placeholder="Ex: Crie cards de KPI e gráfico de linha..."></textarea>
+                        
+                        <button onclick="sendMessage()" 
+                                class="absolute bottom-2.5 right-2.5 bg-blue-600 hover:bg-blue-700 text-white w-9 h-9 rounded-lg flex items-center justify-center transition shadow-sm hover:shadow-md">
+                            <i class="fas fa-paper-plane text-xs"></i>
+                        </button>
+                    </div>
+
+                    <p class="text-[10px] text-slate-400 text-center">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Pressione Enter para enviar
+                    </p>
+                </div>
+            </aside>
+
+            <!-- ÁREA CENTRAL - Preview do Dashboard -->
+            <main class="lg:col-span-9 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+                
+                <!-- Toolbar Superior -->
+                <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50">
+                    
+                    <!-- Info do Dashboard -->
+                    <div class="flex-1">
+                        <h2 class="text-lg font-bold text-slate-800" id="dashboardTitle">
+                            Dashboard em Branco
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-circle text-[6px] text-slate-400"></i>
+                                Aguardando instruções
+                            </span>
+                            <span class="text-slate-300">|</span>
+                            <span id="dataSourceName" class="flex items-center gap-1">
+                                <i class="fas fa-database text-[10px]"></i>
+                                Nenhuma fonte
+                            </span>
+                        </p>
+                    </div>
+
+                    <!-- Toggle Visual/Código -->
+                    <div class="flex items-center gap-3">
+                        <div class="bg-slate-100 p-1 rounded-lg flex text-xs font-semibold border border-slate-200">
+                            <button onclick="toggleView('visual')" 
+                                    id="btnViewVisual" 
+                                    class="px-4 py-2 rounded-md bg-white text-blue-600 shadow-sm transition-all">
+                                <i class="fas fa-eye mr-1.5"></i>
+                                Visual
+                            </button>
+                            <button onclick="toggleView('code')" 
+                                    id="btnViewCode" 
+                                    class="px-4 py-2 rounded-md text-slate-500 hover:text-slate-700 transition-all">
+                                <i class="fas fa-code mr-1.5"></i>
+                                Código
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Container do Preview -->
+                <div class="flex-1 relative overflow-hidden bg-slate-50">
+                    
+                    <!-- Modo Visual -->
+                    <div id="dashboardContainer" class="absolute inset-0 overflow-y-auto">
+                        <div class="h-full flex flex-col items-center justify-center text-slate-300">
+                            <div class="text-center space-y-4">
+                                <i class="fas fa-chart-line text-7xl opacity-20"></i>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-400">Nenhum dashboard gerado ainda</p>
+                                    <p class="text-xs text-slate-400 mt-2">
+                                        Selecione uma query e envie um comando no chat
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modo Código -->
+                    <div id="codeContainer" class="hidden absolute inset-0 bg-slate-900 relative">
+                        <textarea id="htmlOutput" 
+                                  readonly 
+                                  class="w-full h-full bg-slate-900 text-green-400 font-mono text-xs p-6 outline-none resize-none leading-relaxed" 
+                                  spellcheck="false"></textarea>
+                        
+                        <button onclick="copyHtmlCode()" 
+                                class="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-bold backdrop-blur-md transition border border-white/10 flex items-center gap-2">
+                            <i class="far fa-copy"></i>
+                            Copiar HTML
+                        </button>
+                    </div>
+
+                    <!-- Loading Overlay -->
+                    <div id="loadingOverlay" class="hidden absolute inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+                        <div class="relative">
+                            <div class="animate-spin rounded-full h-16 w-16 border-4 border-blue-100 border-t-blue-600"></div>
+                            <i class="fas fa-robot absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-600 text-xl"></i>
+                        </div>
+                        <p class="text-slate-600 font-medium mt-6 animate-pulse">Processando com IA Gemini...</p>
+                        <p class="text-xs text-slate-400 mt-2">Isso pode levar alguns segundos</p>
+                    </div>
+                </div>
+            </main>
+
+        </div>
     </div>
 </div>
 
-<div id="queryModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity"
+<!-- MODAL: Gerenciador de Queries -->
+<div id="queryModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm"
      onclick="if(event.target === this) closeQueryManager()">
     
-    <div class="bg-white rounded-xl shadow-2xl w-[900px] h-[85vh] flex flex-col overflow-hidden animate-fade-in-up">
+    <div class="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-[1000px] h-[85vh] flex flex-col overflow-hidden">
         
-        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-            <h3 class="font-bold text-gray-800 flex items-center gap-2">
-                <i class="fas fa-database text-blue-600"></i> Gerenciador de Consultas
-            </h3>
-            <button onclick="closeQueryManager()" class="text-gray-400 hover:text-red-500 transition px-2">
-                <i class="fas fa-times text-xl"></i>
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-database text-blue-600"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800">Gerenciador de Consultas</h3>
+                    <p class="text-xs text-slate-500">Crie e gerencie queries Oracle</p>
+                </div>
+            </div>
+            <button onclick="closeQueryManager()" 
+                    class="text-slate-400 hover:text-red-500 transition w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center">
+                <i class="fas fa-times text-lg"></i>
             </button>
         </div>
 
+        <!-- Corpo do Modal -->
         <div class="flex flex-1 overflow-hidden">
-            <div class="w-1/3 border-r border-gray-200 bg-gray-50 flex flex-col">
-                <div class="p-3 border-b border-gray-200">
-                    <button onclick="resetEditor()" class="w-full text-xs bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-2 rounded font-medium shadow-sm transition">
-                        <i class="fas fa-plus mr-1"></i> Nova Consulta
+            
+            <!-- Lista de Queries Salvas -->
+            <div class="w-80 border-r border-slate-200 bg-slate-50 flex flex-col">
+                <div class="p-3 border-b border-slate-200">
+                    <button onclick="resetEditor()" 
+                            class="w-full bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700 py-2.5 rounded-lg font-medium shadow-sm transition text-sm flex items-center justify-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        Nova Consulta
                     </button>
                 </div>
+                
                 <div class="flex-1 overflow-y-auto p-2 space-y-1" id="savedQueriesList">
                     <% if (savedWidgets && savedWidgets.length > 0) { %>
                         <% savedWidgets.forEach(widget => { %>
-                            <div class="group flex items-center justify-between p-3 rounded hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200 transition cursor-pointer"
+                            <div class="group flex items-center gap-2 p-3 rounded-lg hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition cursor-pointer"
                                  onclick="loadQueryIntoEditor('<%= widget.id %>', `<%= widget.oracle_sql_query %>`, `<%= widget.title %>`)">
                                 
-                                <div class="flex-1 min-w-0 pr-2">
-                                    <div class="font-semibold text-sm text-gray-700 truncate"><%= widget.title %></div>
-                                    <div class="text-[10px] text-gray-400 truncate"><%= widget.description || 'SQL Personalizado' %></div>
+                                <div class="flex-shrink-0 w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-file-code text-blue-600 text-xs"></i>
+                                </div>
+                                
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-semibold text-sm text-slate-700 truncate"><%= widget.title %></div>
+                                    <div class="text-[10px] text-slate-400 truncate"><%= widget.description || 'SQL Personalizado' %></div>
                                 </div>
                                 
                                 <button onclick="deleteQuery('<%= widget.id %>', event)" 
-                                        class="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition"
+                                        class="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition"
                                         title="Excluir Query">
-                                    <i class="fas fa-trash-alt"></i>
+                                    <i class="fas fa-trash-alt text-xs"></i>
                                 </button>
                             </div>
                         <% }) %>
                     <% } else { %>
-                        <p class="text-xs text-center text-gray-400 mt-4">Nenhuma query salva.</p>
+                        <div class="text-center py-8">
+                            <i class="fas fa-database text-3xl text-slate-200 mb-2"></i>
+                            <p class="text-xs text-slate-400">Nenhuma query salva</p>
+                        </div>
                     <% } %>
                 </div>
             </div>
 
-            <div class="w-2/3 flex flex-col bg-slate-900 relative">
-                <div class="px-4 py-2 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
-                    <input type="text" id="queryNameInput" class="bg-slate-700 text-white text-sm px-2 py-1 rounded border border-slate-600 focus:border-blue-500 outline-none w-1/2" placeholder="Nome da Consulta (Ex: Ocupação UTI)">
+            <!-- Editor SQL -->
+            <div class="flex-1 flex flex-col bg-slate-900 relative">
+                
+                <!-- Toolbar do Editor -->
+                <div class="px-4 py-3 bg-slate-800 border-b border-slate-700 flex justify-between items-center gap-3">
+                    <input type="text" 
+                           id="queryNameInput" 
+                           class="flex-1 bg-slate-700 text-white text-sm px-3 py-2 rounded-lg border border-slate-600 focus:border-blue-500 outline-none transition" 
+                           placeholder="Nome da Consulta (Ex: Ocupação UTI)">
+                    
                     <div class="flex gap-2">
-                        <button onclick="runTestInModal()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded font-bold transition">
-                            <i class="fas fa-play mr-1"></i> TESTAR
+                        <button onclick="runTestInModal()" 
+                                class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold transition text-sm flex items-center gap-2">
+                            <i class="fas fa-play"></i>
+                            Testar
                         </button>
-                        <button onclick="saveQueryToLibrary()" class="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded font-bold transition">
-                            <i class="fas fa-save mr-1"></i> SALVAR
+                        <button onclick="saveQueryToLibrary()" 
+                                class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-semibold transition text-sm flex items-center gap-2">
+                            <i class="fas fa-save"></i>
+                            Salvar
                         </button>
                     </div>
                 </div>
 
-                <textarea id="modalSqlInput" class="flex-1 w-full bg-slate-900 text-green-400 font-mono text-sm p-4 outline-none resize-none" spellcheck="false" placeholder="Cole sua query Oracle aqui..."></textarea>
+                <!-- Textarea do SQL -->
+                <textarea id="modalSqlInput" 
+                          class="flex-1 w-full bg-slate-900 text-green-400 font-mono text-sm p-4 outline-none resize-none leading-relaxed" 
+                          spellcheck="false" 
+                          placeholder="-- Digite sua query Oracle aqui...&#10;SELECT * FROM dual"></textarea>
                 
-                <div id="modalStatusArea" class="h-32 bg-slate-950 border-t border-slate-800 p-2 overflow-auto font-mono text-xs text-gray-400">
-                    > Selecione uma query ou escreva uma nova...
+                <!-- Console de Status -->
+                <div id="modalStatusArea" 
+                     class="h-28 bg-slate-950 border-t border-slate-800 p-3 overflow-auto font-mono text-xs text-slate-400">
+                    <span class="text-slate-500">></span> Selecione uma query ou escreva uma nova...
                 </div>
             </div>
         </div>
 
-        <div class="px-6 py-3 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
-            <span class="text-xs text-gray-500" id="selectionStatus">Nenhuma query selecionada.</span>
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center">
+            <span class="text-xs text-slate-500" id="selectionStatus">
+                <i class="fas fa-info-circle mr-1"></i>
+                Nenhuma query selecionada
+            </span>
             
-            <button onclick="applyQueryToDashboard()" id="btnApply" disabled 
-                    class="bg-gray-300 text-gray-500 px-6 py-2 rounded-lg font-bold text-sm transition cursor-not-allowed flex items-center gap-2">
-                <i class="fas fa-check"></i> USAR ESTA QUERY
+            <button onclick="applyQueryToDashboard()" 
+                    id="btnApply" 
+                    disabled 
+                    class="bg-slate-200 text-slate-400 px-6 py-2.5 rounded-lg font-bold text-sm transition cursor-not-allowed flex items-center gap-2">
+                <i class="fas fa-check"></i>
+                Usar Esta Query
             </button>
         </div>
     </div>
 </div>
 
-<!-- MODAL DE TEMPLATES -->
-<div id="templatesModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity"
+<!-- MODAL: Templates -->
+<div id="templatesModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm"
      onclick="if(event.target === this) closeTemplatesModal()">
     
-    <div class="bg-white rounded-xl shadow-2xl w-[1100px] max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+    <div class="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-[1200px] max-h-[90vh] flex flex-col overflow-hidden">
         
-        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-purple-50 to-pink-50">
-            <h3 class="font-bold text-gray-800 flex items-center gap-2 text-xl">
-                <i class="fas fa-magic text-purple-600"></i> Templates de Dashboard
-            </h3>
-            <button onclick="closeTemplatesModal()" class="text-gray-400 hover:text-red-500 transition px-2">
-                <i class="fas fa-times text-xl"></i>
+        <!-- Header -->
+        <div class="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-gradient-to-r from-purple-50 to-pink-50">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
+                    <i class="fas fa-magic text-white text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Templates de Dashboard</h3>
+                    <p class="text-xs text-slate-500">Layouts profissionais pré-configurados</p>
+                </div>
+            </div>
+            <button onclick="closeTemplatesModal()" 
+                    class="text-slate-400 hover:text-red-500 transition w-9 h-9 rounded-lg hover:bg-white/50 flex items-center justify-center">
+                <i class="fas fa-times text-lg"></i>
             </button>
         </div>
 
-        <div class="p-6 overflow-y-auto flex-1">
-            <div id="templatesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Grid de Templates -->
+        <div class="p-6 overflow-y-auto flex-1 bg-slate-50">
+            <div id="templatesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 <!-- Templates serão carregados dinamicamente aqui -->
             </div>
         </div>
 
-        <div class="px-6 py-3 border-t border-gray-200 bg-gray-50">
-            <p class="text-xs text-gray-500">
-                <i class="fas fa-info-circle mr-1"></i>
-                Os templates são pré-configurados com layouts profissionais. Selecione um e conecte com sua query.
-            </p>
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-slate-200 bg-white">
+            <div class="flex items-start gap-2 text-xs text-slate-500">
+                <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+                <p>
+                    Os templates são pré-configurados com layouts profissionais. 
+                    <b>Selecione um e conecte com sua query</b> para gerar o dashboard automaticamente.
+                </p>
+            </div>
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // ESTADO
+    // ESTADO GLOBAL
     let activeSql = '';
     let activeQueryName = '';
     let currentHtmlCode = '';
 
-    // --- FUNÇÕES DE VISUALIZAÇÃO (Toggle Visual/Code) ---
+    // === FUNÇÕES DE VISUALIZAÇÃO ===
     function toggleView(mode) {
         const visualBtn = document.getElementById('btnViewVisual');
         const codeBtn = document.getElementById('btnViewCode');
@@ -243,25 +402,22 @@
         const codeContainer = document.getElementById('codeContainer');
 
         if (mode === 'visual') {
-            // Ativa Visual
             visualBtn.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
-            visualBtn.classList.remove('text-gray-500');
+            visualBtn.classList.remove('text-slate-500');
             codeBtn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
-            codeBtn.classList.add('text-gray-500');
+            codeBtn.classList.add('text-slate-500');
 
             visualContainer.classList.remove('hidden');
             codeContainer.classList.add('hidden');
         } else {
-            // Ativa Código
             codeBtn.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
-            codeBtn.classList.remove('text-gray-500');
+            codeBtn.classList.remove('text-slate-500');
             visualBtn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
-            visualBtn.classList.add('text-gray-500');
+            visualBtn.classList.add('text-slate-500');
 
             visualContainer.classList.add('hidden');
             codeContainer.classList.remove('hidden');
             
-            // Atualiza o textarea com o HTML atual
             document.getElementById('htmlOutput').value = currentHtmlCode || '';
         }
     }
@@ -269,19 +425,21 @@
     function copyHtmlCode() {
         const copyText = document.getElementById("htmlOutput");
         copyText.select();
-        document.execCommand("copy"); // Fallback simples
-        alert("Código HTML copiado para a área de transferência!");
+        document.execCommand("copy");
+        
+        // Feedback visual
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check mr-2"></i>Copiado!';
+        setTimeout(() => { btn.innerHTML = originalText; }, 2000);
     }
 
-    // --- CHAT LOGIC ---
+    // === CHAT LOGIC ===
     async function sendMessage() {
-        const prompt = document.getElementById('promptInput').value;
-        const filters = document.getElementById('filterInput').value;
+        const prompt = document.getElementById('promptInput').value.trim();
+        const filters = document.getElementById('filterInput').value.trim();
         
         console.log('🚀 [FRONTEND] sendMessage() chamado');
-        console.log('📝 [FRONTEND] Prompt:', prompt);
-        console.log('🔧 [FRONTEND] Filters:', filters);
-        console.log('💾 [FRONTEND] Active SQL:', activeSql);
         
         if (!prompt) {
             console.warn('⚠️ [FRONTEND] Prompt vazio');
@@ -290,7 +448,7 @@
         
         if (!activeSql) {
             console.warn('⚠️ [FRONTEND] Nenhuma query ativa');
-            botReply("⚠️ Por favor, abra o 'Gerenciar Queries' e selecione uma consulta para usar.");
+            botReply("⚠️ Por favor, abra 'Gerenciar Queries' e selecione uma consulta primeiro.");
             return;
         }
 
@@ -298,15 +456,11 @@
         document.getElementById('promptInput').value = '';
         toggleLoading(true);
 
-        console.log('📡 [FRONTEND] Enviando request para /api/analytics/preview...');
-
         try {
             const requestBody = { 
                 prompt: prompt + (filters ? `. Filtros: ${filters}` : ''),
                 sqlQuery: activeSql 
             };
-            
-            console.log('📦 [FRONTEND] Body do request:', requestBody);
             
             const response = await fetch('/api/analytics/preview', {
                 method: 'POST',
@@ -314,23 +468,19 @@
                 body: JSON.stringify(requestBody)
             });
             
-            console.log('✅ [FRONTEND] Response recebido, status:', response.status);
-            
             const data = await response.json();
-            
-            console.log('📊 [FRONTEND] Data parsed:', data);
 
             if (data.success) {
                 console.log('✅ [FRONTEND] Dashboard gerado com sucesso!');
                 currentHtmlCode = data.previewHtml;
                 renderDashboard(data.previewHtml);
-                botReply("✅ Dashboard atualizado com sucesso!");
+                botReply("✅ Dashboard atualizado! Confira no preview.");
                 
                 if(!document.getElementById('codeContainer').classList.contains('hidden')) {
                      document.getElementById('htmlOutput').value = currentHtmlCode;
                 }
             } else {
-                console.error('❌ [FRONTEND] Erro retornado:', data.message);
+                console.error('❌ [FRONTEND] Erro:', data.message);
                 botReply("❌ Erro: " + (data.message || 'Desconhecido'));
             }
         } catch (e) {
@@ -344,55 +494,68 @@
     function addMessage(text, type, subtitle = '') {
         const history = document.getElementById('chatHistory');
         const isUser = type === 'user';
+        
         const html = `
-            <div class="flex items-start gap-3 ${isUser ? 'justify-end' : ''} animate-fade-in">
-                ${!isUser ? `<div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><i class="fas fa-robot text-xs"></i></div>` : ''}
-                <div class="${isUser ? 'bg-blue-600 text-white rounded-tl-xl rounded-tr-xl rounded-bl-xl' : 'bg-white text-gray-600 rounded-tr-xl rounded-br-xl rounded-bl-xl border border-gray-100'} p-3 shadow-sm text-sm max-w-[85%]">
+            <div class="flex items-start gap-2 ${isUser ? 'justify-end' : ''} animate-fade-in">
+                ${!isUser ? `<div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><i class="fas fa-robot text-xs"></i></div>` : ''}
+                <div class="${isUser ? 'bg-blue-600 text-white rounded-xl rounded-tr-none' : 'bg-white text-slate-600 rounded-xl rounded-tl-none border border-slate-100'} p-3 shadow-sm text-xs max-w-[85%]">
                     ${text}
-                    ${subtitle ? `<div class="mt-1 pt-1 border-t ${isUser ? 'border-white/20' : 'border-gray-100'} text-[10px] opacity-80"><i class="fas fa-filter"></i> ${subtitle}</div>` : ''}
+                    ${subtitle ? `<div class="mt-2 pt-2 border-t ${isUser ? 'border-white/20' : 'border-slate-100'} text-[10px] opacity-80"><i class="fas fa-filter mr-1"></i> ${subtitle}</div>` : ''}
                 </div>
-                ${isUser ? `<div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 flex-shrink-0"><i class="fas fa-user text-xs"></i></div>` : ''}
+                ${isUser ? `<div class="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center text-slate-600 flex-shrink-0"><i class="fas fa-user text-xs"></i></div>` : ''}
             </div>
         `;
+        
         history.insertAdjacentHTML('beforeend', html);
         history.scrollTop = history.scrollHeight;
     }
 
-    function botReply(text) { addMessage(text, 'bot'); }
+    function botReply(text) { 
+        addMessage(text, 'bot'); 
+    }
 
-    // --- MODAL LOGIC ---
-    function openQueryManager() { document.getElementById('queryModal').classList.remove('hidden'); }
-    function closeQueryManager() { document.getElementById('queryModal').classList.add('hidden'); }
+    // === MODAL QUERY MANAGER ===
+    function openQueryManager() { 
+        document.getElementById('queryModal').classList.remove('hidden'); 
+    }
+    
+    function closeQueryManager() { 
+        document.getElementById('queryModal').classList.add('hidden'); 
+    }
 
     function resetEditor() {
         document.getElementById('modalSqlInput').value = '';
         document.getElementById('queryNameInput').value = '';
-        document.getElementById('modalStatusArea').innerText = '> Novo editor limpo.';
+        document.getElementById('modalStatusArea').innerHTML = '<span class="text-slate-500">></span> Novo editor limpo.';
         document.getElementById('btnApply').disabled = true;
     }
 
     function loadQueryIntoEditor(id, sql, title) {
         document.getElementById('modalSqlInput').value = sql;
         document.getElementById('queryNameInput').value = title;
-        document.getElementById('modalStatusArea').innerText = `> Query "${title}" carregada. Teste antes de usar.`;
+        document.getElementById('modalStatusArea').innerHTML = `<span class="text-green-400">></span> Query "<b>${title}</b>" carregada. Teste antes de usar.`;
         enableApplyButton(title);
     }
 
     function enableApplyButton(title) {
         const btn = document.getElementById('btnApply');
         btn.disabled = false;
-        btn.classList.remove('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+        btn.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
         btn.classList.add('bg-blue-600', 'text-white', 'hover:bg-blue-700', 'cursor-pointer');
-        document.getElementById('selectionStatus').innerHTML = `Query selecionada: <b>${title}</b>`;
+        document.getElementById('selectionStatus').innerHTML = `<i class="fas fa-check-circle text-green-500 mr-1"></i> Query selecionada: <b>${title}</b>`;
     }
 
-    // --- AÇÃO DE TESTAR (MODAL) ---
     async function runTestInModal() {
         const sql = document.getElementById('modalSqlInput').value;
         const status = document.getElementById('modalStatusArea');
-        if(!sql) return;
         
-        status.innerText = "> Testando no Oracle...";
+        if(!sql) {
+            status.innerHTML = '<span class="text-red-400">></span> Digite uma query SQL primeiro.';
+            return;
+        }
+        
+        status.innerHTML = '<span class="text-yellow-400">></span> Testando no Oracle... <i class="fas fa-spinner fa-spin ml-2"></i>';
+        
         try {
             const res = await fetch('/api/analytics/preview', {
                 method: 'POST',
@@ -402,38 +565,42 @@
             const data = await res.json();
             
             if(data.success && data.rawResult) {
-                status.innerHTML = `<span class="text-green-400">SUCESSO: ${data.rawResult.length} linhas retornadas.</span>`;
-                enableApplyButton(document.getElementById('queryNameInput').value || 'Sem Título');
+                status.innerHTML = `<span class="text-green-400">✓ SUCESSO:</span> ${data.rawResult.length} linha(s) retornada(s).`;
+                enableApplyButton(document.getElementById('queryNameInput').value || 'Consulta Sem Nome');
             } else {
-                status.innerHTML = `<span class="text-red-400">ERRO:</span> ${data.message}`;
+                status.innerHTML = `<span class="text-red-400">✗ ERRO:</span> ${data.message}`;
             }
-        } catch(e) { status.innerText = "Erro fatal de execução."; }
+        } catch(e) { 
+            status.innerHTML = '<span class="text-red-400">✗ ERRO FATAL:</span> Falha na conexão.';
+        }
     }
 
-    // --- AÇÃO DE EXCLUIR (MODAL) ---
     async function deleteQuery(id, event) {
-        event.stopPropagation(); // Impede que o clique carregue a query no editor
+        event.stopPropagation();
         
-        if(!confirm('Tem certeza que deseja excluir esta query permanentemente?')) return;
+        if(!confirm('⚠️ Tem certeza que deseja excluir esta query permanentemente?')) return;
 
         try {
             const res = await fetch(`/api/analytics/delete/${id}`, { method: 'POST' });
             if(res.ok) {
-                // Remove visualmente ou recarrega
                 window.location.reload();
             } else {
                 alert('Erro ao excluir query.');
             }
-        } catch(e) { alert('Erro de conexão ao excluir.'); }
+        } catch(e) { 
+            alert('Erro de conexão ao excluir.');
+        }
     }
 
-    // --- AÇÃO DE SALVAR QUERY ---
     async function saveQueryToLibrary() {
-        const title = document.getElementById('queryNameInput').value;
-        const sql = document.getElementById('modalSqlInput').value;
-        if(!title || !sql) return alert('Preencha Título e SQL');
+        const title = document.getElementById('queryNameInput').value.trim();
+        const sql = document.getElementById('modalSqlInput').value.trim();
+        
+        if(!title || !sql) {
+            alert('⚠️ Preencha o Título e o SQL da consulta.');
+            return;
+        }
 
-        // Salva apenas a query (sem HTML ainda)
         const res = await fetch('/api/analytics/save', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -441,15 +608,17 @@
                 title, 
                 sqlQuery: sql, 
                 prompt: 'Query cadastrada manualmente',
-                htmlTemplate: '<div>Dashboard será gerado pela IA</div>' // Placeholder
+                htmlTemplate: '<div>Dashboard será gerado pela IA</div>'
             })
         });
+        
         const data = await res.json();
+        
         if(data.success) {
-            alert('Query salva na biblioteca!');
+            alert('✅ Query salva na biblioteca com sucesso!');
             window.location.reload();
         } else {
-            alert('Erro ao salvar: ' + (data.message || 'Desconhecido'));
+            alert('❌ Erro ao salvar: ' + (data.message || 'Desconhecido'));
         }
     }
 
@@ -464,19 +633,23 @@
         document.getElementById('lblActiveQuery').innerText = activeQueryName;
         
         closeQueryManager();
-        botReply(`Query <b>"${activeQueryName}"</b> carregada. O que vamos criar?`);
+        botReply(`✅ Query <b>"${activeQueryName}"</b> conectada! O que vamos criar?`);
     }
 
     function clearActiveQuery() {
         activeSql = '';
+        activeQueryName = '';
         document.getElementById('activeQueryIndicator').classList.add('hidden');
         document.getElementById('dataSourceName').innerText = 'Nenhuma fonte';
-        botReply("Desconectei a query.");
+        document.getElementById('dashboardTitle').innerText = 'Dashboard em Branco';
+        botReply("🔌 Query desconectada.");
     }
 
     function renderDashboard(html) {
         const container = document.getElementById('dashboardContainer');
         container.innerHTML = html;
+        
+        // Re-executa scripts do HTML gerado
         const scripts = container.getElementsByTagName("script");
         for(let i=0; i<scripts.length; i++) {
             const s = document.createElement("script");
@@ -488,10 +661,11 @@
     
     function toggleLoading(show) {
         const el = document.getElementById('loadingOverlay');
-        if(show) el.classList.remove('hidden'); else el.classList.add('hidden');
+        if(show) el.classList.remove('hidden');
+        else el.classList.add('hidden');
     }
 
-    // --- TEMPLATES MODAL ---
+    // === MODAL TEMPLATES ===
     let availableTemplates = [];
 
     async function openTemplatesModal() {
@@ -521,35 +695,36 @@
 
         availableTemplates.forEach(template => {
             const card = `
-                <div class="bg-white border-2 border-gray-200 rounded-xl p-5 hover:border-purple-500 hover:shadow-xl transition-all duration-300 cursor-pointer group"
+                <div class="bg-white border-2 border-slate-200 rounded-xl p-5 hover:border-purple-500 hover:shadow-xl transition-all duration-300 cursor-pointer group"
                      onclick="selectTemplate('${template.id}')">
                     
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="p-3 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg group-hover:from-purple-200 group-hover:to-pink-200 transition-all">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl group-hover:from-purple-200 group-hover:to-pink-200 transition-all">
                             <i class="fas ${template.icone} text-2xl text-purple-600"></i>
                         </div>
-                        <span class="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
-                            Template
+                        <span class="text-[10px] font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full">
+                            TEMPLATE
                         </span>
                     </div>
 
-                    <h4 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-purple-700 transition-colors">
+                    <h4 class="text-base font-bold text-slate-800 mb-2 group-hover:text-purple-700 transition-colors">
                         ${template.nome}
                     </h4>
                     
-                    <p class="text-sm text-gray-600 mb-3 line-clamp-2">
+                    <p class="text-xs text-slate-600 mb-3 line-clamp-2 leading-relaxed">
                         ${template.descricao}
                     </p>
 
-                    <div class="bg-gray-50 rounded-lg p-2 border border-gray-200 mb-3">
-                        <p class="text-xs text-gray-500">
+                    <div class="bg-slate-50 rounded-lg p-3 border border-slate-100 mb-4">
+                        <p class="text-[11px] text-slate-500 leading-relaxed">
                             <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
                             <b>Exemplo:</b> ${template.exemplo}
                         </p>
                     </div>
 
-                    <button class="w-full py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold text-sm hover:from-purple-700 hover:to-pink-700 transition-all shadow-sm group-hover:shadow-md">
-                        <i class="fas fa-check mr-1"></i> Usar Este Template
+                    <button class="w-full py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold text-sm hover:from-purple-700 hover:to-pink-700 transition-all shadow-sm group-hover:shadow-md flex items-center justify-center gap-2">
+                        <i class="fas fa-check"></i>
+                        Usar Template
                     </button>
                 </div>
             `;
@@ -569,7 +744,7 @@
 
         closeTemplatesModal();
         
-        botReply(`🎨 Aplicando template "${template.nome}"... Aguarde enquanto a IA cria seu dashboard.`);
+        botReply(`🎨 Aplicando template "<b>${template.nome}</b>"... Aguarde enquanto a IA cria seu dashboard.`);
         
         toggleLoading(true);
 
@@ -587,7 +762,7 @@
             if (data.success) {
                 currentHtmlCode = data.previewHtml;
                 renderDashboard(data.previewHtml);
-                botReply(`✅ Template "${template.nome}" aplicado com sucesso!`);
+                botReply(`✅ Template "<b>${template.nome}</b>" aplicado com sucesso!`);
                 
                 if(!document.getElementById('codeContainer').classList.contains('hidden')) {
                      document.getElementById('htmlOutput').value = currentHtmlCode;
@@ -604,13 +779,14 @@
 
     async function saveCurrentPage() {
         if(!currentHtmlCode || !activeSql) {
-            return alert('Você precisa gerar um dashboard primeiro! Use o chat para criar visualizações.');
+            alert('⚠️ Você precisa gerar um dashboard primeiro!\n\nUse o chat para criar visualizações antes de salvar.');
+            return;
         }
 
-        const title = prompt('Digite um nome para este dashboard:', activeQueryName);
+        const title = prompt('📊 Digite um nome para este dashboard:', activeQueryName);
         if(!title) return;
 
-        const description = prompt('Descrição (opcional):', '');
+        const description = prompt('📝 Descrição (opcional):', '');
 
         try {
             const res = await fetch('/api/analytics/save', {
@@ -627,7 +803,7 @@
             const data = await res.json();
             
             if(data.success) {
-                alert(`✅ Dashboard "${title}" salvo com sucesso!\n\nID: ${data.id}\n\nAcesse em: /api/analytics/view/${data.id}`);
+                alert(`✅ Dashboard "${title}" salvo com sucesso!\n\n📌 ID: ${data.id}\n🔗 Acesse em: /api/analytics/view/${data.id}`);
                 
                 if(confirm('Deseja abrir o dashboard salvo em uma nova aba?')) {
                     window.open(`/api/analytics/view/${data.id}`, '_blank');
@@ -639,4 +815,50 @@
             alert('❌ Erro de conexão: ' + e.message);
         }
     }
+
+    // Enter para enviar mensagem
+    document.addEventListener('DOMContentLoaded', function() {
+        const promptInput = document.getElementById('promptInput');
+        if (promptInput) {
+            promptInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
+    });
 </script>
+
+<style>
+    @keyframes fade-in {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .animate-fade-in {
+        animation: fade-in 0.3s ease-out;
+    }
+    
+    /* Scrollbar customizada */
+    #chatHistory::-webkit-scrollbar,
+    #savedQueriesList::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    #chatHistory::-webkit-scrollbar-track,
+    #savedQueriesList::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    
+    #chatHistory::-webkit-scrollbar-thumb,
+    #savedQueriesList::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+    
+    #chatHistory::-webkit-scrollbar-thumb:hover,
+    #savedQueriesList::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+</style>

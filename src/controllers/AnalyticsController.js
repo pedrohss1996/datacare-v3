@@ -496,11 +496,36 @@ const analyticsController = {
     deleteWidget: async (req, res) => {
         try {
             const { id } = req.params;
-            await db('sis_indicadores').where('id', id).update({ ativo: false });
-            console.log(`[Analytics] Widget ID: ${id} desativado`);
-            res.json({ success: true, message: 'Dashboard removido com sucesso!' });
+            
+            console.log(`[Analytics] 🗑️ Tentando desativar Widget ID: ${id}`);
+            
+            // Verifica se o widget existe
+            const widget = await db('sis_indicadores').where('id', id).first();
+            
+            if (!widget) {
+                console.log(`[Analytics] ❌ Widget ID: ${id} não encontrado`);
+                return res.status(404).json({ success: false, message: 'Dashboard não encontrado' });
+            }
+            
+            console.log(`[Analytics] ✅ Widget encontrado: "${widget.titulo}"`);
+            
+            // Desativa o widget
+            const updated = await db('sis_indicadores')
+                .where('id', id)
+                .update({ 
+                    ativo: false,
+                    updated_at: new Date()
+                });
+            
+            console.log(`[Analytics] ✅ Widget ID: ${id} desativado (${updated} linha(s) afetada(s))`);
+            
+            res.json({ 
+                success: true, 
+                message: 'Dashboard removido com sucesso!',
+                id: id
+            });
         } catch (e) { 
-            console.error('[Analytics] Erro ao deletar widget:', e);
+            console.error('[Analytics] ❌ Erro ao deletar widget:', e);
             res.status(500).json({ success: false, message: e.message }); 
         }
     },
@@ -593,6 +618,7 @@ const analyticsController = {
     listaDashboards: async (req, res) => {
         try {
             const dashboards = await db('sis_indicadores')
+                .where('ativo', true)  // Apenas dashboards ativos
                 .orderBy('created_at', 'desc')
                 .select('*');
             
