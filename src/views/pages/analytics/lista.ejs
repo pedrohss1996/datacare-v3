@@ -1,3 +1,6 @@
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <div class="h-full bg-slate-50 py-8 overflow-y-auto">
     <div class="max-w-[1600px] mx-auto px-6">
         
@@ -332,16 +335,34 @@
     }
 
     async function deleteDashboard(id, titulo) {
-        // Confirmação com estilo melhorado
-        const confirmed = confirm(
-            `⚠️ ATENÇÃO!\n\n` +
-            `Você está prestes a excluir o dashboard:\n` +
-            `"${titulo}"\n\n` +
-            `Esta ação é PERMANENTE e não pode ser desfeita.\n\n` +
-            `Deseja continuar?`
-        );
+        // Confirmação com SweetAlert2
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'Confirmar Exclusão',
+            html: `
+                <p class="mb-2">Você está prestes a excluir o dashboard:</p>
+                <p class="font-bold text-lg mb-2">"${titulo}"</p>
+                <p class="text-sm text-red-600">Esta ação é PERMANENTE e não pode ser desfeita.</p>
+            `,
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: '<i class="fas fa-trash-alt mr-2"></i>Sim, excluir',
+            cancelButtonText: 'Cancelar',
+            focusCancel: true
+        });
 
-        if (!confirmed) return;
+        if (!result.isConfirmed) return;
+
+        // Mostra loading
+        Swal.fire({
+            title: 'Excluindo...',
+            html: 'Por favor, aguarde...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
 
         try {
             const response = await fetch(`/api/analytics/delete/${id}`, {
@@ -355,7 +376,13 @@
 
             if (data.success) {
                 // Feedback positivo
-                alert('✅ Dashboard excluído com sucesso!');
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Excluído!',
+                    text: 'Dashboard excluído com sucesso!',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
                 
                 // Remove o card visualmente com animação
                 const card = document.querySelector(`.dashboard-card[data-titulo*="${titulo.toLowerCase().substring(0, 20)}"]`);
@@ -369,11 +396,21 @@
                     window.location.reload();
                 }
             } else {
-                alert('❌ Erro ao excluir dashboard:\n\n' + (data.message || 'Erro desconhecido'));
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro ao Excluir',
+                    text: data.message || 'Erro desconhecido',
+                    confirmButtonColor: '#3b82f6'
+                });
             }
         } catch (error) {
             console.error('Erro ao deletar dashboard:', error);
-            alert('❌ Erro de conexão ao excluir dashboard:\n\n' + error.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro de Conexão',
+                text: error.message,
+                confirmButtonColor: '#3b82f6'
+            });
         }
     }
 

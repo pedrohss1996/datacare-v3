@@ -1,3 +1,6 @@
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <!-- Analytics Builder - Interface Redesenhada para DataCare -->
 <div class="h-full bg-slate-50 flex flex-col">
     
@@ -418,7 +421,12 @@
     
     function undoLastChange() {
         if (dashboardHistory.length < 2) {
-            alert('⚠️ Não há alterações anteriores para desfazer.');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Sem Histórico',
+                text: 'Não há alterações anteriores para desfazer.',
+                confirmButtonColor: '#3b82f6'
+            });
             return;
         }
         
@@ -648,17 +656,45 @@
     async function deleteQuery(id, event) {
         event.stopPropagation();
         
-        if(!confirm('⚠️ Tem certeza que deseja excluir esta query permanentemente?')) return;
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'Confirmar Exclusão',
+            text: 'Tem certeza que deseja excluir esta query permanentemente?',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Sim, excluir',
+            cancelButtonText: 'Cancelar'
+        });
+        
+        if (!result.isConfirmed) return;
 
         try {
             const res = await fetch(`/api/analytics/delete/${id}`, { method: 'POST' });
             if(res.ok) {
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Excluído!',
+                    text: 'Query excluída com sucesso.',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
                 window.location.reload();
             } else {
-                alert('Erro ao excluir query.');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Erro ao excluir query.',
+                    confirmButtonColor: '#3b82f6'
+                });
             }
         } catch(e) { 
-            alert('Erro de conexão ao excluir.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro de Conexão',
+                text: 'Erro de conexão ao excluir.',
+                confirmButtonColor: '#3b82f6'
+            });
         }
     }
 
@@ -667,7 +703,12 @@
         const sql = document.getElementById('modalSqlInput').value.trim();
         
         if(!title || !sql) {
-            alert('⚠️ Preencha o Título e o SQL da consulta.');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Campos Obrigatórios',
+                text: 'Preencha o Título e o SQL da consulta.',
+                confirmButtonColor: '#3b82f6'
+            });
             return;
         }
 
@@ -685,10 +726,20 @@
         const data = await res.json();
         
         if(data.success) {
-            alert('✅ Query salva na biblioteca com sucesso!');
+            await Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: 'Query salva na biblioteca com sucesso!',
+                confirmButtonColor: '#3b82f6'
+            });
             window.location.reload();
         } else {
-            alert('❌ Erro ao salvar: ' + (data.message || 'Desconhecido'));
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro ao Salvar',
+                text: data.message || 'Erro desconhecido',
+                confirmButtonColor: '#3b82f6'
+            });
         }
     }
 
@@ -854,22 +905,57 @@
 
     async function saveCurrentPage() {
         if(!currentHtmlCode || !activeSql) {
-            alert('⚠️ Você precisa gerar um dashboard primeiro!\n\nUse o chat para criar visualizações antes de salvar.');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Dashboard Vazio',
+                html: 'Você precisa gerar um dashboard primeiro!<br><br>Use o chat para criar visualizações antes de salvar.',
+                confirmButtonColor: '#3b82f6'
+            });
             return;
         }
 
-        const title = prompt('📊 Digite um nome para este dashboard:', activeQueryName);
-        if(!title) return;
+        const { value: formValues } = await Swal.fire({
+            title: 'Salvar Dashboard',
+            html:
+                '<input id="swal-title" class="swal2-input" placeholder="Nome do Dashboard" value="' + activeQueryName + '">' +
+                '<textarea id="swal-desc" class="swal2-textarea" placeholder="Descrição (opcional)" rows="3"></textarea>',
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonColor: '#3b82f6',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Salvar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const title = document.getElementById('swal-title').value;
+                if (!title) {
+                    Swal.showValidationMessage('Por favor, digite um nome para o dashboard');
+                    return false;
+                }
+                return {
+                    title: title,
+                    description: document.getElementById('swal-desc').value
+                };
+            }
+        });
 
-        const description = prompt('📝 Descrição (opcional):', '');
+        if (!formValues) return;
 
         try {
+            Swal.fire({
+                title: 'Salvando...',
+                html: 'Por favor, aguarde...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
             const res = await fetch('/api/analytics/save', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ 
-                    title, 
-                    prompt: description,
+                    title: formValues.title, 
+                    prompt: formValues.description,
                     sqlQuery: activeSql, 
                     htmlTemplate: currentHtmlCode
                 })
@@ -878,16 +964,38 @@
             const data = await res.json();
             
             if(data.success) {
-                alert(`✅ Dashboard "${title}" salvo com sucesso!\n\n📌 ID: ${data.id}\n🔗 Acesse em: /api/analytics/view/${data.id}`);
+                const result = await Swal.fire({
+                    icon: 'success',
+                    title: 'Dashboard Salvo!',
+                    html: `
+                        <p class="mb-2"><b>${formValues.title}</b> foi salvo com sucesso!</p>
+                        <p class="text-sm text-slate-500">ID: ${data.id}</p>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonColor: '#3b82f6',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: '<i class="fas fa-external-link-alt mr-2"></i>Abrir Dashboard',
+                    cancelButtonText: 'Fechar'
+                });
                 
-                if(confirm('Deseja abrir o dashboard salvo em uma nova aba?')) {
+                if(result.isConfirmed) {
                     window.open(`/api/analytics/view/${data.id}`, '_blank');
                 }
             } else {
-                alert('❌ Erro ao salvar: ' + (data.message || 'Desconhecido'));
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro ao Salvar',
+                    text: data.message || 'Erro desconhecido',
+                    confirmButtonColor: '#3b82f6'
+                });
             }
         } catch(e) {
-            alert('❌ Erro de conexão: ' + e.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro de Conexão',
+                text: e.message,
+                confirmButtonColor: '#3b82f6'
+            });
         }
     }
 
