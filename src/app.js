@@ -38,9 +38,9 @@ app.use(compression());
 app.use(cors()); 
 app.use(morgan('dev')); 
 
-// 3. Parsers 
-app.use(express.json()); 
-app.use(express.urlencoded({ extended: true }));
+// 3. Parsers (com limite aumentado para dashboards grandes)
+app.use(express.json({ limit: '50mb' })); 
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // 4. Arquivos Estáticos
 app.use(express.static(path.join(__dirname, '../public')));

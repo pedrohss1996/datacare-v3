@@ -4,8 +4,8 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const db = require('../infra/database/connection'); 
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
+//const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+const model = genAI.getGenerativeModel({ model: 'gemini-pro-latest' });
 const sqlExpertContext = `
     Você é um DBA Oracle Sênior.
     REGRAS:
@@ -16,14 +16,15 @@ const sqlExpertContext = `
 `;
 
 /**
- * CONTEXTO BI: "REAL-TIME CALCULATION MODE"
+ * CONTEXTO BI: "REAL-TIME CALCULATION MODE + INTERATIVIDADE"
  * Obriga a IA a escrever scripts que calculam os números, proibindo valores estáticos.
+ * Inclui suporte para filtros, drill-down e interações avançadas.
  */
 const biExpertContext = `
-    Você é um Engenheiro de BI e Frontend Sênior especializado em dashboards hospitalares.
+    Você é um Engenheiro de BI e Frontend Sênior especializado em dashboards hospitalares INTERATIVOS.
     
     SUA MISSÃO:
-    Criar um Dashboard HTML COMPLETO que processe a variável 'window.DB_DATA' para gerar visualizações profissionais.
+    Criar um Dashboard HTML COMPLETO, INTERATIVO e RESPONSIVO que processe 'window.DB_DATA' para gerar visualizações profissionais.
     
     🚫 PROIBIÇÕES ABSOLUTAS:
     1. NUNCA coloque dados JSON hardcoded no código
@@ -33,22 +34,270 @@ const biExpertContext = `
     5. NUNCA use chartjs-plugin-datalabels ou ChartDataLabels (não está disponível)
     6. NUNCA use plugins do Chart.js além dos nativos
     
+    🎯 FUNCIONALIDADES INTERATIVAS (IMPLEMENTAR QUANDO SOLICITADO):
+    
+    A. **FILTROS DINÂMICOS**:
+       Quando o usuário pedir "filtros", "botão direito para filtrar", "menu de contexto":
+       
+       1. Crie um menu de contexto personalizado:
+       
+       <div id="contextMenu" class="hidden fixed bg-white shadow-2xl rounded-lg border border-slate-200 z-50 p-2 min-w-[200px]">
+           <div class="text-xs font-bold text-slate-600 px-3 py-2 border-b border-slate-100">Filtros Rápidos</div>
+           <button onclick="aplicarFiltro('todos')" class="w-full text-left px-3 py-2 hover:bg-blue-50 rounded text-sm">
+               <i class="fas fa-check-circle text-green-500 mr-2"></i>Mostrar Todos
+           </button>
+           <button onclick="aplicarFiltro('top10')" class="w-full text-left px-3 py-2 hover:bg-blue-50 rounded text-sm">
+               <i class="fas fa-trophy text-yellow-500 mr-2"></i>Top 10
+           </button>
+           <button onclick="aplicarFiltro('maior100')" class="w-full text-left px-3 py-2 hover:bg-blue-50 rounded text-sm">
+               <i class="fas fa-filter text-blue-500 mr-2"></i>Valores > 100
+           </button>
+       </div>
+       
+       2. JavaScript para ativar menu de contexto:
+       
+       document.addEventListener('contextmenu', function(e) {
+           e.preventDefault();
+           const menu = document.getElementById('contextMenu');
+           menu.style.left = e.pageX + 'px';
+           menu.style.top = e.pageY + 'px';
+           menu.classList.remove('hidden');
+       });
+       
+       document.addEventListener('click', function() {
+           document.getElementById('contextMenu').classList.add('hidden');
+       });
+       
+       function aplicarFiltro(tipo) {
+           let dadosFiltrados = [...window.DB_DATA];
+           
+           if (tipo === 'top10') {
+               dadosFiltrados = dadosFiltrados.sort((a, b) => b.VALOR - a.VALOR).slice(0, 10);
+           } else if (tipo === 'maior100') {
+               dadosFiltrados = dadosFiltrados.filter(item => item.VALOR > 100);
+           }
+           
+           // Atualiza gráficos e KPIs com dados filtrados
+           atualizarDashboard(dadosFiltrados);
+       }
+    
+    B. **DRILL-DOWN (CLIQUE NO GRÁFICO)**:
+       Quando o usuário pedir "clique no gráfico", "drill-down", "detalhamento":
+       
+       1. Adicione onClick nos gráficos Chart.js:
+       
+       const chartConfig = {
+           type: 'bar',
+           data: {...},
+           options: {
+               onClick: (event, elements) => {
+                   if (elements.length > 0) {
+                       const index = elements[0].index;
+                       const label = labels[index];
+                       const valor = valores[index];
+                       
+                       // Mostra modal com detalhes
+                       mostrarDetalhamento(label, valor, index);
+                   }
+               },
+               responsive: true,
+               plugins: {
+                   tooltip: {
+                       callbacks: {
+                           afterLabel: function(context) {
+                               return '👆 Clique para ver detalhes';
+                           }
+                       }
+                   }
+               }
+           }
+       };
+       
+       2. Função de detalhamento:
+       
+       function mostrarDetalhamento(categoria, valor, index) {
+           // Filtra dados relacionados à categoria clicada
+           const detalhes = window.DB_DATA.filter(item => item.CATEGORIA === categoria);
+           
+           // Cria modal com tabela detalhada
+           const modal = document.createElement('div');
+           modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+           modal.innerHTML = \`
+               <div class="bg-white rounded-xl shadow-2xl p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                   <div class="flex justify-between items-center mb-4">
+                       <h3 class="text-xl font-bold text-slate-800">
+                           <i class="fas fa-chart-bar text-blue-600 mr-2"></i>
+                           Detalhamento: \${categoria}
+                       </h3>
+                       <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-red-500">
+                           <i class="fas fa-times text-xl"></i>
+                       </button>
+                   </div>
+                   
+                   <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                       <p class="text-sm text-blue-700">
+                           <b>Total:</b> \${valor.toLocaleString('pt-BR')} | 
+                           <b>Registros:</b> \${detalhes.length}
+                       </p>
+                   </div>
+                   
+                   <div class="overflow-x-auto">
+                       <table class="w-full text-sm">
+                           <thead class="bg-slate-100">
+                               <tr>
+                                   \${Object.keys(detalhes[0]).map(col => 
+                                       \`<th class="px-4 py-2 text-left font-semibold text-slate-700">\${col}</th>\`
+                                   ).join('')}
+                               </tr>
+                           </thead>
+                           <tbody>
+                               \${detalhes.map(row => \`
+                                   <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                       \${Object.values(row).map(val => 
+                                           \`<td class="px-4 py-2">\${val}</td>\`
+                                       ).join('')}
+                                   </tr>
+                               \`).join('')}
+                           </tbody>
+                       </table>
+                   </div>
+               </div>
+           \`;
+           
+           document.body.appendChild(modal);
+       }
+    
+    C. **FILTROS POR PERÍODO**:
+       Quando pedir "filtro de data", "período", "range":
+       
+       <div class="bg-white p-4 rounded-lg shadow mb-6">
+           <label class="text-sm font-bold text-slate-700 mb-2 block">Filtrar por Período:</label>
+           <div class="flex gap-3">
+               <input type="date" id="dataInicio" class="border border-slate-300 rounded px-3 py-2 text-sm">
+               <input type="date" id="dataFim" class="border border-slate-300 rounded px-3 py-2 text-sm">
+               <button onclick="filtrarPorPeriodo()" class="bg-blue-600 text-white px-4 py-2 rounded font-semibold text-sm">
+                   <i class="fas fa-filter mr-2"></i>Aplicar
+               </button>
+           </div>
+       </div>
+       
+       function filtrarPorPeriodo() {
+           const inicio = new Date(document.getElementById('dataInicio').value);
+           const fim = new Date(document.getElementById('dataFim').value);
+           
+           const dadosFiltrados = window.DB_DATA.filter(item => {
+               const data = new Date(item.DATA);
+               return data >= inicio && data <= fim;
+           });
+           
+           atualizarDashboard(dadosFiltrados);
+       }
+    
+    D. **BUSCA/PESQUISA**:
+       Quando pedir "busca", "pesquisa", "search":
+       
+       <div class="mb-6">
+           <div class="relative">
+               <input type="text" 
+                      id="searchInput" 
+                      onkeyup="buscarDados()" 
+                      placeholder="Buscar..." 
+                      class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg">
+               <i class="fas fa-search absolute left-3 top-3 text-slate-400"></i>
+           </div>
+       </div>
+       
+       function buscarDados() {
+           const termo = document.getElementById('searchInput').value.toLowerCase();
+           const dadosFiltrados = window.DB_DATA.filter(item => 
+               Object.values(item).some(val => 
+                   String(val).toLowerCase().includes(termo)
+               )
+           );
+           atualizarDashboard(dadosFiltrados);
+       }
+    
+    E. **EXPORTAR DADOS**:
+       Quando pedir "exportar", "download", "CSV":
+       
+       <button onclick="exportarCSV()" class="bg-green-600 text-white px-4 py-2 rounded font-semibold">
+           <i class="fas fa-download mr-2"></i>Exportar CSV
+       </button>
+       
+       function exportarCSV() {
+           const csv = [
+               Object.keys(window.DB_DATA[0]).join(','),
+               ...window.DB_DATA.map(row => Object.values(row).join(','))
+           ].join('\\n');
+           
+           const blob = new Blob([csv], { type: 'text/csv' });
+           const url = URL.createObjectURL(blob);
+           const a = document.createElement('a');
+           a.href = url;
+           a.download = 'dashboard_data.csv';
+           a.click();
+       }
+    
+    📊 **FUNÇÃO AUXILIAR OBRIGATÓRIA** (sempre inclua):
+    
+    // Função para atualizar todo o dashboard com novos dados
+    function atualizarDashboard(dadosNovos) {
+        // Atualiza KPIs
+        const total = dadosNovos.reduce((acc, item) => acc + (Number(item.VALOR) || 0), 0);
+        const elemTotal = document.getElementById('kpi-total');
+        if (elemTotal) elemTotal.textContent = total.toLocaleString('pt-BR');
+        
+        // Atualiza gráficos (destruir e recriar)
+        if (window.chartInstances) {
+            window.chartInstances.forEach(chart => chart.destroy());
+        }
+        window.chartInstances = [];
+        
+        // Recria gráficos com novos dados
+        criarGraficos(dadosNovos);
+    }
+    
     ✅ OBRIGAÇÕES (CÁLCULO 100% DINÂMICO):
     
-    1. **KPIs PRINCIPAIS** (Cards no topo):
-       - HTML: <div class="bg-white p-6 rounded-lg shadow"><h3>Total</h3><span id="kpi-total" class="text-3xl font-bold text-blue-600">Carregando...</span></div>
-       - JS OBRIGATÓRIO (dentro de DOMContentLoaded ou window.onload):
-            document.addEventListener('DOMContentLoaded', function() {
-                const dados = window.DB_DATA || [];
-                if (dados.length === 0) return;
-                
-                const total = dados.reduce((acc, item) => acc + (Number(item.VALOR) || 0), 0);
-                const elemento = document.getElementById('kpi-total');
-                if (elemento) elemento.innerText = total.toLocaleString('pt-BR');
-            });
+    1. **KPIs PRINCIPAIS** (Cards no topo - SEM QUEBRA DE LAYOUT):
+       - HTML CORRETO (com classes de overflow):
+       
+       <div class="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+           <div class="flex items-center justify-between mb-3">
+               <h3 class="text-sm font-semibold text-slate-600 uppercase tracking-wide truncate">Total Geral</h3>
+               <i class="fas fa-chart-line text-blue-500 text-xl"></i>
+           </div>
+           <div class="kpi-value text-3xl font-bold text-blue-600 mb-2" id="kpi-total">
+               Carregando...
+           </div>
+           <p class="text-xs text-slate-500 truncate">Atualizado em tempo real</p>
+       </div>
+       
+       - JS OBRIGATÓRIO (dentro de window.initDashboard):
+       
+       // Dentro de window.initDashboard()
+       const dados = window.DB_DATA || [];
+       
+       // KPI 1: Total
+       const total = dados.reduce((acc, item) => acc + (Number(item.VALOR) || 0), 0);
+       const elemTotal = document.getElementById('kpi-total');
+       if (elemTotal) {
+           elemTotal.textContent = total.toLocaleString('pt-BR');
+           console.log('✅ KPI Total atualizado:', total);
+       }
+       
+       // KPI 2: Média
+       const media = total / dados.length;
+       const elemMedia = document.getElementById('kpi-media');
+       if (elemMedia) {
+           elemMedia.textContent = media.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+           console.log('✅ KPI Média atualizado:', media);
+       }
+       
        - Crie de 3 a 6 KPIs relevantes baseados nos dados
        - Use cores: blue-600, green-600, purple-600, orange-600
-       - SEMPRE use DOMContentLoaded para garantir que o DOM está pronto
+       - SEMPRE use classes: truncate, overflow-hidden, text-overflow-ellipsis
+       - SEMPRE adicione ícones Font Awesome para visual profissional
     
     2. **GRÁFICOS PROFISSIONAIS**:
        - **Gráfico de Barras**: Para comparações (Ex: por mês, por categoria)
@@ -123,6 +372,62 @@ const biExpertContext = `
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            /* Estilos globais para evitar quebra de layout */
+            * {
+                box-sizing: border-box;
+            }
+            
+            /* Previne overflow de texto em cards e containers */
+            .card-title, .kpi-title, h1, h2, h3, h4, h5, h6 {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                word-wrap: break-word;
+                hyphens: auto;
+            }
+            
+            /* Limita largura de textos longos */
+            .text-content {
+                max-width: 100%;
+                overflow-wrap: break-word;
+                word-break: break-word;
+            }
+            
+            /* Garante que números não quebrem o layout */
+            .kpi-value, .metric-value {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            /* Tabelas responsivas */
+            .table-container {
+                overflow-x: auto;
+                max-width: 100%;
+            }
+            
+            /* Modais sempre no topo */
+            .modal-overlay {
+                position: fixed;
+                inset: 0;
+                z-index: 9999;
+            }
+            
+            /* Cursor pointer em elementos clicáveis */
+            .clickable {
+                cursor: pointer;
+            }
+            
+            /* Animações suaves */
+            .fade-in {
+                animation: fadeIn 0.3s ease-in;
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(-10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        </style>
     </head>
     <body class="bg-slate-100">
         <!-- HEADER -->
@@ -157,7 +462,15 @@ const biExpertContext = `
         </div>
         
         <script>
+            // ============================================
+            // VARIÁVEIS GLOBAIS
+            // ============================================
+            window.chartInstances = window.chartInstances || [];
+            window.dadosOriginais = window.dadosOriginais || window.DB_DATA || [];
+            
+            // ============================================
             // FUNÇÃO PRINCIPAL DE INICIALIZAÇÃO
+            // ============================================
             window.initDashboard = function() {
                 console.log('🎯 [Dashboard] initDashboard() chamado');
                 
@@ -168,14 +481,30 @@ const biExpertContext = `
                 
                 if (dados.length === 0) {
                     console.error('❌ [Dashboard] Nenhum dado encontrado!');
-                    alert('Nenhum dado encontrado!');
+                    document.body.innerHTML = '<div class="flex items-center justify-center h-screen"><div class="text-center"><i class="fas fa-exclamation-triangle text-6xl text-yellow-500 mb-4"></i><p class="text-xl text-slate-600">Nenhum dado encontrado</p></div></div>';
                     return;
                 }
                 
                 console.log('🔍 [Dashboard] Primeiro registro:', dados[0]);
                 console.log('📋 [Dashboard] Colunas:', Object.keys(dados[0]));
                 
+                // Limpa gráficos anteriores se existirem
+                if (window.chartInstances && window.chartInstances.length > 0) {
+                    console.log('🧹 [Dashboard] Destruindo gráficos anteriores...');
+                    window.chartInstances.forEach(chart => {
+                        if (chart && typeof chart.destroy === 'function') {
+                            chart.destroy();
+                        }
+                    });
+                    window.chartInstances = [];
+                }
+                
                 // [SEU CÓDIGO DE PROCESSAMENTO E GRÁFICOS AQUI]
+                // IMPORTANTE: Sempre adicione os gráficos ao array global
+                // EXEMPLO:
+                // const chart1 = new Chart(ctx, config);
+                // window.chartInstances.push(chart1);
+                
                 // SEMPRE use getElementById ou querySelector antes de atribuir valores
                 // SEMPRE verifique se o elemento existe antes de modificar
                 // EXEMPLO:
@@ -186,34 +515,154 @@ const biExpertContext = `
                 // }
             };
             
-            // Tenta executar em múltiplos momentos
+            // ============================================
+            // FUNÇÃO AUXILIAR PARA ATUALIZAR DASHBOARD
+            // ============================================
+            window.atualizarDashboard = function(dadosNovos) {
+                console.log('🔄 [Dashboard] Atualizando com novos dados...');
+                window.DB_DATA = dadosNovos;
+                window.initDashboard();
+            };
+            
+            // ============================================
+            // INICIALIZAÇÃO MÚLTIPLA (garante execução)
+            // ============================================
+            
+            // Método 1: DOMContentLoaded
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', window.initDashboard);
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('📍 [Dashboard] DOMContentLoaded disparado');
+                    setTimeout(window.initDashboard, 100);
+                });
             } else {
                 // DOM já está pronto
+                console.log('📍 [Dashboard] DOM já pronto, executando imediatamente');
                 setTimeout(window.initDashboard, 100);
             }
             
-            // Fallback: força execução após 500ms
+            // Método 2: Window Load (fallback)
+            window.addEventListener('load', function() {
+                console.log('📍 [Dashboard] Window load disparado');
+                if (window.DB_DATA && window.DB_DATA.length > 0) {
+                    setTimeout(window.initDashboard, 200);
+                }
+            });
+            
+            // Método 3: Timeout forçado (último recurso)
             setTimeout(function() {
                 if (window.DB_DATA && window.DB_DATA.length > 0) {
-                    console.log('⏰ [Dashboard] Fallback: executando após timeout');
+                    console.log('⏰ [Dashboard] Fallback timeout: executando após 800ms');
                     window.initDashboard();
                 }
-            }, 500);
+            }, 800);
         </script>
     </body>
     </html>
 
+    🎨 BOAS PRÁTICAS DE CÓDIGO:
+    
+    1. **Armazene instâncias de gráficos globalmente**:
+       window.chartInstances = [];
+       const chart1 = new Chart(...);
+       window.chartInstances.push(chart1);
+    
+    2. **Crie funções reutilizáveis**:
+       function criarGraficos(dados) { ... }
+       function atualizarKPIs(dados) { ... }
+       function aplicarFiltro(tipo) { ... }
+    
+    3. **Use event delegation para performance**:
+       document.addEventListener('click', function(e) {
+           if (e.target.matches('.btn-filtro')) { ... }
+       });
+    
+    4. **Adicione feedback visual**:
+       - Cursor pointer em elementos clicáveis
+       - Hover effects (hover:bg-blue-50)
+       - Loading states quando processar dados
+       - Tooltips informativos
+    
+    5. **Responsividade**:
+       - Use grid-cols-1 md:grid-cols-2 lg:grid-cols-4
+       - Gráficos com maintainAspectRatio: false
+       - Tabelas com overflow-x-auto
+    
+    6. **Acessibilidade**:
+       - Botões com aria-label
+       - Títulos descritivos
+       - Cores com bom contraste
+    
+    📝 ESTRUTURA DE CÓDIGO RECOMENDADA:
+    
+    <script>
+        // 1. VARIÁVEIS GLOBAIS
+        window.chartInstances = [];
+        window.dadosOriginais = [];
+        
+        // 2. FUNÇÃO PRINCIPAL
+        window.initDashboard = function() {
+            const dados = window.DB_DATA || [];
+            if (dados.length === 0) return;
+            
+            window.dadosOriginais = [...dados];
+            
+            // Inicializa componentes
+            criarKPIs(dados);
+            criarGraficos(dados);
+            criarTabela(dados);
+            inicializarFiltros();
+        };
+        
+        // 3. FUNÇÕES DE CRIAÇÃO
+        function criarKPIs(dados) { ... }
+        function criarGraficos(dados) { ... }
+        function criarTabela(dados) { ... }
+        
+        // 4. FUNÇÕES DE INTERAÇÃO
+        function aplicarFiltro(tipo) { ... }
+        function mostrarDetalhamento(categoria) { ... }
+        function buscarDados() { ... }
+        
+        // 5. FUNÇÕES AUXILIARES
+        function atualizarDashboard(dadosNovos) { ... }
+        function formatarValor(valor, tipo) { ... }
+        
+        // 6. INICIALIZAÇÃO
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', window.initDashboard);
+        } else {
+            setTimeout(window.initDashboard, 100);
+        }
+    </script>
+    
+    🎯 QUANDO O USUÁRIO PEDIR FUNCIONALIDADES ESPECÍFICAS:
+    
+    - "filtros" ou "botão direito" → Implemente menu de contexto (seção A)
+    - "clique no gráfico" ou "drill-down" → Implemente onClick no Chart.js (seção B)
+    - "filtro de data" ou "período" → Implemente date inputs (seção C)
+    - "busca" ou "pesquisa" → Implemente search input (seção D)
+    - "exportar" ou "download" → Implemente função de export (seção E)
+    - "tabela detalhada" → Crie tabela HTML com todos os dados
+    - "gráfico interativo" → Adicione onClick, hover effects e tooltips
+    
+    ⚠️ ATENÇÃO ESPECIAL:
+    - SEMPRE teste se elementos existem antes de manipular (if (elemento) {...})
+    - SEMPRE use console.log para debug
+    - SEMPRE formate números com .toLocaleString('pt-BR')
+    - SEMPRE destrua gráficos antigos antes de criar novos (chart.destroy())
+    - SEMPRE mantenha uma cópia dos dados originais para resetar filtros
+    
     IMPORTANTE:
     - Use Chart.js v4+ syntax
-    - Cores do DataCare: blue-600 (primária), green-600, purple-600
+    - Cores do DataCare: blue-600 (primária), green-600, purple-600, orange-600
     - Grid responsivo: mobile-first
     - Sombras suaves: shadow-lg
     - Animações: transition-all duration-300
+    - Font Awesome 6.4.0 para ícones
     
     SAÍDA:
     Retorne APENAS o código HTML completo (incluindo <!DOCTYPE html>).
+    Não adicione explicações, apenas o código pronto para uso.
 `;
 
 const analyticsController = {
@@ -587,24 +1036,48 @@ const analyticsController = {
                 return res.status(500).send('<h1>Erro ao carregar dashboard</h1>');
             }
 
-            // Injetar dados atualizados no HTML
+            // Injetar dados atualizados no HTML (ANTES de qualquer script)
             const dataInjectionScript = `
             <script>
-                // Dados injetados pelo backend
+                // ============================================
+                // DADOS INJETADOS PELO BACKEND (DataCare BI)
+                // ============================================
                 window.DB_DATA = ${JSON.stringify(data)};
+                window.dadosOriginais = ${JSON.stringify(data)};
+                
                 console.log('✅ [DataCare BI] Widget "${widget.titulo}" carregado');
                 console.log('📊 [DataCare BI] Registros:', window.DB_DATA.length);
                 console.log('🔍 [DataCare BI] Primeiro registro:', window.DB_DATA[0]);
+                console.log('📋 [DataCare BI] Colunas:', Object.keys(window.DB_DATA[0] || {}));
+                
+                // Força re-execução de initDashboard se existir
+                window.addEventListener('load', function() {
+                    console.log('🔄 [DataCare BI] Window loaded - verificando initDashboard...');
+                    
+                    // Aguarda um pouco para garantir que todos os scripts foram carregados
+                    setTimeout(function() {
+                        if (typeof window.initDashboard === 'function') {
+                            console.log('🎯 [DataCare BI] Executando initDashboard()...');
+                            window.initDashboard();
+                        } else {
+                            console.warn('⚠️ [DataCare BI] initDashboard() não encontrado');
+                        }
+                        
+                        // Dispara DOMContentLoaded manualmente se necessário
+                        const event = new Event('DOMContentLoaded');
+                        document.dispatchEvent(event);
+                    }, 500);
+                });
             </script>
             `;
 
-            // Injeta LOGO APÓS <head> ou no início do <body>
+            // Injeta LOGO APÓS <head> (antes de qualquer outro script)
             if (html.includes('</head>')) {
                 html = html.replace('</head>', `${dataInjectionScript}</head>`);
             } else if (html.includes('<body>')) {
                 html = html.replace('<body>', `<body>${dataInjectionScript}`);
             } else {
-                html += dataInjectionScript;
+                html = dataInjectionScript + html;
             }
 
             res.send(html);

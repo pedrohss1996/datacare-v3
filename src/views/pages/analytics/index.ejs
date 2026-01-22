@@ -99,17 +99,6 @@
                         </button>
                     </div>
 
-                    <!-- Filtros Opcionais -->
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block flex items-center gap-1">
-                            <i class="fas fa-filter"></i> Filtros (Opcional)
-                        </label>
-                        <input id="filterInput" 
-                               type="text" 
-                               class="w-full bg-slate-50 border border-slate-200 text-xs p-2.5 rounded-lg hover:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" 
-                               placeholder="Ex: ano = 2025">
-                    </div>
-
                     <!-- Textarea do Prompt -->
                     <div class="relative">
                         <textarea id="promptInput" 
@@ -154,8 +143,19 @@
                         </p>
                     </div>
 
-                    <!-- Toggle Visual/Código -->
+                    <!-- Botões de Ação e Toggle -->
                     <div class="flex items-center gap-3">
+                        <!-- Botão Desfazer -->
+                        <button onclick="undoLastChange()" 
+                                id="btnUndo"
+                                disabled
+                                class="px-4 py-2 bg-slate-100 text-slate-400 rounded-lg text-sm font-medium transition-all border border-slate-200 cursor-not-allowed flex items-center gap-2"
+                                title="Desfazer última alteração">
+                            <i class="fas fa-undo"></i>
+                            <span class="hidden sm:inline">Desfazer</span>
+                        </button>
+                        
+                        <!-- Toggle Visual/Código -->
                         <div class="bg-slate-100 p-1 rounded-lg flex text-xs font-semibold border border-slate-200">
                             <button onclick="toggleView('visual')" 
                                     id="btnViewVisual" 
@@ -393,6 +393,73 @@
     let activeSql = '';
     let activeQueryName = '';
     let currentHtmlCode = '';
+    
+    // SISTEMA DE HISTÓRICO (UNDO)
+    let dashboardHistory = [];
+    const MAX_HISTORY = 10; // Máximo de 10 versões no histórico
+
+    // === SISTEMA DE HISTÓRICO (UNDO) ===
+    function saveToHistory(html) {
+        if (!html || html.trim() === '') return;
+        
+        // Adiciona ao histórico
+        dashboardHistory.push(html);
+        
+        // Limita o tamanho do histórico
+        if (dashboardHistory.length > MAX_HISTORY) {
+            dashboardHistory.shift(); // Remove o mais antigo
+        }
+        
+        // Atualiza o botão de desfazer
+        updateUndoButton();
+        
+        console.log(`📚 [Histórico] Versão salva. Total: ${dashboardHistory.length}`);
+    }
+    
+    function undoLastChange() {
+        if (dashboardHistory.length < 2) {
+            alert('⚠️ Não há alterações anteriores para desfazer.');
+            return;
+        }
+        
+        // Remove a versão atual (última)
+        dashboardHistory.pop();
+        
+        // Pega a versão anterior
+        const previousVersion = dashboardHistory[dashboardHistory.length - 1];
+        
+        if (previousVersion) {
+            console.log('↩️ [Histórico] Desfazendo última alteração...');
+            
+            currentHtmlCode = previousVersion;
+            renderDashboard(previousVersion);
+            
+            // Atualiza o textarea de código se estiver visível
+            if (!document.getElementById('codeContainer').classList.contains('hidden')) {
+                document.getElementById('htmlOutput').value = previousVersion;
+            }
+            
+            botReply('↩️ Alteração desfeita! Dashboard restaurado para versão anterior.');
+            updateUndoButton();
+        }
+    }
+    
+    function updateUndoButton() {
+        const btn = document.getElementById('btnUndo');
+        const hasHistory = dashboardHistory.length > 1;
+        
+        if (hasHistory) {
+            btn.disabled = false;
+            btn.classList.remove('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
+            btn.classList.add('bg-orange-50', 'text-orange-600', 'hover:bg-orange-100', 'cursor-pointer', 'border-orange-200');
+            btn.title = `Desfazer última alteração (${dashboardHistory.length - 1} versões disponíveis)`;
+        } else {
+            btn.disabled = true;
+            btn.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
+            btn.classList.remove('bg-orange-50', 'text-orange-600', 'hover:bg-orange-100', 'cursor-pointer', 'border-orange-200');
+            btn.title = 'Nenhuma alteração para desfazer';
+        }
+    }
 
     // === FUNÇÕES DE VISUALIZAÇÃO ===
     function toggleView(mode) {
@@ -437,7 +504,6 @@
     // === CHAT LOGIC ===
     async function sendMessage() {
         const prompt = document.getElementById('promptInput').value.trim();
-        const filters = document.getElementById('filterInput').value.trim();
         
         console.log('🚀 [FRONTEND] sendMessage() chamado');
         
@@ -452,13 +518,18 @@
             return;
         }
 
-        addMessage(prompt, 'user', filters);
+        // Salva a versão atual no histórico ANTES de gerar uma nova
+        if (currentHtmlCode && currentHtmlCode.trim() !== '') {
+            saveToHistory(currentHtmlCode);
+        }
+
+        addMessage(prompt, 'user');
         document.getElementById('promptInput').value = '';
         toggleLoading(true);
 
         try {
             const requestBody = { 
-                prompt: prompt + (filters ? `. Filtros: ${filters}` : ''),
+                prompt: prompt,
                 sqlQuery: activeSql 
             };
             
@@ -491,7 +562,7 @@
         }
     }
 
-    function addMessage(text, type, subtitle = '') {
+    function addMessage(text, type) {
         const history = document.getElementById('chatHistory');
         const isUser = type === 'user';
         
@@ -500,7 +571,6 @@
                 ${!isUser ? `<div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><i class="fas fa-robot text-xs"></i></div>` : ''}
                 <div class="${isUser ? 'bg-blue-600 text-white rounded-xl rounded-tr-none' : 'bg-white text-slate-600 rounded-xl rounded-tl-none border border-slate-100'} p-3 shadow-sm text-xs max-w-[85%]">
                     ${text}
-                    ${subtitle ? `<div class="mt-2 pt-2 border-t ${isUser ? 'border-white/20' : 'border-slate-100'} text-[10px] opacity-80"><i class="fas fa-filter mr-1"></i> ${subtitle}</div>` : ''}
                 </div>
                 ${isUser ? `<div class="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center text-slate-600 flex-shrink-0"><i class="fas fa-user text-xs"></i></div>` : ''}
             </div>
@@ -743,6 +813,11 @@
         if (!template) return;
 
         closeTemplatesModal();
+        
+        // Salva a versão atual no histórico ANTES de aplicar o template
+        if (currentHtmlCode && currentHtmlCode.trim() !== '') {
+            saveToHistory(currentHtmlCode);
+        }
         
         botReply(`🎨 Aplicando template "<b>${template.nome}</b>"... Aguarde enquanto a IA cria seu dashboard.`);
         
