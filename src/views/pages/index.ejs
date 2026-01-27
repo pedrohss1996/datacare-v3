@@ -1,178 +1,155 @@
-<div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full bg-slate-50 min-h-screen">
-    <div class="space-y-10">
-
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+<div class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80">
+    <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
+        <div class="space-y-12 lg:space-y-14">
 
             <%
             // --- FUNÇÃO PARA FORMATAR O NOME ---
             function capitalizeName(texto) {
-                if (!texto) return 'Usuário'; 
+                if (!texto) return 'Usuário';
                 const str = String(texto);
                 return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
             }
-            
+
             // --- LÓGICA INTELIGENTE DE SELEÇÃO DE NOME ---
-            // 1. Pega o objeto user (se existir)
             const u = (typeof user !== 'undefined' && user) ? user : {};
-            
-            // 2. Tenta achar o nome em TODAS as variações possíveis que seu sistema gera
-            // username: é como está vindo agora (do token JWT)
-            // name: é como salvamos na sessão
-            // nome: é como vem do banco as vezes
             const nomeParaMostrar = u.name || u.nome || u.username || u.nm_usuario || u.login || 'Visitante';
             %>
 
-            <div>
-                <h1 class="text-xl font-bold text-slate-800">
-                    Olá,
-                    <span class="text-blue-600">
-                        <%= capitalizeName(nomeParaMostrar) %>
-                    </span>
-                </h1>
-                <p class="text-slate-500 text-sm mt-1">
-                    Bem-vindo ao DataCare.
-                </p>
-            </div>
-            
-            <div class="flex items-center gap-6">
-                <div class="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-md border border-emerald-100 shadow-sm">
-                    <span class="relative flex h-2.5 w-2.5">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                    </span>
-                    <span class="text-xs font-semibold tracking-wide">Online</span>
+            <!-- Hero / Boas-vindas -->
+            <header class="relative overflow-hidden rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-200/50 bg-gradient-to-r from-blue-100 via-blue-50 to-slate-50/80">
+                <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6 p-6 sm:p-8">
+                    <div class="space-y-1">
+                        <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Dashboard</p>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">
+                            Olá, <span class="text-blue-600"><%= capitalizeName(nomeParaMostrar) %></span>
+                        </h1>
+                        <p class="text-slate-500">Bem-vindo ao DataCare.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-4 sm:gap-6">
+                        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100/80 shadow-sm">
+                            <span class="relative flex h-2.5 w-2.5" aria-hidden="true">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                            </span>
+                            <span class="text-sm font-semibold">Online</span>
+                        </div>
+                        <div class="inline-flex items-center gap-2 text-slate-500">
+                            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <time class="text-sm font-medium" datetime="<%= new Date().toISOString().slice(0,10) %>"><%= new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) %></time>
+                        </div>
+                    </div>
                 </div>
-                <div class="hidden md:block text-slate-400 text-sm font-medium">
-                    <%= new Date().toLocaleDateString('pt-BR') %>
+            </header>
+
+            <!-- Seção Administrador -->
+            <section class="space-y-6" aria-labelledby="titulo-adm">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-100 text-blue-600" aria-hidden="true">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 id="titulo-adm" class="text-xl font-bold text-slate-800 tracking-tight">Administrador</h2>
+                        <p class="text-sm text-slate-500">Configurações e gestão do sistema</p>
+                    </div>
                 </div>
-            </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
+                    <a href="/indicadores" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                        </div>
+                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Construtor de Indicadores</span>
+                    </a>
+
+                    <a href="/pessoas" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        </div>
+                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Cadastro de Pessoas</span>
+                    </a>
+
+                    <a href="/analytics/lista" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Visualizar Indicadores</span>
+                    </a>
+
+                    <a href="/analytics" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                        </div>
+                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Analytics</span>
+                    </a>
+
+                    <a href="/permissoes" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                        </div>
+                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Gerenciar Permissões</span>
+                    </a>
+
+                    <a href="/chat" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                        </div>
+                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Connect</span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- Seção Assistencial -->
+            <section class="space-y-6" aria-labelledby="titulo-assist">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 text-slate-600" aria-hidden="true">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 id="titulo-assist" class="text-xl font-bold text-slate-800 tracking-tight">Assistencial</h2>
+                        <p class="text-sm text-slate-500">Indicadores e uso no dia a dia</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
+                    <a href="/indicadores" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                        </div>
+                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Construtor de Indicadores</span>
+                    </a>
+
+                    <a href="/indicadores/visualizar" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Visualizar Indicadores</span>
+                    </a>
+                </div>
+            </section>
+
         </div>
-
-        <div>
-            <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
-                <h2 class="text-xl font-bold text-slate-800 tracking-tight">
-                    Administrador
-                </h2>
-            </div>
-
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-12">
-
-                <a href="/indicadores" class="group flex flex-col items-center text-center">
-                    <div class="w-[4.5rem] h-[4.5rem] bg-white rounded-2xl border border-blue-200 flex items-center justify-center shadow-sm group-hover:bg-blue-600 group-hover:border-blue-600 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 ease-out">
-                        <svg class="w-8 h-8 text-blue-600 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                    </div>
-                    <span class="mt-3 text-sm font-medium text-slate-600 group-hover:text-blue-700 transition-colors px-1 leading-tight">
-                        Construtor de<br>Indicadores
-                    </span>
-                </a>
-
-                <a href="/pessoas" class="group flex flex-col items-center text-center">
-                    <div class="w-[4.5rem] h-[4.5rem] bg-white rounded-2xl border border-blue-200 flex items-center justify-center shadow-sm group-hover:bg-blue-600 group-hover:border-blue-600 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 ease-out">
-                        <svg class="w-8 h-8 text-blue-600 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                    </div>
-                    <span class="mt-3 text-sm font-medium text-slate-600 group-hover:text-blue-700 transition-colors px-1 leading-tight">
-                        Cadastro de<br>Pessoas
-                    </span>
-                </a>
-
-                <a href="/analytics/lista" class="group flex flex-col items-center text-center">
-                    <div class="w-[4.5rem] h-[4.5rem] bg-white rounded-2xl border border-blue-200 flex items-center justify-center shadow-sm group-hover:bg-blue-600 group-hover:border-blue-600 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 ease-out">
-                        <svg class="w-8 h-8 text-blue-600 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                    </div>
-                    <span class="mt-3 text-sm font-medium text-slate-600 group-hover:text-blue-700 transition-colors px-1 leading-tight">
-                        Visualizar<br>Indicadores
-                    </span>
-                </a>
-
-
-                <a href="/analytics" class="group flex flex-col items-center text-center">
-                    <div class="w-[4.5rem] h-[4.5rem] bg-white rounded-2xl border border-blue-200 flex items-center justify-center shadow-sm group-hover:bg-blue-600 group-hover:border-blue-600 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 ease-out">
-                        <svg class="w-8 h-8 text-blue-600 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                    </div>
-                    <span class="mt-3 text-sm font-medium text-slate-600 group-hover:text-blue-700 transition-colors px-1 leading-tight">
-                        Analytics
-                    </span>
-                </a>
-
-                <a href="/permissoes" class="group flex flex-col items-center text-center">
-                    <div class="w-[4.5rem] h-[4.5rem] bg-white rounded-2xl border border-blue-200 flex items-center justify-center shadow-sm group-hover:bg-blue-600 group-hover:border-blue-600 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 ease-out">
-                        <svg class="w-8 h-8 text-blue-600 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                    </div>
-                    <span class="mt-3 text-sm font-medium text-slate-600 group-hover:text-blue-700 transition-colors px-1 leading-tight">
-                        Gerenciar<br>Permissões
-                    </span>
-                </a>
-
-                <a href="/chat" class="group flex flex-col items-center text-center"> 
-                    <div class="w-[4.5rem] h-[4.5rem] bg-white rounded-2xl border border-blue-200 flex items-center justify-center shadow-sm group-hover:bg-blue-600 group-hover:border-blue-600 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 ease-out">
-                        
-                        <svg
-                            class="w-8 h-8 text-blue-600 group-hover:text-white transition-colors duration-300"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="1.5"
-                                d="M8 10h8M8 14h5M21 12c0 3.866-3.582 7-8 7a8.96 8.96 0 01-4-.9L3 19l1.3-3.9A6.77 6.77 0 013 12c0-3.866 3.582-7 8-7s8 3.134 8 7z"
-                            />
-                        </svg>
-
-                    </div>
-                    <span class="mt-3 text-sm font-medium text-slate-600 group-hover:text-blue-700 transition-colors px-1 leading-tight">
-                        Connect
-                    </span>
-                </a>
-
-            </div>
-        </div>
-
-        <div>
-            <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
-                <h2 class="text-xl font-bold text-slate-800 tracking-tight">
-                    Assitencial
-                </h2>
-            </div>
-
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-12">
-
-                <a href="/indicadores" class="group flex flex-col items-center text-center">
-                    <div class="w-[4.5rem] h-[4.5rem] bg-white rounded-2xl border border-blue-200 flex items-center justify-center shadow-sm group-hover:bg-blue-600 group-hover:border-blue-600 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 ease-out">
-                        <svg class="w-8 h-8 text-blue-600 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                    </div>
-                    <span class="mt-3 text-sm font-medium text-slate-600 group-hover:text-blue-700 transition-colors px-1 leading-tight">
-                        Construtor de<br>Indicadores
-                    </span>
-                </a>
-
-
-                <a href="/indicadores/visualizar" class="group flex flex-col items-center text-center">
-                    <div class="w-[4.5rem] h-[4.5rem] bg-white rounded-2xl border border-blue-200 flex items-center justify-center shadow-sm group-hover:bg-blue-600 group-hover:border-blue-600 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 ease-out">
-                        <svg class="w-8 h-8 text-blue-600 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                    </div>
-                    <span class="mt-3 text-sm font-medium text-slate-600 group-hover:text-blue-700 transition-colors px-1 leading-tight">
-                        Visualizar<br>Indicadores
-                    </span>
-                </a>
-
-            </div>
-        </div>
-
     </div>
 </div>
