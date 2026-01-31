@@ -20,32 +20,8 @@ module.exports = {
 
         if (usuario.includes('@')) usuario = usuario.split('@')[0];
 
-        // --- Lógica LDAP ---
-        const client = ldap.createClient({ url: process.env.LDAP_URL, timeout: 5000, connectTimeout: 5000 });
-        client.on('error', (err) => console.error('LDAP Error:', err.message));
-        
-        const dnMappings = [
-            `uid=${usuario},ou=people,dc=intranet,dc=arh,dc=com,dc=br`,
-            `uid=${usuario},ou=people,dc=arh,dc=com,dc=br`
-        ];
-
         try {
-            // 1. Tenta Autenticar no LDAP
-            let ldapSuccess = false;
-            for (const dn of dnMappings) {
-                try {
-                    await new Promise((resolve, reject) => {
-                        client.bind(dn, senha, (err) => err ? reject(err) : resolve(true));
-                    });
-                    ldapSuccess = true;
-                    break;
-                } catch (e) {}
-            }
-            if (!ldapSuccess) throw new Error('Credenciais inválidas.');
-            client.unbind();
-
-            // 2. Busca no Postgres (Tabela usuarios SIMPLES)
-            // Como a coluna ds_usuario já está aqui, não precisamos de JOIN!
+            // 1. Busca usuário no PostgreSQL primeiro
             const userDb = await db('usuarios')
                 .whereRaw('UPPER(nm_usuario) = ?', [usuario.toUpperCase()])
                 .first();
@@ -54,40 +30,94 @@ module.exports = {
                 return res.render('pages/auth/login', {
                     title: 'Login - DataCare',
                     layout: 'layouts/auth',
-                    erro: 'Usuário sem cadastro no DataCare.'
+                    erro: 'Usuário não encontrado.'
                 });
             }
 
-            // 3. Define o Nome para Exibição (AQUI ESTÁ A CHAVE 🔑)
-            // Priorizamos 'ds_usuario' (Marlon Braga) > 'nm_usuario' (Login) > 'Usuário'
+            let autenticado = false;
+
+            // 2. Tenta autenticar no LDAP primeiro (para usuários do Zimbra)
+            try {
+                const client = ldap.createClient({ 
+                    url: process.env.LDAP_URL, 
+                    timeout: 3000, 
+                    connectTimeout: 3000 
+                });
+                
+                client.on('error', (err) => console.log('LDAP não disponível, tentando autenticação local'));
+                
+                const dnMappings = [
+                    `uid=${usuario},ou=people,dc=intranet,dc=arh,dc=com,dc=br`,
+                    `uid=${usuario},ou=people,dc=arh,dc=com,dc=br`
+                ];
+
+                for (const dn of dnMappings) {
+                    try {
+                        await new Promise((resolve, reject) => {
+                            client.bind(dn, senha, (err) => err ? reject(err) : resolve(true));
+                        });
+                        autenticado = true;
+                        console.log(`✅ Autenticado via LDAP: ${usuario}`);
+                        break;
+                    } catch (e) {}
+                }
+                
+                client.unbind();
+            } catch (ldapError) {
+                console.log('LDAP falhou, tentando autenticação local');
+            }
+
+            // 3. Se LDAP falhou, tenta autenticação local (senha no PostgreSQL)
+            if (!autenticado && userDb.ds_senha) {
+                const bcrypt = require('bcryptjs');
+                const senhaValida = await bcrypt.compare(senha, userDb.ds_senha);
+                
+                if (senhaValida) {
+                    autenticado = true;
+                    console.log(`✅ Autenticado via senha local: ${usuario}`);
+                } else {
+                    console.log(`❌ Senha local inválida: ${usuario}`);
+                }
+            }
+
+            // 4. Se não autenticou por nenhum método, retorna erro
+            if (!autenticado) {
+                return res.render('pages/auth/login', {
+                    title: 'Login - DataCare',
+                    layout: 'layouts/auth',
+                    erro: 'Usuário ou senha inválidos.'
+                });
+            }
+
+            // 5. Define o Nome para Exibição
             const nomeParaSessao = userDb.ds_usuario || userDb.nm_usuario || 'Usuário';
 
-            // 4. Gera Token
+            // 6. Gera Token
             const token = jwt.sign({
                 id: userDb.cd_usuario,
                 username: userDb.nm_usuario,
                 role: 'TI'
             }, process.env.JWT_SECRET, { expiresIn: '8h' });
 
-            // 5. Salva na Sessão
+            // 7. Salva na Sessão
             req.session.user = {
                 id: userDb.cd_usuario,
-                name: nomeParaSessao, // <--- Vai salvar o conteúdo de ds_usuario
+                name: nomeParaSessao,
+                cpf: userDb.nr_cpf,
                 token: token
             };
 
-            // 6. Salva e Redireciona
+            // 8. Salva e Redireciona
             req.session.save(() => {
                 return res.redirect('/');
             });
 
         } catch (error) {
-            try { client.unbind(); } catch(e) {}
-            console.error('Falha Auth:', error.message);
+            console.error('Erro no login:', error.message);
             return res.render('pages/auth/login', {
                 title: 'Login - DataCare',
                 layout: 'layouts/auth',
-                erro: 'Usuário ou senha incorretos.'
+                erro: 'Erro ao processar login. Tente novamente.'
             });
         }
     },

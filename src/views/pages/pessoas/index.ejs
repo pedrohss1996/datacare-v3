@@ -1,73 +1,350 @@
-<%- include('../../layouts/main') %>
+<div class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80">
+    <div class="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
+        <div class="space-y-8">
 
-<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-    
-    <div class="md:flex md:items-center md:justify-between mb-6">
-        <div class="flex-1 min-w-0">
-            <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                Gestão de Pessoas
-            </h2>
-        </div>
-        <div class="mt-4 flex md:mt-0 md:ml-4">
-            <a href="/pessoas/nova" class="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                + Nova Pessoa
-            </a>
-        </div>
-    </div>
+            <!-- Header -->
+            <header class="relative overflow-hidden rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-200/50 bg-gradient-to-r from-blue-100 via-blue-50 to-slate-50/80">
+                <div class="relative flex flex-col md:flex-row md:items-center md:items-center md:justify-between gap-6 p-6 sm:p-8">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 text-white shadow-md">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Gerenciamento</p>
+                                <h1 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">Usuários</h1>
+                            </div>
+                        </div>
+                        <p class="text-slate-600 ml-[4.5rem]">Cadastro, edição e gerenciamento de usuários do sistema</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <a href="/pessoas/novo" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Novo Usuário
+                        </a>
+                    </div>
+                </div>
+            </header>
 
-    <% if (sucesso) { %>
-        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4" role="alert">
-            <p class="font-bold">Sucesso!</p>
-            <p>Operação realizada corretamente.</p>
-        </div>
-    <% } %>
+            <!-- Alertas -->
+            <% if (mensagem) { %>
+            <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-6 py-4 rounded-xl flex items-center gap-3 shadow-sm">
+                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="font-medium"><%= mensagem %></span>
+            </div>
+            <% } %>
 
-    <div class="flex flex-col">
-        <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
-                <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+            <% if (erro) { %>
+            <div class="bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-xl flex items-center gap-3 shadow-sm">
+                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="font-medium"><%= erro %></span>
+            </div>
+            <% } %>
+
+            <!-- Filtros e Busca -->
+            <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm p-6">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div class="relative flex-1 max-w-md">
+                        <input type="text" id="buscarUsuario" placeholder="Buscar por nome, usuário ou CPF..." class="pl-10 pr-4 py-2.5 w-full rounded-lg border border-slate-300 text-slate-700 bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <select id="filtroSituacao" class="px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                            <option value="todos">Todas Situações</option>
+                            <option value="A">Ativos</option>
+                            <option value="I">Inativos</option>
+                        </select>
+
+                        <button id="btnAtualizar" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Atualizar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estatísticas -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-500 mb-1">Total de Usuários</p>
+                            <p class="text-2xl font-bold text-slate-800" id="totalUsuarios"><%= usuarios.length %></p>
+                        </div>
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-500 mb-1">Usuários Ativos</p>
+                            <p class="text-2xl font-bold text-slate-800" id="usuariosAtivos">
+                                <%= usuarios.filter(u => u.ie_situacao === 'A').length %>
+                            </p>
+                        </div>
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-500 mb-1">Usuários Inativos</p>
+                            <p class="text-2xl font-bold text-slate-800" id="usuariosInativos">
+                                <%= usuarios.filter(u => u.ie_situacao === 'I').length %>
+                            </p>
+                        </div>
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-50 text-amber-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-500 mb-1">Com CPF Cadastrado</p>
+                            <p class="text-2xl font-bold text-slate-800" id="usuariosComCPF">
+                                <%= usuarios.filter(u => u.nr_cpf && u.nr_cpf !== null).length %>
+                            </p>
+                        </div>
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-purple-50 text-purple-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabela de Usuários -->
+            <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPF</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contato</th>
-                                <th scope="col" class="relative px-6 py-3">
-                                    <span class="sr-only">Ações</span>
-                                </th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Usuário</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">CPF</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Contato</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Situação</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Criado em</th>
+                                <th class="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Ações</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <% if (pessoas.length === 0) { %>
-                                <tr>
-                                    <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
-                                        Nenhuma pessoa cadastrada.
+                        <tbody id="tabelaUsuarios" class="divide-y divide-slate-200">
+                            <% if (usuarios.length === 0) { %>
+                            <tr>
+                                <td colspan="6" class="px-6 py-12 text-center">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <div class="flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 text-slate-400 mb-4">
+                                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                            </svg>
+                                        </div>
+                                        <h3 class="text-lg font-bold text-slate-800 mb-2">Nenhum usuário cadastrado</h3>
+                                        <p class="text-slate-500">Clique em "Novo Usuário" para adicionar o primeiro usuário.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            <% } else { %>
+                                <% usuarios.forEach(usuario => { %>
+                                <tr class="hover:bg-slate-50 transition-colors usuario-row" 
+                                    data-usuario="<%= usuario.nm_usuario %>" 
+                                    data-nome="<%= usuario.ds_usuario || '' %>"
+                                    data-cpf="<%= usuario.nr_cpf || '' %>"
+                                    data-situacao="<%= usuario.ie_situacao %>">
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-bold text-sm">
+                                                <%= (usuario.ds_usuario || usuario.nm_usuario).charAt(0).toUpperCase() %>
+                                            </div>
+                                            <div>
+                                                <div class="font-semibold text-slate-800"><%= usuario.ds_usuario || usuario.nm_usuario %></div>
+                                                <div class="text-sm text-slate-500">@<%= usuario.nm_usuario %></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <% if (usuario.nr_cpf) { %>
+                                            <span class="font-mono text-sm text-slate-700"><%= String(usuario.nr_cpf).replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') %></span>
+                                        <% } else { %>
+                                            <span class="text-sm text-slate-400">Não informado</span>
+                                        <% } %>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm">
+                                            <% if (usuario.ds_email) { %>
+                                                <div class="text-slate-700"><%= usuario.ds_email %></div>
+                                            <% } %>
+                                            <% if (usuario.nr_telefone_celular) { %>
+                                                <div class="text-slate-500"><%= usuario.nr_telefone_celular %></div>
+                                            <% } %>
+                                            <% if (!usuario.ds_email && !usuario.nr_telefone_celular) { %>
+                                                <span class="text-slate-400">Não informado</span>
+                                            <% } %>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <% if (usuario.ie_situacao === 'A') { %>
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-medium">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                Ativo
+                                            </span>
+                                        <% } else { %>
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 text-xs font-medium">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                                Inativo
+                                            </span>
+                                        <% } %>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="text-sm text-slate-600">
+                                            <%= new Date(usuario.dt_criacao).toLocaleDateString('pt-BR') %>
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center justify-end gap-2">
+                                            <a href="/pessoas/editar/<%= usuario.cd_usuario %>" 
+                                               class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
+                                               title="Editar">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </a>
+                                            <button onclick="confirmarExclusao(<%= usuario.cd_usuario %>, '<%= usuario.nm_usuario %>')" 
+                                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                                                    title="Desativar">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
+                                <% }) %>
                             <% } %>
-
-                            <% pessoas.forEach(pessoa => { %>
-                                <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900"><%= pessoa.nm_pessoa_fisica %></div>
-                                        <div class="text-sm text-gray-500">ID: <%= pessoa.cd_pessoa_fisica %></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900"><%= pessoa.nr_cpf || '-' %></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900"><%= pessoa.ds_email || '-' %></div>
-                                        <div class="text-sm text-gray-500"><%= pessoa.nr_telefone_celular || '' %></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <a href="#" class="text-indigo-600 hover:text-indigo-900">Editar</a>
-                                    </td>
-                                </tr>
-                            <% }) %>
                         </tbody>
                     </table>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
+
+<script>
+// Busca em tempo real
+document.getElementById('buscarUsuario')?.addEventListener('input', function(e) {
+    const termo = e.target.value.toLowerCase();
+    filtrarUsuarios();
+});
+
+// Filtro de situação
+document.getElementById('filtroSituacao')?.addEventListener('change', function() {
+    filtrarUsuarios();
+});
+
+// Função para filtrar usuários
+function filtrarUsuarios() {
+    const termo = document.getElementById('buscarUsuario').value.toLowerCase();
+    const situacao = document.getElementById('filtroSituacao').value;
+    const linhas = document.querySelectorAll('.usuario-row');
+    
+    let visiveis = 0;
+    
+    linhas.forEach(linha => {
+        const usuario = linha.dataset.usuario.toLowerCase();
+        const nome = linha.dataset.nome.toLowerCase();
+        const cpf = linha.dataset.cpf;
+        const sit = linha.dataset.situacao;
+        
+        const matchTermo = usuario.includes(termo) || nome.includes(termo) || cpf.includes(termo);
+        const matchSituacao = situacao === 'todos' || sit === situacao;
+        
+        if (matchTermo && matchSituacao) {
+            linha.style.display = '';
+            visiveis++;
+        } else {
+            linha.style.display = 'none';
+        }
+    });
+    
+    // Mostra mensagem se não houver resultados
+    const tbody = document.getElementById('tabelaUsuarios');
+    const msgVazio = tbody.querySelector('.sem-resultados');
+    
+    if (visiveis === 0 && linhas.length > 0) {
+        if (!msgVazio) {
+            const tr = document.createElement('tr');
+            tr.className = 'sem-resultados';
+            tr.innerHTML = `
+                <td colspan="6" class="px-6 py-12 text-center">
+                    <div class="text-slate-500">Nenhum usuário encontrado com os filtros aplicados.</div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+    } else if (msgVazio) {
+        msgVazio.remove();
+    }
+}
+
+// Atualizar página
+document.getElementById('btnAtualizar')?.addEventListener('click', function() {
+    window.location.reload();
+});
+
+// Confirmar exclusão
+function confirmarExclusao(id, usuario) {
+    if (confirm(`Deseja realmente desativar o usuário "${usuario}"?`)) {
+        excluirUsuario(id);
+    }
+}
+
+// Excluir usuário
+async function excluirUsuario(id) {
+    try {
+        const response = await fetch(`/pessoas/excluir/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const resultado = await response.json();
+        
+        if (resultado.success) {
+            window.location.reload();
+        } else {
+            alert('Erro ao desativar usuário: ' + resultado.message);
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao desativar usuário');
+    }
+}
+</script>

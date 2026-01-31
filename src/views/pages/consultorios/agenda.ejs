@@ -1,0 +1,513 @@
+<div class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80">
+    <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
+        <div class="space-y-8 lg:space-y-10">
+
+            <!-- Header -->
+            <header class="relative overflow-hidden rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-200/50 bg-gradient-to-r from-emerald-100 via-emerald-50 to-slate-50/80">
+                <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6 p-6 sm:p-8">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <a href="/consultorios" class="flex items-center justify-center w-10 h-10 rounded-lg bg-white/80 hover:bg-white text-slate-600 hover:text-slate-800 transition-colors shadow-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                            </a>
+                            <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-600 text-white shadow-md">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Consultórios</p>
+                                <h1 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">Agenda de Consultas</h1>
+                            </div>
+                        </div>
+                        <p class="text-slate-600 ml-[4.5rem]">Visualize e gerencie suas consultas agendadas</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button id="btnHoje" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            Hoje
+                        </button>
+                        <button id="btnNovaConsulta" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Agendar Consulta
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Filtros e Navegação de Data -->
+            <section class="bg-white rounded-xl border border-slate-200/80 shadow-sm p-6">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                    
+                    <!-- Navegação de Data -->
+                    <div class="flex items-center gap-3">
+                        <button id="btnDiaAnterior" class="flex items-center justify-center w-10 h-10 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                        
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-slate-800" id="dataAtual">
+                                <%= new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) %>
+                            </div>
+                            <div class="text-sm text-slate-500" id="diaSemana">
+                                <%= new Date().toLocaleDateString('pt-BR', { weekday: 'long' }) %>
+                            </div>
+                        </div>
+
+                        <button id="btnProximoDia" class="flex items-center justify-center w-10 h-10 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Filtros -->
+                    <div class="flex flex-wrap items-center gap-3">
+                        <select id="filtroStatus" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                            <option value="todos">Todos os Status</option>
+                            <option value="agendado">Agendado</option>
+                            <option value="em_atendimento">Em Atendimento</option>
+                            <option value="concluido">Concluído</option>
+                            <option value="cancelado">Cancelado</option>
+                        </select>
+
+                        <div class="relative">
+                            <input type="text" id="buscarPaciente" placeholder="Buscar paciente..." class="pl-10 pr-4 py-2 rounded-lg border border-slate-300 text-slate-700 bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all w-64">
+                            <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Resumo do Dia -->
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-500 mb-1">Total Agendadas</p>
+                            <p class="text-2xl font-bold text-slate-800" id="totalAgendadas">0</p>
+                        </div>
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-500 mb-1">Em Atendimento</p>
+                            <p class="text-2xl font-bold text-slate-800" id="emAtendimento">0</p>
+                        </div>
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-50 text-amber-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-500 mb-1">Concluídas</p>
+                            <p class="text-2xl font-bold text-slate-800" id="concluidas">0</p>
+                        </div>
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-500 mb-1">Aguardando</p>
+                            <p class="text-2xl font-bold text-slate-800" id="aguardando">0</p>
+                        </div>
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-slate-100 text-slate-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Lista de Consultas -->
+            <section class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold text-slate-800">Consultas do Dia</h2>
+                    <div class="flex items-center gap-2">
+                        <button id="btnVistaLista" class="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <button id="btnVistaGrade" class="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Container de Consultas (será preenchido via JavaScript) -->
+                <div id="listaConsultas" class="space-y-4">
+                    <!-- Exemplo de card de consulta (mock) -->
+                    <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all duration-200">
+                        <div class="p-6">
+                            <div class="flex flex-col lg:flex-row lg:items-center gap-6">
+                                
+                                <!-- Horário -->
+                                <div class="flex items-center gap-4">
+                                    <div class="text-center">
+                                        <div class="text-2xl font-bold text-blue-600">08:00</div>
+                                        <div class="text-xs text-slate-500">30 min</div>
+                                    </div>
+                                    <div class="h-14 w-px bg-slate-200"></div>
+                                </div>
+
+                                <!-- Info do Paciente -->
+                                <div class="flex-1">
+                                    <div class="flex items-start justify-between gap-4 mb-3">
+                                        <div>
+                                            <h3 class="text-lg font-bold text-slate-800 mb-1">Maria Silva Santos</h3>
+                                            <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                                                <span class="flex items-center gap-1">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                                    </svg>
+                                                    45 anos
+                                                </span>
+                                                <span class="flex items-center gap-1">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                    </svg>
+                                                    (11) 98765-4321
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 text-sm font-medium">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                            Agendado
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="flex flex-wrap items-center gap-4 text-sm">
+                                        <span class="inline-flex items-center gap-1.5 text-slate-600">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                            </svg>
+                                            Consulta de Rotina
+                                        </span>
+                                        <span class="inline-flex items-center gap-1.5 text-slate-600">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            Consultório 1
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Ações -->
+                                <div class="flex lg:flex-col gap-2">
+                                    <button class="flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors text-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        Ver Detalhes
+                                    </button>
+                                    <button class="flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors text-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                        </svg>
+                                        Opções
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estado vazio (quando não há consultas) -->
+                    <div id="estadoVazio" class="hidden bg-white rounded-xl border border-slate-200/80 shadow-sm p-12 text-center">
+                        <div class="flex flex-col items-center justify-center">
+                            <div class="flex items-center justify-center w-20 h-20 rounded-full bg-slate-100 text-slate-400 mb-4">
+                                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-2">Nenhuma consulta agendada</h3>
+                            <p class="text-slate-500 mb-6">Não há consultas agendadas para esta data.</p>
+                            <button class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Agendar Nova Consulta
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+        </div>
+    </div>
+</div>
+
+<script>
+// Variável para armazenar a data atual selecionada
+let dataAtual = new Date();
+let filtroStatusAtual = 'todos';
+let consultasCache = [];
+
+// Função para formatar data
+function formatarData(data) {
+    return data.toLocaleDateString('pt-BR', { 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric' 
+    });
+}
+
+function formatarDiaSemana(data) {
+    return data.toLocaleDateString('pt-BR', { weekday: 'long' });
+}
+
+function formatarDataISO(data) {
+    return data.toISOString().split('T')[0];
+}
+
+// Função para buscar consultas do banco
+async function buscarConsultas() {
+    try {
+        const dataISO = formatarDataISO(dataAtual);
+        const response = await fetch(`/api/consultorios/agenda/consultas?data=${dataISO}&status=${filtroStatusAtual}`);
+        const resultado = await response.json();
+
+        if (resultado.success) {
+            consultasCache = resultado.data;
+            renderizarConsultas(resultado.data);
+            atualizarEstatisticas(resultado.estatisticas);
+        } else {
+            console.error('Erro ao buscar consultas:', resultado.error);
+            mostrarEstadoVazio();
+        }
+    } catch (error) {
+        console.error('Erro ao buscar consultas:', error);
+        mostrarEstadoVazio();
+    }
+}
+
+// Função para renderizar consultas
+function renderizarConsultas(consultas) {
+    const container = document.getElementById('listaConsultas');
+    
+    if (consultas.length === 0) {
+        mostrarEstadoVazio();
+        return;
+    }
+
+    // Remove o estado vazio se existir
+    const estadoVazio = document.getElementById('estadoVazio');
+    if (estadoVazio) {
+        estadoVazio.classList.add('hidden');
+    }
+
+    // Mapeia status para badges
+    const getBadgeStatus = (status) => {
+        const badges = {
+            'A': { cor: 'emerald', texto: 'Agendado' },
+            'E': { cor: 'amber', texto: 'Em Atendimento' },
+            'C': { cor: 'blue', texto: 'Concluído' },
+            'G': { cor: 'slate', texto: 'Aguardando' },
+            'X': { cor: 'red', texto: 'Cancelado' }
+        };
+        return badges[status] || { cor: 'slate', texto: status };
+    };
+
+    // Gera HTML das consultas
+    const html = consultas.map(consulta => {
+        const badge = getBadgeStatus(consulta.status);
+        return `
+            <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all duration-200">
+                <div class="p-6">
+                    <div class="flex flex-col lg:flex-row lg:items-center gap-6">
+                        
+                        <!-- Horário -->
+                        <div class="flex items-center gap-4">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-blue-600">${consulta.horario || 'N/A'}</div>
+                                <div class="text-xs text-slate-500">30 min</div>
+                            </div>
+                            <div class="h-14 w-px bg-slate-200"></div>
+                        </div>
+
+                        <!-- Info do Paciente -->
+                        <div class="flex-1">
+                            <div class="flex items-start justify-between gap-4 mb-3">
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-800 mb-1">${consulta.paciente.nome}</h3>
+                                    <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                                        <span class="flex items-center gap-1">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            Prontuário #${consulta.cd_agenda || consulta.id_agenda}
+                                        </span>
+                                    </div>
+                                </div>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-${badge.cor}-50 text-${badge.cor}-700 border border-${badge.cor}-100 text-sm font-medium">
+                                    <span class="w-2 h-2 rounded-full bg-${badge.cor}-500"></span>
+                                    ${badge.texto}
+                                </span>
+                            </div>
+                            
+                            <div class="flex flex-wrap items-center gap-4 text-sm">
+                                <span class="inline-flex items-center gap-1.5 text-slate-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    ${consulta.convenio || 'Não informado'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Ações -->
+                        <div class="flex lg:flex-col gap-2">
+                            <a href="/consultorios/prontuario?cd_pessoa_fisica=${consulta.paciente.cd_pessoa_fisica || ''}&cd_agenda=${consulta.cd_agenda || ''}" class="flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Ver Prontuário
+                            </a>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Mantém o mock no início e adiciona as consultas reais
+    const mockCard = container.children[0];
+    container.innerHTML = html;
+}
+
+// Função para mostrar estado vazio
+function mostrarEstadoVazio() {
+    const container = document.getElementById('listaConsultas');
+    container.innerHTML = `
+        <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm p-12 text-center">
+            <div class="flex flex-col items-center justify-center">
+                <div class="flex items-center justify-center w-20 h-20 rounded-full bg-slate-100 text-slate-400 mb-4">
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">Nenhuma consulta agendada</h3>
+                <p class="text-slate-500 mb-6">Não há consultas agendadas para esta data.</p>
+            </div>
+        </div>
+    `;
+}
+
+// Função para atualizar estatísticas
+function atualizarEstatisticas(stats) {
+    if (stats) {
+        document.getElementById('totalAgendadas').textContent = stats.total || 0;
+        document.getElementById('emAtendimento').textContent = stats.em_atendimento || 0;
+        document.getElementById('concluidas').textContent = stats.concluidas || 0;
+        document.getElementById('aguardando').textContent = stats.aguardando || 0;
+    }
+}
+
+// Função para atualizar a exibição da data
+function atualizarData() {
+    document.getElementById('dataAtual').textContent = formatarData(dataAtual);
+    document.getElementById('diaSemana').textContent = formatarDiaSemana(dataAtual);
+    buscarConsultas();
+}
+
+// Função para ver detalhes
+function verDetalhes(idAgenda) {
+    window.location.href = `/consultorios/atendimento/${idAgenda}`;
+}
+
+// Navegação de datas
+document.getElementById('btnDiaAnterior')?.addEventListener('click', () => {
+    dataAtual.setDate(dataAtual.getDate() - 1);
+    atualizarData();
+});
+
+document.getElementById('btnProximoDia')?.addEventListener('click', () => {
+    dataAtual.setDate(dataAtual.getDate() + 1);
+    atualizarData();
+});
+
+document.getElementById('btnHoje')?.addEventListener('click', () => {
+    dataAtual = new Date();
+    atualizarData();
+});
+
+// Filtros
+document.getElementById('filtroStatus')?.addEventListener('change', (e) => {
+    filtroStatusAtual = e.target.value;
+    buscarConsultas();
+});
+
+document.getElementById('buscarPaciente')?.addEventListener('input', (e) => {
+    const termo = e.target.value.toLowerCase();
+    if (termo === '') {
+        renderizarConsultas(consultasCache);
+    } else {
+        const filtradas = consultasCache.filter(c => 
+            c.paciente.nome.toLowerCase().includes(termo)
+        );
+        renderizarConsultas(filtradas);
+    }
+});
+
+// Toggle de visualização
+document.getElementById('btnVistaLista')?.addEventListener('click', function() {
+    this.classList.add('bg-blue-100', 'text-blue-600');
+    this.classList.remove('bg-slate-100', 'text-slate-600');
+    document.getElementById('btnVistaGrade').classList.remove('bg-blue-100', 'text-blue-600');
+    document.getElementById('btnVistaGrade').classList.add('bg-slate-100', 'text-slate-600');
+});
+
+document.getElementById('btnVistaGrade')?.addEventListener('click', function() {
+    this.classList.add('bg-blue-100', 'text-blue-600');
+    this.classList.remove('bg-slate-100', 'text-slate-600');
+    document.getElementById('btnVistaLista').classList.remove('bg-blue-100', 'text-blue-600');
+    document.getElementById('btnVistaLista').classList.add('bg-slate-100', 'text-slate-600');
+});
+
+// Botão Nova Consulta
+document.getElementById('btnNovaConsulta')?.addEventListener('click', () => {
+    alert('Funcionalidade de agendamento será implementada em breve!');
+});
+
+// Inicializar ao carregar a página
+document.addEventListener('DOMContentLoaded', () => {
+    buscarConsultas();
+});
+</script>

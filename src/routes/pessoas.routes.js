@@ -1,17 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const pessoaController = require('../controllers/pessoaController');
-const loginRequired = require('../middlewares/loginRequired'); // <--- 1. Importe o Guardião
+const loginRequired = require('../middlewares/loginRequired');
 
-// Rota GET: Listagem (PROTEGIDA)
-// Adicionamos o 'loginRequired' antes do controller
-router.get('/pessoas', loginRequired, pessoaController.listar); 
+// Rota principal - listagem de usuários
+router.get('/pessoas', loginRequired, pessoaController.index);
 
-// Rota GET: Formulário (PROTEGIDA)
-router.get('/pessoas/cadastro', loginRequired, pessoaController.renderizarCadastro);
+// Formulário de criação
+router.get('/pessoas/novo', loginRequired, pessoaController.renderizarCadastro);
 
-// Rota POST: Salvar (PROTEGIDA)
-// Importante proteger o POST também para ninguém mandar dados via Postman/Curl
+// Formulário de edição
+router.get('/pessoas/editar/:id', loginRequired, pessoaController.renderizarEdicao);
+
+// Criar usuário
 router.post('/pessoas/cadastrar', loginRequired, pessoaController.cadastrar);
+
+// Atualizar usuário
+router.post('/pessoas/atualizar/:id', loginRequired, pessoaController.atualizar);
+
+// Excluir usuário (soft delete)
+router.delete('/pessoas/excluir/:id', loginRequired, pessoaController.excluir);
+
+// API: Buscar usuário por ID
+router.get('/api/pessoas/:id', loginRequired, pessoaController.buscarPorId);
 
 module.exports = router;

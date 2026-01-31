@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+</head>
+<body class="bg-slate-50">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
+            <div class="px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <a href="/consultorios/agenda" class="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-slate-100 transition-colors">
+                            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </a>
+                        <div>
+                            <p class="text-xs text-slate-500 uppercase tracking-wider font-medium">Prontuário</p>
+                            <h1 class="text-xl font-bold text-slate-800" id="nomePaciente">Carregando...</h1>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="novaEvolucao()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Nova Evolução
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Layout Principal: 25% Sidebar + 75% Conteúdo -->
+        <div class="flex-1 flex">
+            <!-- Sidebar Esquerda (25%) -->
+            <aside class="w-1/4 bg-white border-r border-slate-200 overflow-y-auto">
+                <div class="p-6">
+                    <!-- Dados do Paciente -->
+                    <div class="mb-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-semibold text-slate-800">Dados do Paciente</h2>
+                                <p class="text-xs text-slate-500">Informações cadastrais</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-3" id="dadosPaciente">
+                            <div class="animate-pulse">
+                                <div class="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+                                <div class="h-3 bg-slate-200 rounded w-1/2"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-200 my-6">
+
+                    <!-- Menu de Opções -->
+                    <nav class="space-y-2">
+                        <button onclick="mostrarSecao('evolucoes')" class="menu-item active w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors" data-secao="evolucoes">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span class="font-medium">Evoluções</span>
+                        </button>
+
+                        <button onclick="mostrarSecao('historico')" class="menu-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors" data-secao="historico">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="font-medium">Histórico</span>
+                        </button>
+
+                        <button onclick="mostrarSecao('exames')" class="menu-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors" data-secao="exames">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            <span class="font-medium">Exames</span>
+                        </button>
+
+                        <button onclick="mostrarSecao('prescricoes')" class="menu-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors" data-secao="prescricoes">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                            </svg>
+                            <span class="font-medium">Prescrições</span>
+                        </button>
+                    </nav>
+                </div>
+            </aside>
+
+            <!-- Conteúdo Principal (75%) -->
+            <main class="flex-1 overflow-y-auto p-6">
+                <!-- Seção: Evoluções -->
+                <div id="secao-evolucoes" class="secao-conteudo">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2">Evoluções Clínicas</h2>
+                        <p class="text-slate-600">Histórico de evoluções médicas do paciente</p>
+                    </div>
+
+                    <!-- Estatísticas -->
+                    <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="bg-white rounded-xl border border-slate-200 p-4">
+                            <p class="text-sm text-slate-600 mb-1">Total de Evoluções</p>
+                            <p class="text-2xl font-bold text-slate-800" id="totalEvolucoes">0</p>
+                        </div>
+                        <div class="bg-white rounded-xl border border-slate-200 p-4">
+                            <p class="text-sm text-slate-600 mb-1">Última Evolução</p>
+                            <p class="text-lg font-semibold text-slate-800" id="ultimaEvolucao">-</p>
+                        </div>
+                        <div class="bg-white rounded-xl border border-slate-200 p-4">
+                            <p class="text-sm text-slate-600 mb-1">Período</p>
+                            <p class="text-lg font-semibold text-slate-800" id="periodoEvolucoes">-</p>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Evoluções -->
+                    <div class="space-y-4" id="listaEvolucoes">
+                        <!-- Skeleton Loading -->
+                        <div class="bg-white rounded-xl border border-slate-200 p-6 animate-pulse">
+                            <div class="h-4 bg-slate-200 rounded w-1/4 mb-4"></div>
+                            <div class="h-3 bg-slate-200 rounded w-full mb-2"></div>
+                            <div class="h-3 bg-slate-200 rounded w-3/4"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção: Histórico (oculta inicialmente) -->
+                <div id="secao-historico" class="secao-conteudo hidden">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2">Histórico de Atendimentos</h2>
+                        <p class="text-slate-600">Em desenvolvimento...</p>
+                    </div>
+                </div>
+
+                <!-- Seção: Exames (oculta inicialmente) -->
+                <div id="secao-exames" class="secao-conteudo hidden">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2">Exames</h2>
+                        <p class="text-slate-600">Em desenvolvimento...</p>
+                    </div>
+                </div>
+
+                <!-- Seção: Prescrições (oculta inicialmente) -->
+                <div id="secao-prescricoes" class="secao-conteudo hidden">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2">Prescrições Médicas</h2>
+                        <p class="text-slate-600">Em desenvolvimento...</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal: Nova Evolução -->
+    <div id="modalNovaEvolucao" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <h3 class="text-xl font-bold text-slate-800">Nova Evolução</h3>
+                <button onclick="fecharModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6">
+                <form id="formNovaEvolucao">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Texto da Evolução</label>
+                        <textarea 
+                            id="textoEvolucao" 
+                            rows="12" 
+                            class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            placeholder="Descreva a evolução do paciente..."
+                            required
+                        ></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+                <button onclick="fecharModal()" class="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                    Cancelar
+                </button>
+                <button onclick="salvarEvolucao()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Salvar Evolução
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const cdPessoaFisica = '<%= cd_pessoa_fisica %>';
+        const cdAgenda = '<%= cd_agenda || "" %>';
+        let prontuarioData = null;
+
+        // Carrega dados do prontuário
+        async function carregarProntuario() {
+            try {
+                const response = await fetch(`/api/consultorios/prontuario/${cdPessoaFisica}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    prontuarioData = result.data;
+                    renderizarDadosPaciente(result.data.paciente);
+                    renderizarEvolucoes(result.data.evolucoes);
+                    atualizarEstatisticas(result.data);
+                } else {
+                    alert('Erro ao carregar prontuário: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao carregar prontuário');
+            }
+        }
+
+        // Renderiza dados do paciente na sidebar
+        function renderizarDadosPaciente(paciente) {
+            document.getElementById('nomePaciente').textContent = paciente.nome;
+            
+            const idade = paciente.data_nascimento ? calcularIdade(new Date(paciente.data_nascimento)) : '-';
+            const cpfFormatado = paciente.cpf ? formatarCPF(paciente.cpf) : 'Não informado';
+            
+            document.getElementById('dadosPaciente').innerHTML = `
+                <div class="space-y-2 text-sm">
+                    <div>
+                        <p class="text-slate-500">CPF</p>
+                        <p class="font-medium text-slate-800">${cpfFormatado}</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-500">Idade</p>
+                        <p class="font-medium text-slate-800">${idade} anos</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-500">Sexo</p>
+                        <p class="font-medium text-slate-800">${paciente.sexo === 'M' ? 'Masculino' : paciente.sexo === 'F' ? 'Feminino' : '-'}</p>
+                    </div>
+                    ${paciente.telefone ? `
+                    <div>
+                        <p class="text-slate-500">Telefone</p>
+                        <p class="font-medium text-slate-800">${paciente.telefone}</p>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        // Renderiza lista de evoluções
+        function renderizarEvolucoes(evolucoes) {
+            const container = document.getElementById('listaEvolucoes');
+            
+            if (evolucoes.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                        <div class="flex justify-center mb-4">
+                            <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
+                                <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-2">Nenhuma evolução registrada</h3>
+                        <p class="text-slate-600">Clique em "Nova Evolução" para adicionar a primeira evolução deste paciente.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = evolucoes.map(e => {
+                const dataFormatada = formatarDataHora(new Date(e.data_evolucao));
+                return `
+                    <div class="bg-white rounded-xl border border-slate-200 hover:shadow-md transition-shadow overflow-hidden">
+                        <!-- Header da evolução -->
+                        <div class="bg-gradient-to-r from-blue-50 to-slate-50 px-6 py-4 border-b border-slate-200">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p class="text-sm font-semibold text-blue-700 mb-1">${dataFormatada}</p>
+                                    <p class="text-xs text-slate-600">
+                                        <span class="font-medium">${e.usuario || 'Usuário não identificado'}</span>
+                                        ${e.tipo_clinica ? ` • ${e.tipo_clinica}` : ''}
+                                    </p>
+                                </div>
+                                ${e.nr_atendimento ? `
+                                <span class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-medium rounded-lg shadow-sm">
+                                    Atend. ${e.nr_atendimento}
+                                </span>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        <!-- Conteúdo da evolução -->
+                        <div class="px-6 py-5">
+                            <div class="prose prose-sm max-w-none">
+                                ${e.texto || '<p class="text-slate-500 italic">Sem descrição</p>'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Atualiza estatísticas
+        function atualizarEstatisticas(data) {
+            document.getElementById('totalEvolucoes').textContent = data.estatisticas.total_evolucoes;
+            
+            if (data.evolucoes.length > 0) {
+                const ultima = new Date(data.evolucoes[0].data_evolucao);
+                document.getElementById('ultimaEvolucao').textContent = formatarData(ultima);
+                
+                const primeira = new Date(data.evolucoes[data.evolucoes.length - 1].data_evolucao);
+                const periodo = Math.floor((Date.now() - primeira) / (1000 * 60 * 60 * 24));
+                document.getElementById('periodoEvolucoes').textContent = `${periodo} dias`;
+            }
+        }
+
+        // Navegação entre seções
+        function mostrarSecao(secao) {
+            // Remove active de todos os botões
+            document.querySelectorAll('.menu-item').forEach(btn => {
+                btn.classList.remove('active', 'bg-blue-50', 'text-blue-600');
+                btn.classList.add('text-slate-600', 'hover:bg-slate-50');
+            });
+
+            // Adiciona active no botão clicado
+            const btnAtivo = document.querySelector(`[data-secao="${secao}"]`);
+            btnAtivo.classList.add('active', 'bg-blue-50', 'text-blue-600');
+            btnAtivo.classList.remove('text-slate-600', 'hover:bg-slate-50');
+
+            // Esconde todas as seções
+            document.querySelectorAll('.secao-conteudo').forEach(s => s.classList.add('hidden'));
+
+            // Mostra a seção selecionada
+            document.getElementById(`secao-${secao}`).classList.remove('hidden');
+        }
+
+        // Modal Nova Evolução
+        function novaEvolucao() {
+            document.getElementById('modalNovaEvolucao').classList.remove('hidden');
+            document.getElementById('textoEvolucao').focus();
+        }
+
+        function fecharModal() {
+            document.getElementById('modalNovaEvolucao').classList.add('hidden');
+            document.getElementById('formNovaEvolucao').reset();
+        }
+
+        async function salvarEvolucao() {
+            const texto = document.getElementById('textoEvolucao').value.trim();
+            
+            if (!texto) {
+                alert('Por favor, preencha o texto da evolução');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/consultorios/prontuario/evolucao', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        cd_pessoa_fisica: cdPessoaFisica,
+                        cd_agenda: cdAgenda,
+                        texto_evolucao: texto
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Evolução salva com sucesso!');
+                    fecharModal();
+                    carregarProntuario(); // Recarrega as evoluções
+                } else {
+                    alert('Erro ao salvar evolução: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao salvar evolução');
+            }
+        }
+
+        // Utilitários
+        function calcularIdade(dataNascimento) {
+            const hoje = new Date();
+            let idade = hoje.getFullYear() - dataNascimento.getFullYear();
+            const m = hoje.getMonth() - dataNascimento.getMonth();
+            if (m < 0 || (m === 0 && hoje.getDate() < dataNascimento.getDate())) {
+                idade--;
+            }
+            return idade;
+        }
+
+        function formatarCPF(cpf) {
+            return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        }
+
+        function formatarData(data) {
+            return data.toLocaleDateString('pt-BR');
+        }
+
+        function formatarDataHora(data) {
+            return data.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Inicializa
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarProntuario();
+        });
+
+        // Fecha modal com ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') fecharModal();
+        });
+    </script>
+
+    <style>
+        .menu-item.active {
+            @apply bg-blue-50 text-blue-600;
+        }
+        .menu-item:not(.active) {
+            @apply text-slate-600 hover:bg-slate-50;
+        }
+        
+        /* Estilos para conteúdo RTF convertido - Similar ao TASY */
+        .prose {
+            font-size: 0.9375rem; /* 15px - aumentado para melhor legibilidade */
+            line-height: 1.7;
+            color: #1e293b;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .prose p {
+            margin-bottom: 0.5rem; /* Espaçamento entre linhas */
+            line-height: 1.7;
+            word-wrap: break-word;
+        }
+        
+        .prose p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .prose p:empty {
+            margin-bottom: 0;
+            height: 0;
+        }
+        
+        .prose .h-3 {
+            height: 0.75rem; /* Espaçamento entre seções */
+        }
+        
+        .prose strong, .prose b {
+            font-weight: 700 !important;
+            color: #0f172a !important;
+            display: inline !important;
+        }
+        
+        .prose em, .prose i {
+            font-style: italic;
+        }
+        
+        .prose u {
+            text-decoration: underline;
+        }
+        
+        /* Espaçamento mais compacto como no TASY */
+        .prose {
+            letter-spacing: 0.01em;
+        }
+    </style>
+</body>
+</html>
