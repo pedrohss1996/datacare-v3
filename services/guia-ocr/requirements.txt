@@ -1,0 +1,18 @@
+# DataCare - Serviço de OCR para Guias TISS
+# Python 3.10, 3.11 ou 3.12. Não use 3.13/3.14 (dependências sem wheel; exige Rust).
+
+fastapi>=0.104,<0.116
+uvicorn[standard]>=0.24,<0.33
+python-multipart>=0.0.6
+pydantic>=2.5,<3
+pydantic-settings>=2.2,<3
+
+# Pré-processamento de imagem
+opencv-python-headless==4.10.0.84
+
+# OCR: Tesseract (instale o binário no sistema; Windows: https://github.com/UB-Mannheim/tesseract/wiki)
+pytesseract==0.3.10
+Pillow==11.0.0
+
+# Gemini: extração estruturada do texto OCR (opcional; defina GEMINI_API_KEY)
+google-generativeai>=0.8.0

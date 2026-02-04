@@ -1,0 +1,254 @@
+<div class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80">
+    <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
+        <div class="space-y-8">
+
+            <header class="relative overflow-hidden rounded-2xl border border-slate-200/80 shadow-lg bg-gradient-to-r from-emerald-100 via-teal-50 to-slate-50/80">
+                <div class="relative p-6 sm:p-8">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500 text-white shadow-md">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">Smart</h1>
+                    </div>
+                    <p class="text-slate-600">Abertura de Atendimento Zero Toque. Anexe a guia de convênio e preencha o formulário automaticamente.</p>
+                </div>
+            </header>
+
+            <section class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-6 sm:p-8">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4">Enviar guia de atendimento</h2>
+                <div id="dropZone" class="border-2 border-dashed border-slate-300 rounded-xl p-10 text-center transition-colors hover:border-emerald-400 hover:bg-emerald-50/50 cursor-pointer" data-state="idle">
+                    <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png" class="hidden" />
+                    <div id="dropZoneContent">
+                        <div class="flex justify-center mb-3">
+                            <svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                        </div>
+                        <p class="text-slate-600 font-medium">Arraste a imagem da guia aqui ou clique para selecionar</p>
+                        <p class="text-slate-400 text-sm mt-1">JPG ou PNG (máx. 10 MB)</p>
+                    </div>
+                    <div id="uploadProgress" class="hidden mt-4">
+                        <div class="h-2 bg-slate-200 rounded-full overflow-hidden">
+                            <div id="progressBar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <p id="progressText" class="text-sm text-slate-500 mt-2">Processando...</p>
+                    </div>
+                </div>
+                <p id="uploadError" class="mt-3 text-sm text-red-600 hidden"></p>
+            </section>
+
+            <section id="formSection" class="hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm p-6 sm:p-8">
+                <div class="flex items-center justify-between mb-6 flex-wrap gap-2">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-800">Dados extraídos – conferir e confirmar</h2>
+                        <p id="guiaTipoVersao" class="text-sm text-slate-500 mt-1 hidden"></p>
+                    </div>
+                    <div id="reviewBadge" class="hidden px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800 border border-amber-200">Revisão manual recomendada</div>
+                </div>
+
+                <!-- Tabela TISS: todos os campos em uma única página -->
+                <div class="mb-8 rounded-xl border border-slate-200 bg-slate-50/50 overflow-hidden">
+                    <h3 class="text-sm font-semibold text-slate-700 uppercase tracking-wider px-4 py-3 border-b border-slate-200 bg-white">Tabela TISS – Todos os campos extraídos</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-slate-700" id="tissTable">
+                            <thead class="bg-slate-100 text-slate-600 uppercase">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3 w-20">Nº</th>
+                                    <th scope="col" class="px-4 py-3 min-w-[200px]">Campo TISS</th>
+                                    <th scope="col" class="px-4 py-3">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tissTableBody" class="divide-y divide-slate-200 bg-white">
+                                <!-- Preenchido via JS a partir do JSON -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <form id="formConferencia" class="space-y-8">
+                    <!-- Dados da Guia Principal -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200 pb-2">Dados da Guia Principal</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">1 - Registro ANS</label>
+                                <input type="text" id="codigo_operadora" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div class="sm:col-span-2 lg:col-span-3">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Nome do convênio (ANS)</label>
+                                <input type="text" id="nome_operadora" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-slate-700" placeholder="Consultado na ANS pelo Registro ANS" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">2 - Nº Guia no Prestador</label>
+                                <input type="text" id="numero_guia_prestador" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">3 - N° Guia Principal</label>
+                                <input type="text" id="numero_guia_principal" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">4 - Data da Autorização</label>
+                                <input type="text" id="data_autorizacao" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">5 - Senha</label>
+                                <input type="text" id="senha" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">6 - Data Validade da Senha</label>
+                                <input type="text" id="data_validade_senha" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">7 - N° Guia Operadora</label>
+                                <input type="text" id="numero_guia_atribuido_operadora" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Beneficiário -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200 pb-2">Beneficiário</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">8 - Número da Carteirinha</label>
+                                <input type="text" id="numero_carteirinha" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">9 - Validade da Carteira</label>
+                                <input type="text" id="data_validade" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">12 - Atend. a RN</label>
+                                <input type="text" id="atendimento_rn" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">10 - Nome</label>
+                                <input type="text" id="nome_paciente" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">11 - Data de Nascimento</label>
+                                <input type="text" id="data_nascimento" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Solicitante -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200 pb-2">Solicitante</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">13 - Código na Operadora</label>
+                                <input type="text" id="codigo_operadora_solicitante" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">14 - Nome do Contratado</label>
+                                <input type="text" id="nome_contratado" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">15 - Profissional Solicitante</label>
+                                <input type="text" id="nome_profissional_solicitante" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">16 - Conselho</label>
+                                <input type="text" id="conselho_profissional" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">17 - N° Conselho</label>
+                                <input type="text" id="numero_conselho" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">18 - UF</label>
+                                <input type="text" id="uf_conselho" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">19 - Código CBO</label>
+                                <input type="text" id="codigo_cbo" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Solicitação -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200 pb-2">Solicitação</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">21 - Caráter do Atendimento</label>
+                                <input type="text" id="carater_atendimento" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">22 - Data da Solicitação</label>
+                                <input type="text" id="data_solicitacao" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">32 - Tipo de Atendimento</label>
+                                <input type="text" id="tipo_atendimento" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                            <div class="sm:col-span-2 lg:col-span-4">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">23 - Indicação Clínica</label>
+                                <input type="text" id="indicacao_clinica" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Procedimentos -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200 pb-2">Procedimentos Solicitados</h3>
+                        <div id="listaProcedimentos" class="space-y-2 rounded-lg border border-slate-200 bg-slate-50/50 p-4"></div>
+                    </div>
+
+                    <!-- Status e Faturamento (Gemini / cross-reference) -->
+                    <div id="faturamentoSection" class="space-y-4 hidden">
+                        <h3 class="text-sm font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200 pb-2">Status e Faturamento</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Status da guia</label>
+                                <input type="text" id="status_guia" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-slate-700" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total procedimentos (R$)</label>
+                                <input type="text" id="total_procedimentos" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-slate-700" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total taxas (R$)</label>
+                                <input type="text" id="total_taxas" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-slate-700" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total materiais (R$)</label>
+                                <input type="text" id="total_materiais" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-slate-700" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total medicamentos (R$)</label>
+                                <input type="text" id="total_medicamentos" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-slate-700" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total geral (R$)</label>
+                                <input type="text" id="total_geral" readonly class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 font-medium text-slate-800" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Observação -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200 pb-2">Observação</h3>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">58 - Observação / Justificativa</label>
+                            <input type="text" id="observacao_justificativa" class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3 pt-4">
+                        <button type="button" id="btnNovaGuia" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium">Nova guia</button>
+                        <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">Confirmar e abrir atendimento</button>
+                    </div>
+                </form>
+
+                <div id="formErros" class="mt-4 space-y-1 hidden"></div>
+            </section>
+
+        </div>
+    </div>
+</div>
+
+<script src="/js/smart-guia.js"></script>

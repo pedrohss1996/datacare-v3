@@ -1,12 +1,22 @@
 # Dependências do Node (Pesado, não deve subir)
 node_modules/
 
+# Ambiente virtual Python (guia-ocr)
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+
 # Variáveis de Ambiente e Segredos (CRÍTICO: Não suba isso!)
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Porta do serviço OCR (gravada pelo start-ocr.js; a aplicação lê automaticamente)
+.guia-ocr-port
 
 # Logs
 npm-debug.log*

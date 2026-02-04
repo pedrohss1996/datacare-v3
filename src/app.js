@@ -19,6 +19,7 @@ const rotaIndicadores = require('./routes/indicadores.routes');
 const rotaTasy = require('./routes/tasy.routes')
 const rotaAdminChat = require('./routes/admin_chat.routes');
 const rotaConsultorios = require('./routes/consultorios.routes');
+const rotaGuia = require('./routes/guia.routes');
 
 // ---- Criador de Pagina IA ----
 const analyticsRoutes = require('./routes/analytics.routes');
@@ -77,6 +78,7 @@ app.use('/', rotasPessoas);
 app.use('/', rotaIndicadores);
 app.use('/', analyticsRoutes);  // Analytics Builder com IA
 app.use('/', rotaConsultorios); // Módulo de Consultórios
+app.use('/', rotaGuia);         // Smart - Abertura Zero Toque (upload guia)
 app.use('/', indexRoutes); 
 app.use('/', rotaChat);
 app.use('/', rotaTasy);

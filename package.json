@@ -8,7 +8,8 @@
     "build:css": "tailwindcss -i ./src/styles/input.css -o ./public/css/style.css --minify",
     "watch:css": "tailwindcss -i ./src/styles/input.css -o ./public/css/style.css --watch",
     "start": "node server.js",
-    "dev": "concurrently \"npm run watch:css\" \"nodemon server.js\""
+    "ocr": "node scripts/start-ocr.js",
+    "dev": "concurrently \"npm run watch:css\" \"nodemon server.js\" \"npm run ocr\""
   },
   "keywords": [],
   "author": "",
@@ -25,6 +26,8 @@
     "express": "^5.2.1",
     "express-ejs-layouts": "^2.5.1",
     "express-session": "^1.18.2",
+    "form-data": "^4.0.0",
+    "multer": "^1.4.5-lts.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "knex": "^3.1.0",
