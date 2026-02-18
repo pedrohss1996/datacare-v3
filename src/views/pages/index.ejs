@@ -1,173 +1,191 @@
-<div class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80">
-    <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
-        <div class="space-y-12 lg:space-y-14">
-
-            <%
-            // --- FUNÇÃO PARA FORMATAR O NOME ---
-            function capitalizeName(texto) {
-                if (!texto) return 'Usuário';
-                const str = String(texto);
-                return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-            }
-
-            // --- LÓGICA INTELIGENTE DE SELEÇÃO DE NOME ---
-            const u = (typeof user !== 'undefined' && user) ? user : {};
-            const nomeParaMostrar = u.name || u.nome || u.username || u.nm_usuario || u.login || 'Visitante';
-            %>
-
-            <!-- Hero / Boas-vindas -->
-            <header class="relative overflow-hidden rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-200/50 bg-gradient-to-r from-blue-100 via-blue-50 to-slate-50/80">
-                <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6 p-6 sm:p-8">
-                    <div class="space-y-1">
-                        <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Dashboard</p>
-                        <h1 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">
-                            Olá, <span class="text-blue-600"><%= capitalizeName(nomeParaMostrar) %></span>
-                        </h1>
-                        <p class="text-slate-500">Bem-vindo ao DataCare.</p>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-4 sm:gap-6">
-                        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100/80 shadow-sm">
-                            <span class="relative flex h-2.5 w-2.5" aria-hidden="true">
-                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                            </span>
-                            <span class="text-sm font-semibold">Online</span>
-                        </div>
-                        <div class="inline-flex items-center gap-2 text-slate-500">
-                            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <time class="text-sm font-medium" datetime="<%= new Date().toISOString().slice(0,10) %>"><%= new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) %></time>
-                        </div>
-                    </div>
+<%
+function capitalizeName(texto) {
+    if (!texto) return 'Usuário';
+    const str = String(texto);
+    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
+const u = (typeof user !== 'undefined' && user) ? user : {};
+const nomeParaMostrar = u.name || u.nome || u.username || u.nm_usuario || u.login || 'Visitante';
+const isAdmin = u.cd_perfil_inicial === 3 || u.grupo_id === 1 || (String(u.nm_usuario || '').toLowerCase() === 'pedrosantos');
+%>
+<div class="min-h-0 bg-gradient-to-b from-slate-50 to-slate-100/80">
+    <div class="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-4">
+        <!-- Hero / Boas-vindas -->
+        <header class="mb-3 rounded-xl border border-slate-200/80 shadow-md bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 text-white p-4 glass-panel">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div class="space-y-0.5">
+                    <p class="text-xs font-medium text-indigo-200 uppercase tracking-wider">DataCare</p>
+                    <h1 class="text-lg sm:text-xl font-bold tracking-tight">
+                        Olá, <span class="text-white"><%= capitalizeName(nomeParaMostrar) %></span>
+                    </h1>
+                    <p class="text-xs text-indigo-100">Selecione uma opção abaixo para começar</p>
                 </div>
-            </header>
-
-            <!-- Seção Administrador -->
-            <section class="space-y-6" aria-labelledby="titulo-adm">
                 <div class="flex items-center gap-3">
-                    <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-100 text-blue-600" aria-hidden="true">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 id="titulo-adm" class="text-xl font-bold text-slate-800 tracking-tight">Administrador</h2>
-                        <p class="text-sm text-slate-500">Configurações e gestão do sistema</p>
-                    </div>
+                    <span class="px-3 py-1 rounded-lg bg-white/10 text-xs font-medium">
+                        <i class="fas fa-circle text-emerald-400 mr-1.5 text-[10px]"></i>Online
+                    </span>
+                    <time class="text-xs text-indigo-100"><%= new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) %></time>
                 </div>
+            </div>
+        </header>
 
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
-                    <a href="/smart" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-300 ease-out">
-                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 group-hover/card:bg-emerald-600 group-hover/card:text-white transition-colors duration-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                        </div>
-                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-emerald-700 text-center leading-snug">Smart</span>
-                    </a>
-
-                    <a href="/indicadores" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
-                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                        </div>
-                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Construtor de Indicadores</span>
-                    </a>
-
-                    <a href="/pessoas" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
-                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                        </div>
-                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Cadastro de Pessoas</span>
-                    </a>
-
-                    <a href="/analytics/lista" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
-                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                        </div>
-                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Visualizar Indicadores</span>
-                    </a>
-
-                    <a href="/analytics" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
-                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                            </svg>
-                        </div>
-                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Analytics</span>
-                    </a>
-
-                    <a href="/permissoes" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
-                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                        </div>
-                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Gerenciar Permissões</span>
-                    </a>
-
-                    <a href="/chat" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
-                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                        </div>
-                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Connect</span>
-                    </a>
-
-                    <a href="/consultorios" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
-                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
-                        </div>
-                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Consultórios</span>
-                    </a>
+        <!-- Administrador (apenas para admins) -->
+        <% if (isAdmin) { %>
+        <section class="mb-3">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-12 h-12 rounded-xl bg-slate-800 text-white flex items-center justify-center shrink-0">
+                    <i class="fas fa-user-shield text-xl"></i>
                 </div>
-            </section>
-
-            <!-- Seção Assistencial -->
-            <section class="space-y-6" aria-labelledby="titulo-assist">
-                <div class="flex items-center gap-3">
-                    <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 text-slate-600" aria-hidden="true">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                        </svg>
+                <div>
+                    <h2 class="text-base font-bold text-slate-800">Administrador</h2>
+                    <p class="text-xs text-slate-500">Cadastro de pessoas, usuários, grupos e liberação de módulos</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                <a href="/pessoas" class="group flex flex-col items-center p-3 rounded-xl bg-white border border-slate-200 shadow-sm glass-card hover:border-slate-400 hover:shadow-md transition-all duration-200">
+                    <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                        <i class="fas fa-user-friends text-xl"></i>
                     </div>
-                    <div>
-                        <h2 id="titulo-assist" class="text-xl font-bold text-slate-800 tracking-tight">Assistencial</h2>
-                        <p class="text-sm text-slate-500">Indicadores e uso no dia a dia</p>
+                    <span class="mt-2 font-medium text-slate-800 text-center text-sm block">Cadastrar Pessoas</span>
+                </a>
+                <a href="/pessoas/novo" class="group flex flex-col items-center p-3 rounded-xl bg-white border border-slate-200 shadow-sm glass-card hover:border-slate-400 hover:shadow-md transition-all duration-200">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
+                        <i class="fas fa-user-plus text-xl"></i>
                     </div>
+                    <span class="mt-2 font-medium text-slate-800 text-center text-sm block">Criar Usuários</span>
+                </a>
+                <a href="/admin" class="group flex flex-col items-center p-3 rounded-xl bg-white border border-slate-200 shadow-sm glass-card hover:border-slate-400 hover:shadow-md transition-all duration-200">
+                    <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center group-hover:bg-slate-700 group-hover:text-white transition-colors shrink-0">
+                        <i class="fas fa-users-cog text-xl"></i>
+                    </div>
+                    <span class="mt-2 font-medium text-slate-800 text-center text-sm block">Painel Admin</span>
+                </a>
+                <a href="/permissoes" class="group flex flex-col items-center p-3 rounded-xl bg-white border border-slate-200 shadow-sm glass-card hover:border-slate-400 hover:shadow-md transition-all duration-200">
+                    <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center group-hover:bg-slate-700 group-hover:text-white transition-colors shrink-0">
+                        <i class="fas fa-shield-alt text-xl"></i>
+                    </div>
+                    <span class="mt-2 font-medium text-slate-800 text-center text-sm block">Permissões</span>
+                </a>
+            </div>
+        </section>
+        <% } %>
+
+        <!-- Analytics -->
+        <section class="mb-3">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                    <i class="fas fa-chart-line text-xl"></i>
                 </div>
-
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
-                    <a href="/indicadores" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
-                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                        </div>
-                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Construtor de Indicadores</span>
-                    </a>
-
-                    <a href="/indicadores/visualizar" class="group group/card flex flex-col items-center justify-center p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 ease-out">
-                        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                        </div>
-                        <span class="mt-3 text-sm font-medium text-slate-600 group-hover/card:text-blue-700 text-center leading-snug">Visualizar Indicadores</span>
-                    </a>
+                <div>
+                    <h2 class="text-base font-bold text-slate-800">Analytics (BI)</h2>
+                    <p class="text-xs text-slate-500">Dashboards e Business Intelligence</p>
                 </div>
-            </section>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                <a href="/indicadores/visualizar" class="group flex flex-col items-center p-3 rounded-xl bg-white border border-slate-200 shadow-sm glass-card hover:border-blue-300 hover:shadow-md transition-all duration-200">
+                    <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                        <i class="fas fa-chart-pie text-xl"></i>
+                    </div>
+                    <span class="mt-2 font-medium text-slate-800 text-center text-sm block">Visualizar Indicadores</span>
+                </a>
+                <a href="/analytics" class="group flex flex-col items-center p-3 rounded-xl bg-white border border-slate-200 shadow-sm glass-card hover:border-blue-300 hover:shadow-md transition-all duration-200">
+                    <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
+                        <i class="fas fa-robot text-xl"></i>
+                    </div>
+                    <span class="mt-2 font-medium text-slate-800 text-center text-sm block">Construtor IA</span>
+                </a>
+            </div>
+        </section>
 
-        </div>
+        <!-- Atendimento -->
+        <section class="mb-3">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-12 h-12 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center shrink-0">
+                    <i class="fas fa-headset text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-slate-800">Atendimento</h2>
+                    <p class="text-xs text-slate-500">Abertura Zero Toque e atendimento</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                <a href="/smart" class="group flex flex-col items-center p-3 rounded-xl bg-white border border-slate-200 shadow-sm glass-card hover:border-teal-300 hover:shadow-md transition-all duration-200">
+                    <div class="w-12 h-12 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition-colors shrink-0">
+                        <i class="fas fa-file-medical text-xl"></i>
+                    </div>
+                    <span class="mt-2 font-medium text-slate-800 text-center text-sm block">Smart</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Connect -->
+        <section class="mb-3">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                    <i class="fas fa-comments text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-slate-800">Connect</h2>
+                    <p class="text-xs text-slate-500">Chat e comunicação</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                <a href="/chat" class="group flex flex-col items-center p-3 rounded-xl bg-white border border-slate-200 shadow-sm glass-card hover:border-emerald-300 hover:shadow-md transition-all duration-200">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
+                        <i class="fas fa-comments text-xl"></i>
+                    </div>
+                    <span class="mt-2 font-medium text-slate-800 text-center text-sm block">Chat</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Quality -->
+        <section class="mb-3">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                    <i class="fas fa-award text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-slate-800">Quality</h2>
+                    <p class="text-xs text-slate-500">Qualidade e indicadores assistenciais</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                <div class="flex flex-col items-center p-3 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 text-slate-400">
+                    <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                        <i class="fas fa-hourglass-half text-xl"></i>
+                    </div>
+                    <span class="mt-2 font-medium text-slate-500 text-center text-sm block">Em breve</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Staff -->
+        <section class="mb-3">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-12 h-12 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+                    <i class="fas fa-users-cog text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-slate-800">Staff</h2>
+                    <p class="text-xs text-slate-500">Escalas e equipes</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                <a href="/consultorios" class="group flex flex-col items-center p-3 rounded-xl bg-white border border-slate-200 shadow-sm glass-card hover:border-violet-300 hover:shadow-md transition-all duration-200">
+                    <div class="w-12 h-12 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors shrink-0">
+                        <i class="fas fa-stethoscope text-xl"></i>
+                    </div>
+                    <span class="mt-2 font-medium text-slate-800 text-center text-sm block">Consultórios</span>
+                </a>
+                <a href="/staff/escalas" class="group flex flex-col items-center p-3 rounded-xl bg-white border border-slate-200 shadow-sm glass-card hover:border-violet-300 hover:shadow-md transition-all duration-200">
+                    <div class="w-12 h-12 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors shrink-0">
+                        <i class="fas fa-calendar-alt text-xl"></i>
+                    </div>
+                    <span class="mt-2 font-medium text-slate-800 text-center text-sm block">Escalas</span>
+                </a>
+            </div>
+        </section>
+
     </div>
 </div>

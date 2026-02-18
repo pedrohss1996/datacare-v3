@@ -13,8 +13,11 @@ router.get('/logout', authController.logout);
 router.use(authMiddleware); 
 
 router.get('/', (req, res) => {
-    // req.user está disponível aqui graças ao middleware
-    res.render('pages/index', { user: req.user });
+    const user = req.session?.user || req.user;
+    res.render('pages/index', { 
+        user,
+        title: 'DataCare - Central de Módulos'
+    });
 });
 
 module.exports = router;

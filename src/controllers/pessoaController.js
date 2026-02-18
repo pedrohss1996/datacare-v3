@@ -20,6 +20,7 @@ module.exports = {
                     'u.ds_usuario',
                     'u.ie_situacao',
                     'u.cd_perfil_inicial',
+                    'u.grupo_id',
                     'u.dt_criacao',
                     'pf.nr_cpf',
                     'pf.nr_telefone_celular',
@@ -44,12 +45,14 @@ module.exports = {
     },
 
     // Renderiza formulário de criação
-    renderizarCadastro: (req, res) => {
+    renderizarCadastro: async (req, res) => {
+        const grupos = await db('admin_grupos').select('*').orderBy('ordem').catch(() => []);
         res.render('pages/pessoas/form', {
             title: 'Novo Usuário',
             layout: 'layouts/main',
             user: req.user || req.session.user,
             dados: {},
+            grupos: grupos || [],
             erro: null,
             modo: 'criar'
         });
@@ -87,11 +90,13 @@ module.exports = {
                 return res.redirect('/pessoas?erro=Usuário não encontrado');
             }
 
+            const grupos = await db('admin_grupos').select('*').orderBy('ordem').catch(() => []);
             res.render('pages/pessoas/form', {
                 title: 'Editar Usuário',
                 layout: 'layouts/main',
                 user: req.user || req.session.user,
                 dados: usuario,
+                grupos: grupos || [],
                 erro: req.query.erro || null,
                 modo: 'editar'
             });
@@ -169,8 +174,9 @@ module.exports = {
                 ds_senha: senhaHash,
                 cd_pessoa: idPessoa,
                 cd_perfil_inicial: parseInt(perfil) || 1,
+                grupo_id: parseInt(req.body.grupo_id) || 2,
                 ie_situacao: situacao || 'A',
-                cd_medico_tasy: cd_medico_tasy ? parseInt(cd_medico_tasy) : null
+                cd_medico_tasy: req.body.cd_medico_tasy ? parseInt(req.body.cd_medico_tasy) : null
             });
 
             await transacao.commit();
@@ -203,12 +209,12 @@ module.exports = {
         const { id } = req.params;
         const transacao = await db.transaction();
 
-        const { 
+            const { 
             nome, dt_nascimento, sexo,
             cpf, rg, orgao_rg,
             telefone, email,
             cep, endereco, numero, complemento, bairro, municipio, uf,
-            usuario, senha, perfil, situacao, cd_medico_tasy
+            usuario, senha, perfil, situacao, cd_medico_tasy, grupo_id
         } = req.body;
 
         try {
@@ -279,6 +285,7 @@ module.exports = {
                 ds_usuario: nome ? nome.toUpperCase() : usuario.toUpperCase(),
                 cd_pessoa: idPessoa, // Atualiza o vínculo com pessoa_fisica
                 cd_perfil_inicial: parseInt(perfil) || 1,
+                grupo_id: parseInt(grupo_id) || 2,
                 ie_situacao: situacao || 'A',
                 cd_medico_tasy: cd_medico_tasy ? parseInt(cd_medico_tasy) : null
             };

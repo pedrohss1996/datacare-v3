@@ -2,15 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const loginRequired = require('../middlewares/loginRequired');
+const indicadoresController = require('../controllers/indicadoresController');
 
-router.get('/', loginRequired, (req, res) => {
-    
-    const user = req.user || {};
-
-    res.render('pages/index', {
-        title: 'Home - DataCare',
-        user: user
-    });
-});
+// Tela principal: Visualizar Indicadores (mesmo módulo do Data Analytics)
+router.get('/', loginRequired, indicadoresController.visualizacao);
 
 module.exports = router;

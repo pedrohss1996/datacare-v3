@@ -1,0 +1,175 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
+<style>
+    body { font-family: 'Inter', sans-serif; }
+    .sticky-col-nome { position: -webkit-sticky; position: sticky; left: 0; z-index: 2; background: #fff; box-shadow: 2px 0 4px rgba(0,0,0,0.06); }
+    thead .sticky-col-nome { background: #f1f5f9; font-weight: 600; }
+    .loading-spinner { border: 3px solid #f3f4f6; border-top: 3px solid #4f46e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    table { border-collapse: separate; border-spacing: 0; }
+    th:nth-child(n+6), td:nth-child(n+6) { border-right: 1px solid #e2e8f0; }
+    th:last-child, td:last-child { border-right: none; }
+    .context-menu { display: none; position: absolute; z-index: 1000; box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+    .header-interactive { cursor: pointer; transition: background 0.15s; }
+    .header-interactive:hover { background-color: #e0e7ff !important; }
+    .day-cell[title]:hover::after, .holiday-header[title]:hover::after, .reallocated-sector[title]:hover::after {
+        content: attr(title); position: absolute; left: 50%; transform: translateX(-50%); bottom: 100%; margin-bottom: 6px;
+        background: #1e293b; color: #f8fafc; border: none; border-radius: 6px; padding: 8px 12px; white-space: pre-wrap;
+        z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.2); width: max-content; font-size: 12px; line-height: 1.4;
+    }
+    .day-cell, .holiday-header, .reallocated-sector { position: relative; min-width: 48px; }
+    .tab-button.active { border-color: #4f46e5; color: #4f46e5; }
+    #staff-escalas-page button, #staff-escalas-page .tab-button { cursor: pointer; pointer-events: auto !important; position: relative; z-index: 2; }
+    #painel-container .rounded-lg { box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .painel-legend { font-size: 11px; color: #64748b; }
+    .painel-legend span { display: inline-flex; align-items: center; gap: 4px; margin-right: 12px; }
+    .painel-legend .dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+    .truncate-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+</style>
+
+<div id="staff-escalas-page" class="p-4 sm:p-6 lg:p-8">
+    <header class="mb-6">
+        <a href="/staff" class="text-sm text-violet-600 hover:text-violet-700 mb-2 inline-flex items-center gap-1"><i class="fas fa-arrow-left"></i> Voltar ao Staff</a>
+        <h1 class="text-3xl font-bold text-gray-900">Gestão de Escalas</h1>
+        <p class="mt-1 text-md text-gray-600">Gerencie cadastros, escalas e indicadores de forma centralizada.</p>
+    </header>
+
+    <div class="border-b border-gray-200 mb-6">
+        <nav id="tabs" class="-mb-px flex space-x-8" aria-label="Tabs">
+            <button data-tab="cadastro" class="tab-button active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">Cadastro</button>
+            <button data-tab="painel" class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">Painel de Escalas</button>
+            <button data-tab="indicadores" class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">Indicadores</button>
+        </nav>
+    </div>
+
+    <div id="tab-content-cadastro" class="tab-content">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div class="bg-white rounded-lg border border-gray-200 p-8 text-center flex flex-col items-center justify-center">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Cadastro de Funcionários</h2>
+                <p class="text-gray-600 mb-6">Adicione novos médicos, enfermeiros e outros colaboradores ao sistema.</p>
+                <button id="btn-novo-funcionario" class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50 transition-transform transform hover:scale-105">+ Novo Funcionário</button>
+            </div>
+            <div class="bg-white rounded-lg border border-gray-200 p-8 text-center flex flex-col items-center justify-center">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Cadastro de Setores</h2>
+                <p class="text-gray-600 mb-6">Crie novos setores e defina a <strong>quantidade mínima por profissão</strong> (médico, enfermeiro, técnico de enfermagem, fisioterapeuta, fonoaudiólogo, etc.) para a escala.</p>
+                <button id="btn-novo-setor" class="px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg shadow-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 transition-transform transform hover:scale-105">+ Novo Setor</button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-800">Funcionários cadastrados</h3>
+                <p class="text-sm text-gray-500 mt-0.5">Lista detalhada de todos os colaboradores. Clique em Editar para alterar ou Remover para desligar.</p>
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <select id="filtro-lista-setor" class="px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="">Todos os Setores</option></select>
+                    <select id="filtro-lista-funcao" class="px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="">Todas as Profissões</option></select>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Nome</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Setor</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Profissão</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Turno</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Escala</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Situação</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-funcionarios-body" class="bg-white divide-y divide-gray-200">
+                        <tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-content-painel" class="tab-content hidden">
+        <div id="painel-container" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="bg-gradient-to-r from-indigo-50 to-violet-50 px-6 py-4 border-b border-gray-200">
+                <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-1 bg-white rounded-lg border border-gray-200 shadow-sm">
+                            <button id="prev-month" class="p-2.5 rounded-l-lg hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+                            <h2 id="month-year" class="text-lg font-semibold text-gray-800 px-4 py-2 min-w-[180px] text-center"></h2>
+                            <button id="next-month" class="p-2.5 rounded-r-lg hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
+                        </div>
+                        <span class="text-sm text-gray-500">Clique com botão direito na célula para ações</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <input type="text" id="filtro-nome" placeholder="Colaborador..." class="w-full sm:w-40 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <select id="filtro-setor" class="w-full sm:w-auto px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"><option value="">Todos os Setores</option></select>
+                        <select id="filtro-funcao" class="w-full sm:w-auto px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"><option value="">Todas as Profissões</option></select>
+                        <select id="filtro-turno" class="w-full sm:w-auto px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"><option value="">Todos Turnos</option></select>
+                        <select id="filtro-escala" class="w-full sm:w-auto px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"><option value="">Todas Escalas</option></select>
+                        <select id="filtro-dia-tipo" class="w-full sm:w-auto px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">Todos os Dias</option>
+                            <option value="impar">Ímpares</option>
+                            <option value="par">Pares</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-indigo-100 painel-legend">
+                    <span><span class="dot bg-gray-200"></span> Plantão</span>
+                    <span><span class="dot bg-gray-100"></span> Folga</span>
+                    <span><span class="dot bg-blue-200"></span> Férias</span>
+                    <span><span class="dot bg-green-200"></span> Folga Agendada</span>
+                    <span><span class="dot bg-orange-200"></span> Remanejado/Troca</span>
+                    <span><span class="dot bg-yellow-200"></span> Falta Just.</span>
+                    <span><span class="dot bg-red-200"></span> Suspensão/Falta Injust.</span>
+                </div>
+            </div>
+            <div id="loading-container" class="text-center py-16"><div class="flex flex-col items-center justify-center"><div class="loading-spinner"></div><p class="mt-4 text-gray-600">Carregando dados...</p></div></div>
+            <div id="table-wrapper" class="overflow-x-auto border-t border-gray-200 hidden">
+                <table class="min-w-full"><thead id="table-head"></thead><tbody id="table-body" class="bg-white divide-y divide-gray-100"></tbody></table>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-wrap justify-between items-center gap-4">
+                <p class="text-sm text-gray-500">As alterações só são gravadas ao clicar em <strong>Salvar</strong>.</p>
+                <div class="flex items-center gap-3">
+                    <div class="relative inline-block text-left">
+                        <button type="button" id="export-btn" class="inline-flex justify-center w-full rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">Exportar <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button>
+                        <div id="export-menu" class="origin-top-right absolute right-0 bottom-full mb-2 w-56 rounded-lg shadow-lg bg-white ring-1 ring-black ring-opacity-5 hidden z-10">
+                            <div class="py-1"><a href="#" id="export-xlsx" class="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-50">Exportar como XLSX</a><a href="#" id="export-pdf" class="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-50">Exportar como PDF</a><a href="#" id="export-xml" class="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-50">Exportar como XML</a></div>
+                        </div>
+                    </div>
+                    <button id="save-all-changes" class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors">Salvar Alterações</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-content-indicadores" class="tab-content hidden">
+        <div id="indicadores-content">
+            <div class="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+                <h3 class="text-sm font-medium text-gray-700 mb-3">Filtrar indicadores</h3>
+                <div class="flex flex-wrap gap-2">
+                    <input type="text" id="ind-filtro-nome" placeholder="Colaborador..." class="w-full sm:w-44 px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    <select id="ind-filtro-setor" class="w-full sm:w-auto px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"><option value="">Todos os Setores</option></select>
+                    <select id="ind-filtro-funcao" class="w-full sm:w-auto px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"><option value="">Todas as Profissões</option></select>
+                    <select id="ind-filtro-turno" class="w-full sm:w-auto px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"><option value="">Todos (Diurno/Noturno)</option></select>
+                    <select id="ind-filtro-escala" class="w-full sm:w-auto px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"><option value="">Todas as Escalas</option></select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8" id="kpi-container"></div>
+            <div class="bg-white p-6 rounded-lg border border-gray-200 mb-8">
+                <h3 class="text-lg font-semibold mb-4">Horas registradas por colaborador (mês atual)</h3>
+                <p class="text-sm text-gray-500 mb-4">Quantidade de horas que cada colaborador está registrado para trabalhar no mês, conforme sua escala e plantões (P).</p>
+                <div id="horas-colaboradores-table"></div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm"><h3 class="text-lg font-semibold mb-4 text-gray-800">Colaboradores por Setor</h3><div class="h-64"><canvas id="setor-chart"></canvas></div></div>
+                <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm"><h3 class="text-lg font-semibold mb-4 text-gray-800">Colaboradores por Escala</h3><div class="h-64"><canvas id="escala-chart"></canvas></div></div>
+                <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm"><h3 class="text-lg font-semibold mb-4 text-gray-800">Plantões por Setor (Mês Atual)</h3><div class="h-64"><canvas id="plantoes-chart"></canvas></div></div>
+                <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm"><h3 class="text-lg font-semibold mb-4 text-gray-800">Ocorrências por Tipo (Mês Atual)</h3><div class="h-64"><canvas id="ocorrencias-tipo-chart"></canvas></div></div>
+                <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm lg:col-span-2"><h3 class="text-lg font-semibold mb-4 text-gray-800">Ocorrências por Setor (Mês Atual)</h3><div class="h-64"><canvas id="ocorrencias-setor-chart"></canvas></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('../../partials/staff-escalas-modals') %>
+
+<script src="/js/staff-escalas.js"></script>

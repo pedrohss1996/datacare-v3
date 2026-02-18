@@ -19,10 +19,13 @@ const rotaIndicadores = require('./routes/indicadores.routes');
 const rotaTasy = require('./routes/tasy.routes')
 const rotaAdminChat = require('./routes/admin_chat.routes');
 const rotaConsultorios = require('./routes/consultorios.routes');
+const rotaStaff = require('./routes/staff.routes');
 const rotaGuia = require('./routes/guia.routes');
+const rotaAdmin = require('./routes/admin.routes');
 
 // ---- Criador de Pagina IA ----
 const analyticsRoutes = require('./routes/analytics.routes');
+const queryMetadadosRoutes = require('./routes/queryMetadados.routes');
 // Inicializa o app
 const app = express();
 
@@ -76,9 +79,12 @@ app.use((req, res, next) => {
 app.use('/', authRoutes);      
 app.use('/', rotasPessoas);    
 app.use('/', rotaIndicadores);
-app.use('/', analyticsRoutes);  // Analytics Builder com IA
+app.use('/', analyticsRoutes);  // Analytics Builder com IA (Construtor IA)
+app.use('/', queryMetadadosRoutes); // Gerenciador de Metadados de Queries (Engine IA)
 app.use('/', rotaConsultorios); // Módulo de Consultórios
+app.use('/', rotaStaff);       // Módulo Staff (Escalas)
 app.use('/', rotaGuia);         // Smart - Abertura Zero Toque (upload guia)
+app.use('/', rotaAdmin);        // Painel Administração (usuários, grupos, módulos)
 app.use('/', indexRoutes); 
 app.use('/', rotaChat);
 app.use('/', rotaTasy);

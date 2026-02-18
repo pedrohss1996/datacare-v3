@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= config.header.title || 'Dashboard' %></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://app.appmed.me/static/js/paginas-ia.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body{font-family:'Inter',sans-serif;background:#f0f2f5}.card{background:#fff;border-radius:.75rem;padding:1.5rem;box-shadow:0 4px 6px -1px rgb(0 0 0/0.1)}.card:hover{box-shadow:0 10px 15px -3px rgb(0 0 0/0.1)}.loading-spinner{border:5px solid #f3f4f6;border-top:5px solid #3b82f6;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.chart-container{position:relative;height:350px;width:100%}.chart-container canvas{max-height:350px}canvas{cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="p-4 md:p-6 lg:p-8">
+    <div id="loading-container" class="flex flex-col justify-center items-center min-h-[50vh]">
+      <div class="loading-spinner"></div>
+      <p class="mt-4 text-lg text-gray-600">Carregando dados...</p>
+    </div>
+
+    <div id="dashboard-view" class="hidden">
+      <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-800"><%= config.header.title || 'Dashboard' %></h1>
+        <p class="text-md text-gray-500"><%= config.header.subtitle || '' %></p>
+      </div>
+
+      <% if (config.filters && config.filters.length > 0) { %>
+      <div class="card mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+          <% config.filters.forEach(function(f){ %>
+          <div>
+            <label for="<%= f.id %>" class="block text-sm font-medium text-gray-700"><%= f.label %></label>
+            <select id="<%= f.id %>" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 rounded-md">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <% }); %>
+          <button id="reset-filters" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center justify-center"><i class="fas fa-undo mr-2"></i>Limpar</button>
+        </div>
+      </div>
+      <% } %>
+
+      <% if (config.kpis && config.kpis.length > 0) { var kpiG={'POSITIVE':'from-emerald-500 to-teal-600','NEGATIVE':'from-rose-500 to-red-600','NEUTRAL':'from-slate-500 to-slate-600'},kpiGFallback=['from-blue-500 to-blue-600','from-emerald-500 to-teal-600','from-violet-500 to-purple-600','from-amber-500 to-orange-500'],kpiI=['fa-chart-line','fa-users','fa-clock','fa-percent','fa-coins']; %>
+      <div class="grid grid-cols-1 md:grid-cols-<%= Math.min(config.kpis.length, 4) %> gap-4 mb-6">
+        <% config.kpis.forEach(function(k,i){ var g=kpiG[k.intent]||kpiGFallback[i%4]; %>
+        <div class="rounded-xl shadow-lg overflow-hidden bg-gradient-to-br <%= g %> p-5 text-white">
+          <div class="flex items-start justify-between">
+            <div class="flex-1 min-w-0"><h3 class="text-xs font-semibold uppercase tracking-wider text-white/80"><%= k.label %></h3><p id="kpi-<%= i %>" class="text-2xl font-bold mt-2 text-white">0</p></div>
+            <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0 ml-3"><i class="fas <%= kpiI[i%5] %> text-xl"></i></div>
+          </div>
+        </div>
+        <% }); %>
+      </div>
+      <% } %>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-1">
+          <div class="grid grid-cols-1 gap-6">
+            <% if (config.charts && config.charts.length > 0) { config.charts.forEach(function(ch,i){ %>
+            <div class="card">
+              <h2 class="text-xl font-semibold text-gray-700 mb-4"><%= ch.title || ch.label || 'Gráfico' %></h2>
+              <div class="chart-container"><canvas id="<%= ch.id || 'chart'+(i+1) %>"<%= ch.filterId ? ' data-filter-id="'+ch.filterId+'"' : '' %>></canvas></div>
+            </div>
+            <% }); } %>
+          </div>
+        </div>
+        <div class="lg:col-span-2 card h-fit">
+          <h2 class="text-xl font-semibold text-gray-700 mb-4">Detalhamento</h2>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50"><tr><% (config.table.columns||[]).forEach(function(c){ %><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"><%= c %></th><% }); %></tr></thead>
+              <tbody id="table-body" class="bg-white divide-y divide-gray-200"></tbody>
+            </table>
+          </div>
+          <div class="px-4 py-3 bg-gray-50 border-t flex justify-between items-center gap-4 flex-wrap">
+            <div class="text-sm text-gray-700">Mostrando <span id="showing-start">1</span> a <span id="showing-end"><%= config.table.pageSize || 10 %></span> de <span id="total-records">0</span></div>
+            <div class="flex gap-2">
+              <button id="prev-page" class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50">Anterior</button>
+              <span id="page-info" class="px-3 py-1">Página 1</span>
+              <button id="next-page" class="px-3 py-1 border rounded hover:bg-gray-100">Próximo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="detail-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
+      <div class="bg-gray-100 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b bg-white sticky top-0 flex justify-between items-center">
+          <h1 class="text-2xl font-bold text-gray-800">Detalhes</h1>
+          <button id="close-modal" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+        </div>
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <% (config.modalFields || config.table.columns || []).forEach(function(f,i){ var key=typeof f==='string'?f:(f.field||f); var lbl=typeof f==='string'?key:(f.label||key); %>
+            <div class="flex items-start"><i class="fas fa-circle text-blue-500 text-lg mt-1 mr-3"></i><div><h3 class="font-semibold text-gray-600"><%= lbl %></h3><p id="detail-<%= String(key).toLowerCase() %>" class="text-lg text-gray-900">-</p></div></div>
+            <% }); %>
+          </div>
+        </div>
+        <div class="p-6 bg-white sticky bottom-0 border-t flex justify-end">
+          <button id="save-updates-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"><i class="fas fa-save mr-2"></i>Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="application/json" id="bi-config"><%= JSON.stringify(config).replace(/<\//g, '<\\/') %></script>
+  <script>
+(function(){
+var c=JSON.parse(document.getElementById('bi-config').textContent);
+var CONFIG={queryCode:c.queryCode,formCode:c.formCode,filters:c.filters||[],kpis:c.kpis||[],charts:c.charts||[],table:c.table||{columns:[],primaryKey:'ID',pageSize:10},modalFields:c.modalFields||[]};
+var PAGE_SIZE=CONFIG.table.pageSize||10;
+var allData=[],filteredData=[],currentPage=1,charts={};
+var colors=['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899'];
+
+function resolveKey(row,k){if(row[k]!==undefined)return row[k];var x=Object.keys(row).find(function(a){return a.toUpperCase()===String(k).toUpperCase();});return x!==undefined?row[x]:undefined;}
+function agg(data,k){return data.reduce(function(a,i){var v=resolveKey(i,k);v=v===undefined||v===null||v===''?'N/I':v;a[v]=(a[v]||0)+1;return a;},{});}
+function isDateCol(col){if(!col)return false;var x=String(col).toUpperCase();return/^(DT_|DATA_|DATE_)/.test(x)||x.indexOf('DATA')>=0||x.indexOf('DT_')>=0;}
+function looksLikeDate(v){if(v==null)return false;var s=String(v).trim();return/^\d{4}-\d{2}-\d{2}/.test(s)||/T\d{2}:\d{2}/.test(s)||/\.\d{3}Z?$/i.test(s);}
+function formatDate(v){if(v==null||v==='')return'-';var d=new Date(v);if(isNaN(d.getTime()))return v;var p=function(n){return(n<10?'0':'')+n;};return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());}
+function formatCell(v,col){if(v==null||v==='')return'-';if(isDateCol(col)||looksLikeDate(v))return formatDate(v);return v;}
+
+function createChart(ctx,type,labels,vals){var id=ctx.canvas.id;if(charts[id]){charts[id].destroy();charts[id]=null;}
+charts[id]=new Chart(ctx,{type:type,data:{labels:labels.slice(0,50),datasets:[{data:vals.slice(0,50),backgroundColor:colors}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},indexAxis:type==='bar'?'y':undefined,plugins:{legend:{display:type!=='bar'}},onClick:function(e,els){if(els.length&&ctx.canvas.dataset.filterId){var s=document.getElementById(ctx.canvas.dataset.filterId);if(s){s.value=ctx.chart.data.labels[els[0].index];applyFilters();}}}}}});}
+
+function fmtVal(v,f){if(v==null||isNaN(v))return'-';var x=(f||'').toLowerCase();if(x==='currency'||x==='brl')return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});if(x==='days')return v.toLocaleString('pt-BR',{maximumFractionDigits:0})+' dias';if(x==='percent')return(v*100).toFixed(1).replace('.',',')+'%';return v.toLocaleString('pt-BR',{maximumFractionDigits:2});}
+function updateDashboard(){CONFIG.kpis.forEach(function(k,i){var el=document.getElementById('kpi-'+i);if(!el)return;var v;if(k.calc==='count')v=filteredData.length;else if(k.calc==='distinct')v=new Set(filteredData.map(function(d){return resolveKey(d,k.field);})).size;else{var sum=filteredData.reduce(function(a,d){return a+(parseFloat(resolveKey(d,k.field))||0);},0);v=k.calc==='avg'?(sum/(filteredData.length||1)):sum;}el.textContent=fmtVal(v,k.format);});
+CONFIG.charts.forEach(function(ch,i){var lbl=ch.label;if(filteredData.length>0){var m=Object.keys(filteredData[0]).find(function(k){return k.toUpperCase()===String(lbl).toUpperCase();});if(m)lbl=m;}var d=agg(filteredData,lbl);var lab=Object.keys(d),vals=Object.values(d);if(lab.length===1&&lab[0]==='N/I'&&filteredData.length>0){var fk=Object.keys(filteredData[0]).filter(function(k){return/^DS_|^NM_|^NO_/i.test(k);});if(fk.length>0)lbl=fk[i%fk.length];d=agg(filteredData,lbl);lab=Object.keys(d);vals=Object.values(d);}var cv=document.getElementById(ch.id||'chart'+(i+1));if(cv)createChart(cv.getContext('2d'),ch.chartType||'bar',lab,vals);});}
+
+function updateTable(){var st=(currentPage-1)*PAGE_SIZE,en=st+PAGE_SIZE,pg=filteredData.slice(st,en),tb=document.getElementById('table-body'),cols=CONFIG.table.columns;
+tb.innerHTML=pg.map(function(row){return'<tr class="cursor-pointer hover:bg-gray-50" data-item=\''+JSON.stringify(row).replace(/'/g,"\\'")+'\'>'+cols.map(function(c){return'<td class="px-6 py-4 text-sm">'+formatCell(resolveKey(row,c),c)+'</td>';}).join('')+'</tr>';}).join('');
+tb.querySelectorAll('tr').forEach(function(tr){tr.addEventListener('click',function(){showModal(JSON.parse(tr.dataset.item));});});
+document.getElementById('showing-start').textContent=Math.min(st+1,filteredData.length);document.getElementById('showing-end').textContent=Math.min(en,filteredData.length);document.getElementById('total-records').textContent=filteredData.length;document.getElementById('page-info').textContent='Página '+currentPage+'/'+(Math.ceil(filteredData.length/PAGE_SIZE)||1);document.getElementById('prev-page').disabled=currentPage===1;document.getElementById('next-page').disabled=en>=filteredData.length;}
+
+function applyFilters(){var vals=CONFIG.filters.map(function(f){return document.getElementById(f.id)?.value;});filteredData=allData.filter(function(row){return CONFIG.filters.every(function(f,i){return!vals[i]||resolveKey(row,f.field)===vals[i];});});currentPage=1;updateDashboard();updateTable();}
+
+function showModal(item){document.getElementById('detail-modal').dataset.pk=item[CONFIG.table.primaryKey]||item.ID||item.id;(CONFIG.modalFields||[]).forEach(function(f){var k=typeof f==='string'?f:(f.field||f),el=document.getElementById('detail-'+String(k).toLowerCase());if(el)el.textContent=formatCell(resolveKey(item,k),k);});document.getElementById('detail-modal').classList.remove('hidden');}
+function closeModal(){document.getElementById('detail-modal').classList.add('hidden');}
+function saveModal(){var pk=document.getElementById('detail-modal').dataset.pk;if(typeof triggerForm==='function')triggerForm(CONFIG.formCode,{id:pk});closeModal();}
+
+var loadDone=false;
+function finishLoad(data){if(loadDone)return;loadDone=true;allData=Array.isArray(data)?data:[];document.getElementById('loading-container').style.display='none';document.getElementById('dashboard-view').classList.remove('hidden');CONFIG.filters.forEach(function(f,i){var sel=document.getElementById(f.id);if(sel){var vals=[];
+allData.forEach(function(r){var v=resolveKey(r,f.field||f);if(v&&vals.indexOf(v)<0)vals.push(v);});
+vals.sort().forEach(function(v){sel.add(new Option(v,v));});}
+applyFilters();}
+function showErr(msg){if(loadDone)return;loadDone=true;document.getElementById('loading-container').innerHTML='<div class="text-center p-6"><p class="text-red-500 mb-4">'+msg+'</p><button id="btn-use-empty" class="px-4 py-2 bg-gray-200 rounded-lg">Continuar vazio</button></div>';document.getElementById('btn-use-empty').onclick=function(){finishLoad([]);};}
+
+var to=setTimeout(function(){if(!loadDone)showErr('Timeout. Conecte ao sistema.');},25000);
+if(typeof requestQuery==='function'){try{requestQuery(CONFIG.queryCode,{},function(d){clearTimeout(to);finishLoad(d);},function(e){clearTimeout(to);showErr('Erro: '+(e||'desconhecido'));});}catch(e){clearTimeout(to);showErr(e.message);}}else{clearTimeout(to);setTimeout(function(){finishLoad([]);},600);document.getElementById('loading-container').innerHTML='<div class="flex flex-col items-center"><div class="loading-spinner"></div><p class="mt-4 text-amber-600">Modo demo: requestQuery não disponível.</p></div>';}
+
+document.getElementById('reset-filters')?.addEventListener('click',function(){CONFIG.filters.forEach(function(f){var el=document.getElementById(f.id);if(el)el.value='';});applyFilters();});
+CONFIG.filters.forEach(function(f){var el=document.getElementById(f.id);if(el)el.addEventListener('change',applyFilters);});
+document.getElementById('close-modal')?.addEventListener('click',closeModal);
+document.getElementById('save-updates-btn')?.addEventListener('click',saveModal);
+document.getElementById('prev-page')?.addEventListener('click',function(){if(currentPage>1){currentPage--;updateTable();}});
+document.getElementById('next-page')?.addEventListener('click',function(){if(currentPage*PAGE_SIZE<filteredData.length){currentPage++;updateTable();}});
+})();
+  </script>
+</body>
+</html>

@@ -1,0 +1,331 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+<div class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80">
+    <div class="max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <header class="mb-10 rounded-2xl border border-slate-200/80 shadow-lg bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 text-white p-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center">
+                        <i class="fas fa-user-shield text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-tight">Módulo de Administrador</h1>
+                        <p class="text-slate-300 text-sm mt-1">Pessoas, usuários, grupos e liberação de módulos</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <div class="flex flex-wrap gap-2 mb-6 border-b border-slate-200">
+            <button data-tab="pessoas" class="tab-btn px-5 py-3 font-medium text-slate-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500 transition">
+                <i class="fas fa-user-friends mr-2"></i>Pessoas
+            </button>
+            <button data-tab="usuarios" class="tab-btn px-5 py-3 font-medium text-slate-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500 transition">
+                <i class="fas fa-users mr-2"></i>Usuários
+            </button>
+            <button data-tab="grupos" class="tab-btn px-5 py-3 font-medium text-slate-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500 transition">
+                <i class="fas fa-layer-group mr-2"></i>Grupos
+            </button>
+            <button data-tab="modulos" class="tab-btn px-5 py-3 font-medium text-slate-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500 transition">
+                <i class="fas fa-puzzle-piece mr-2"></i>Liberar Módulos
+            </button>
+        </div>
+
+        <!-- Tab: Pessoas -->
+        <section id="tab-pessoas" class="tab-content">
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">Cadastro de Pessoas</h2>
+                        <p class="text-sm text-slate-500 mt-0.5">Gerencie pessoas (dados cadastrais, CPF, contato) e vincule a usuários do sistema</p>
+                    </div>
+                    <a href="/pessoas" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">
+                        <i class="fas fa-user-friends mr-1"></i>Acessar Pessoas
+                    </a>
+                </div>
+                <div class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <a href="/pessoas" class="flex items-center gap-4 p-6 rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all">
+                            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <i class="fas fa-list"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-slate-800">Listar Pessoas</h3>
+                                <p class="text-xs text-slate-500">Ver todos os cadastros</p>
+                            </div>
+                        </a>
+                        <a href="/pessoas/novo" class="flex items-center gap-4 p-6 rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all">
+                            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                <i class="fas fa-user-plus"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-slate-800">Nova Pessoa</h3>
+                                <p class="text-xs text-slate-500">Cadastrar pessoa e usuário</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab: Usuários -->
+        <section id="tab-usuarios" class="tab-content hidden">
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">Cadastro de Usuários</h2>
+                        <p class="text-sm text-slate-500 mt-0.5">Gestão de contas de acesso, grupos e status</p>
+                    </div>
+                    <a href="/pessoas/novo" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">
+                        <i class="fas fa-user-plus mr-1"></i>Novo Usuário
+                    </a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left font-semibold text-slate-600">Usuário</th>
+                                <th class="px-4 py-3 text-left font-semibold text-slate-600">Nome</th>
+                                <th class="px-4 py-3 text-left font-semibold text-slate-600">Grupo</th>
+                                <th class="px-4 py-3 text-left font-semibold text-slate-600">Status</th>
+                                <th class="px-4 py-3 text-left font-semibold text-slate-600">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (usuarios && usuarios.length) { %>
+                            <% usuarios.forEach(u => { %>
+                            <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                <td class="px-4 py-3 font-mono text-slate-700"><%= u.nm_usuario %></td>
+                                <td class="px-4 py-3"><%= u.ds_usuario || '-' %></td>
+                                <td class="px-4 py-3">
+                                    <select class="usuario-grupo-select border border-slate-200 rounded px-2 py-1 text-sm" data-usuario-id="<%= u.cd_usuario %>">
+                                        <% grupos.forEach(g => { %>
+                                        <option value="<%= g.id %>" <%= u.grupo_id == g.id ? 'selected' : '' %>><%= g.nome %></option>
+                                        <% }); %>
+                                    </select>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-1 rounded text-xs font-medium <%= u.ie_situacao === 'A' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600' %>">
+                                        <%= u.ie_situacao === 'A' ? 'Ativo' : 'Inativo' %>
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <a href="/pessoas/editar/<%= u.cd_usuario %>" class="text-blue-600 hover:text-blue-800" title="Editar"><i class="fas fa-edit"></i></a>
+                                </td>
+                            </tr>
+                            <% }); %>
+                            <% } else { %>
+                            <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Nenhum usuário cadastrado.</td></tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab: Grupos -->
+        <section id="tab-grupos" class="tab-content hidden">
+            <div class="flex flex-col lg:flex-row gap-6">
+                <div class="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-800">Grupos de Usuários</h2>
+                            <p class="text-sm text-slate-500 mt-0.5">Crie e edite grupos para organizar permissões</p>
+                        </div>
+                        <button id="btnNovoGrupo" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">
+                            <i class="fas fa-plus mr-1"></i>Novo Grupo
+                        </button>
+                    </div>
+                    <div class="divide-y divide-slate-100">
+                        <% grupos.forEach(g => { %>
+                        <div class="grupo-item flex items-center justify-between px-6 py-4 hover:bg-slate-50" data-grupo-id="<%= g.id %>">
+                            <div>
+                                <h3 class="font-semibold text-slate-800"><%= g.nome %></h3>
+                                <p class="text-sm text-slate-500"><%= g.descricao || '-' %></p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="editar-grupo px-3 py-1 text-blue-600 hover:bg-blue-50 rounded text-sm" data-id="<%= g.id %>" data-nome="<%= g.nome %>" data-descricao="<%= g.descricao || '' %>">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <% if (g.id > 2) { %>
+                                <button class="excluir-grupo px-3 py-1 text-red-600 hover:bg-red-50 rounded text-sm" data-id="<%= g.id %>" data-nome="<%= g.nome %>">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                <% } %>
+                            </div>
+                        </div>
+                        <% }); %>
+                    </div>
+                </div>
+                <div id="grupoFormCard" class="hidden w-full lg:w-96 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                    <h3 class="font-bold text-slate-800 mb-4" id="grupoFormTitle">Novo Grupo</h3>
+                    <input type="hidden" id="grupoFormId" />
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Nome</label>
+                            <input type="text" id="grupoFormNome" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="Ex: Suporte" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Descrição</label>
+                            <input type="text" id="grupoFormDescricao" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="Descrição do grupo" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ordem</label>
+                            <input type="number" id="grupoFormOrdem" class="w-full border border-slate-300 rounded-lg px-3 py-2" value="0" />
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="btnSalvarGrupo" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">Salvar</button>
+                            <button id="btnCancelarGrupo" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab: Liberar Módulos -->
+        <section id="tab-modulos" class="tab-content hidden">
+            <div class="mb-6">
+                <h2 class="text-lg font-bold text-slate-800">Liberar Módulos por Grupo</h2>
+                <p class="text-sm text-slate-500 mt-0.5">Defina quais módulos (Analytics, Connect, Quality, Staff) cada grupo pode acessar</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <% grupos.forEach(g => { %>
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 bg-slate-50 border-b border-slate-100">
+                        <h3 class="font-bold text-slate-800"><%= g.nome %></h3>
+                        <p class="text-xs text-slate-500"><%= g.descricao || 'Módulos liberados' %></p>
+                    </div>
+                    <div class="p-6 space-y-3">
+                        <% modulos.forEach(m => { %>
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" 
+                                   class="modulo-check rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
+                                   data-grupo-id="<%= g.id %>" 
+                                   data-modulo-id="<%= m.id %>"
+                                   <%= (grupoModulosMap[g.id] || []).includes(m.id) ? 'checked' : '' %> />
+                            <i class="<%= m.icone %> text-slate-500 group-hover:text-blue-600 w-5"></i>
+                            <span class="text-sm font-medium text-slate-700"><%= m.nome %></span>
+                        </label>
+                        <% }); %>
+                        <button class="btn-salvar-modulos mt-4 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium" data-grupo-id="<%= g.id %>">
+                            Salvar alterações
+                        </button>
+                    </div>
+                </div>
+                <% }); %>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+(function() {
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('border-blue-500', 'text-blue-600'));
+            btn.classList.add('border-blue-500', 'text-blue-600');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            const el = document.getElementById('tab-' + tab);
+            if (el) el.classList.remove('hidden');
+        });
+    });
+    document.querySelector('[data-tab="pessoas"]').click();
+
+    // Usuário: alterar grupo
+    document.querySelectorAll('.usuario-grupo-select').forEach(sel => {
+        sel.addEventListener('change', async () => {
+            const id = sel.dataset.usuarioId;
+            const grupo_id = sel.value;
+            try {
+                const r = await fetch('/admin/usuarios/' + id + '/grupo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ grupo_id })
+                });
+                const d = await r.json();
+                if (d.success) alert('Grupo atualizado!');
+                else alert(d.message || 'Erro');
+            } catch (e) { alert('Erro: ' + e.message); }
+        });
+    });
+
+    // Grupos: Novo / Editar / Excluir
+    const formCard = document.getElementById('grupoFormCard');
+    const formId = document.getElementById('grupoFormId');
+    const formNome = document.getElementById('grupoFormNome');
+    const formDescricao = document.getElementById('grupoFormDescricao');
+    const formOrdem = document.getElementById('grupoFormOrdem');
+    const formTitle = document.getElementById('grupoFormTitle');
+
+    document.getElementById('btnNovoGrupo').onclick = () => {
+        formId.value = '';
+        formNome.value = '';
+        formDescricao.value = '';
+        formOrdem.value = '0';
+        formTitle.textContent = 'Novo Grupo';
+        formCard.classList.remove('hidden');
+    };
+
+    document.querySelectorAll('.editar-grupo').forEach(btn => {
+        btn.onclick = () => {
+            formId.value = btn.dataset.id;
+            formNome.value = btn.dataset.nome;
+            formDescricao.value = btn.dataset.descricao || '';
+            formTitle.textContent = 'Editar Grupo';
+            formCard.classList.remove('hidden');
+        };
+    });
+
+    document.getElementById('btnCancelarGrupo').onclick = () => formCard.classList.add('hidden');
+
+    document.getElementById('btnSalvarGrupo').onclick = async () => {
+        const id = formId.value;
+        const nome = formNome.value.trim();
+        if (!nome) { alert('Nome obrigatório'); return; }
+        try {
+            const r = await fetch('/admin/grupos/salvar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id || undefined, nome, descricao: formDescricao.value, ordem: formOrdem.value })
+            });
+            const d = await r.json();
+            if (d.success) location.reload();
+            else alert(d.message || 'Erro');
+        } catch (e) { alert('Erro: ' + e.message); }
+    };
+
+    document.querySelectorAll('.excluir-grupo').forEach(btn => {
+        btn.onclick = async () => {
+            if (!confirm('Excluir o grupo "' + btn.dataset.nome + '"?')) return;
+            try {
+                const r = await fetch('/admin/grupos/excluir/' + btn.dataset.id, { method: 'POST' });
+                const d = await r.json();
+                if (d.success) location.reload();
+                else alert(d.message || 'Erro');
+            } catch (e) { alert('Erro: ' + e.message); }
+        };
+    });
+
+    // Módulos: Salvar alterações por grupo
+    document.querySelectorAll('.btn-salvar-modulos').forEach(btn => {
+        btn.onclick = async () => {
+            const grupoId = btn.dataset.grupoId;
+            const checks = document.querySelectorAll('.modulo-check[data-grupo-id="' + grupoId + '"]:checked');
+            const moduloIds = Array.from(checks).map(c => parseInt(c.dataset.moduloId));
+            try {
+                const r = await fetch('/admin/grupos/' + grupoId + '/modulos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ modulo_ids: moduloIds })
+                });
+                const d = await r.json();
+                if (d.success) alert('Módulos atualizados!');
+                else alert(d.message || 'Erro');
+            } catch (e) { alert('Erro: ' + e.message); }
+        };
+    });
+})();
+</script>

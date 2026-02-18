@@ -102,8 +102,13 @@ module.exports = {
             // 7. Salva na Sessão
             req.session.user = {
                 id: userDb.cd_usuario,
+                cd_usuario: userDb.cd_usuario,
                 name: nomeParaSessao,
+                nm_usuario: userDb.nm_usuario,
+                ds_usuario: userDb.ds_usuario,
                 cpf: userDb.nr_cpf,
+                cd_perfil_inicial: userDb.cd_perfil_inicial,
+                grupo_id: userDb.grupo_id,
                 token: token
             };
 

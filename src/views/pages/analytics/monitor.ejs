@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor BI - DataCare Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-slate-100">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold">Monitor de Performance BI</h1>
+                <p class="text-blue-100 text-sm mt-1">Monitoramento em tempo real das consultas analytics</p>
+            </div>
+            <a href="/analytics" class="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 font-semibold">
+                <i class="fas fa-arrow-left mr-2"></i>Voltar
+            </a>
+        </div>
+    </div>
+
+    <div class="container mx-auto p-6">
+        <!-- Cards de Estatísticas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <!-- Total de Queries -->
+            <div class="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-600 uppercase">Total de Queries</h3>
+                    <i class="fas fa-database text-blue-500 text-2xl"></i>
+                </div>
+                <div class="text-3xl font-bold text-blue-600 mb-2" id="stat-total">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <p class="text-xs text-slate-500">Últimas 100 execuções</p>
+            </div>
+
+            <!-- Duração Média -->
+            <div class="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-600 uppercase">Duração Média</h3>
+                    <i class="fas fa-clock text-green-500 text-2xl"></i>
+                </div>
+                <div class="text-3xl font-bold text-green-600 mb-2" id="stat-avg-duration">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <p class="text-xs text-slate-500">Tempo médio de execução</p>
+            </div>
+
+            <!-- Queries Lentas -->
+            <div class="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-600 uppercase">Queries Lentas</h3>
+                    <i class="fas fa-exclamation-triangle text-orange-500 text-2xl"></i>
+                </div>
+                <div class="text-3xl font-bold text-orange-600 mb-2" id="stat-slow">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <p class="text-xs text-slate-500">&gt; 5 segundos</p>
+            </div>
+
+            <!-- Em Execução -->
+            <div class="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-600 uppercase">Em Execução</h3>
+                    <i class="fas fa-sync text-purple-500 text-2xl"></i>
+                </div>
+                <div class="text-3xl font-bold text-purple-600 mb-2" id="stat-running">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <p class="text-xs text-slate-500">Queries ativas agora</p>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="bg-white rounded-lg shadow-lg mb-6">
+            <div class="border-b border-slate-200">
+                <div class="flex">
+                    <button onclick="changeTab('overview')" id="tab-overview" class="tab-btn px-6 py-3 font-semibold text-blue-600 border-b-2 border-blue-600">
+                        <i class="fas fa-chart-line mr-2"></i>Visão Geral
+                    </button>
+                    <button onclick="changeTab('slow')" id="tab-slow" class="tab-btn px-6 py-3 font-semibold text-slate-600 hover:text-blue-600">
+                        <i class="fas fa-turtle mr-2"></i>Queries Lentas
+                    </button>
+                    <button onclick="changeTab('running')" id="tab-running" class="tab-btn px-6 py-3 font-semibold text-slate-600 hover:text-blue-600">
+                        <i class="fas fa-sync mr-2"></i>Em Execução
+                    </button>
+                    <button onclick="changeTab('cache')" id="tab-cache" class="tab-btn px-6 py-3 font-semibold text-slate-600 hover:text-blue-600">
+                        <i class="fas fa-database mr-2"></i>Cache
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6">
+                <!-- Tab: Visão Geral -->
+                <div id="content-overview" class="tab-content">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">Estatísticas Detalhadas</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-slate-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-slate-700 mb-3">Execuções</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span>Completadas:</span>
+                                    <span class="font-bold text-green-600" id="stat-completed">-</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Com Erro:</span>
+                                    <span class="font-bold text-red-600" id="stat-errors">-</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Taxa de Sucesso:</span>
+                                    <span class="font-bold text-blue-600" id="stat-success-rate">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-slate-700 mb-3">Performance</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span>Duração Mínima:</span>
+                                    <span class="font-bold text-green-600" id="stat-min">-</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Duração Máxima:</span>
+                                    <span class="font-bold text-red-600" id="stat-max">-</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Total de Registros:</span>
+                                    <span class="font-bold text-blue-600" id="stat-total-rows">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Queries Lentas -->
+                <div id="content-slow" class="tab-content hidden">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">Top 10 Queries Mais Lentas</h3>
+                    <div id="slow-queries-list" class="space-y-3">
+                        <div class="text-center py-8 text-slate-500">
+                            <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+                            <p>Carregando...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Em Execução -->
+                <div id="content-running" class="tab-content hidden">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">Queries Atualmente em Execução</h3>
+                    <div id="running-queries-list" class="space-y-3">
+                        <div class="text-center py-8 text-slate-500">
+                            <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+                            <p>Carregando...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Cache -->
+                <div id="content-cache" class="tab-content hidden">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">Estatísticas de Cache</h3>
+                    <div id="cache-stats" class="space-y-4">
+                        <div class="text-center py-8 text-slate-500">
+                            <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+                            <p>Carregando...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex gap-3">
+                        <button onclick="clearCache()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold">
+                            <i class="fas fa-trash mr-2"></i>Limpar Cache
+                        </button>
+                        <button onclick="loadData()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold">
+                            <i class="fas fa-sync mr-2"></i>Atualizar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ações -->
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-xl font-bold text-slate-800 mb-4">Ações</h3>
+            <div class="flex gap-3 flex-wrap">
+                <button onclick="loadData()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold">
+                    <i class="fas fa-sync mr-2"></i>Atualizar Dados
+                </button>
+                <button onclick="clearPerformance()" class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 font-semibold">
+                    <i class="fas fa-broom mr-2"></i>Limpar Histórico
+                </button>
+                <button onclick="exportReport()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold">
+                    <i class="fas fa-download mr-2"></i>Exportar Relatório
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+
+        // Carrega dados
+        async function loadData() {
+            try {
+                // Carrega estatísticas de performance
+                const perfRes = await fetch('/api/analytics/performance/report');
+                const perfData = await perfRes.json();
+                
+                if (perfData.success) {
+                    updateStats(perfData.report);
+                }
+                
+                // Carrega estatísticas de cache
+                const cacheRes = await fetch('/api/analytics/cache/stats');
+                const cacheData = await cacheRes.json();
+                
+                if (cacheData.success) {
+                    updateCache(cacheData.stats);
+                }
+                
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+            }
+        }
+
+        // Atualiza estatísticas
+        function updateStats(report) {
+            const stats = report.stats;
+            
+            document.getElementById('stat-total').textContent = stats.total;
+            document.getElementById('stat-avg-duration').textContent = stats.avgDuration + 'ms';
+            document.getElementById('stat-slow').textContent = stats.slowQueries;
+            document.getElementById('stat-running').textContent = stats.runningQueries;
+            
+            document.getElementById('stat-completed').textContent = stats.completed;
+            document.getElementById('stat-errors').textContent = stats.errors;
+            
+            const successRate = stats.total > 0 
+                ? ((stats.completed / stats.total) * 100).toFixed(1) + '%'
+                : '0%';
+            document.getElementById('stat-success-rate').textContent = successRate;
+            
+            document.getElementById('stat-min').textContent = stats.minDuration + 'ms';
+            document.getElementById('stat-max').textContent = stats.maxDuration + 'ms';
+            document.getElementById('stat-total-rows').textContent = stats.totalRows.toLocaleString('pt-BR');
+            
+            // Atualiza queries lentas
+            updateSlowQueries(report.slowQueries);
+            
+            // Atualiza queries em execução
+            updateRunningQueries(report.runningQueries);
+        }
+
+        // Atualiza queries lentas
+        function updateSlowQueries(queries) {
+            const container = document.getElementById('slow-queries-list');
+            
+            if (queries.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fas fa-check-circle text-4xl text-green-500 mb-3"></i><p>Nenhuma query lenta detectada!</p></div>';
+                return;
+            }
+            
+            container.innerHTML = queries.map((q, i) => `
+                <div class="bg-slate-50 p-4 rounded-lg border-l-4 border-orange-500">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-bold text-lg text-orange-600">#${i + 1}</span>
+                        <span class="text-sm font-semibold text-slate-700">${q.duration}ms</span>
+                    </div>
+                    <code class="text-xs text-slate-600 block mb-2">${q.sql}</code>
+                    <div class="text-xs text-slate-500">
+                        <i class="fas fa-table mr-1"></i>${q.rowCount} registros
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Atualiza queries em execução
+        function updateRunningQueries(queries) {
+            const container = document.getElementById('running-queries-list');
+            
+            if (queries.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fas fa-check-circle text-4xl text-green-500 mb-3"></i><p>Nenhuma query em execução no momento</p></div>';
+                return;
+            }
+            
+            container.innerHTML = queries.map(q => `
+                <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-bold text-sm text-blue-600">${q.id}</span>
+                        <span class="text-sm font-semibold text-slate-700">
+                            <i class="fas fa-clock mr-1"></i>${q.runningFor}ms
+                        </span>
+                    </div>
+                    <code class="text-xs text-slate-600 block">${q.sql}</code>
+                </div>
+            `).join('');
+        }
+
+        // Atualiza cache
+        function updateCache(stats) {
+            const container = document.getElementById('cache-stats');
+            
+            const html = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-slate-700 mb-3">
+                            <i class="fas fa-memory mr-2 text-purple-500"></i>Cache em Memória
+                        </h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span>Entradas:</span>
+                                <span class="font-bold">${stats.memory.size} / ${stats.memory.maxSize}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Utilização:</span>
+                                <span class="font-bold">${((stats.memory.size / stats.memory.maxSize) * 100).toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-slate-700 mb-3">
+                            <i class="fas fa-server mr-2 text-red-500"></i>Redis
+                        </h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span>Status:</span>
+                                <span class="font-bold ${stats.redis.connected ? 'text-green-600' : 'text-red-600'}">
+                                    ${stats.redis.connected ? 'Conectado' : 'Desconectado'}
+                                </span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Chaves:</span>
+                                <span class="font-bold">${stats.redis.keys}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        // Troca de tabs
+        function changeTab(tabName) {
+            // Remove active de todos os botões
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+                btn.classList.add('text-slate-600');
+            });
+            
+            // Adiciona active no botão clicado
+            const btn = document.getElementById('tab-' + tabName);
+            btn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            btn.classList.remove('text-slate-600');
+            
+            // Esconde todos os conteúdos
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Mostra o conteúdo selecionado
+            document.getElementById('content-' + tabName).classList.remove('hidden');
+        }
+
+        // Limpa cache
+        async function clearCache() {
+            if (!confirm('Tem certeza que deseja limpar todo o cache BI?')) return;
+            
+            try {
+                const res = await fetch('/api/analytics/cache/clear', { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('Cache limpo com sucesso!');
+                    loadData();
+                } else {
+                    alert('Erro ao limpar cache: ' + data.message);
+                }
+            } catch (error) {
+                alert('Erro ao limpar cache');
+                console.error(error);
+            }
+        }
+
+        // Limpa histórico de performance
+        async function clearPerformance() {
+            if (!confirm('Tem certeza que deseja limpar o histórico de performance?')) return;
+            
+            try {
+                const res = await fetch('/api/analytics/performance/clear', { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('Histórico limpo com sucesso!');
+                    loadData();
+                } else {
+                    alert('Erro ao limpar histórico: ' + data.message);
+                }
+            } catch (error) {
+                alert('Erro ao limpar histórico');
+                console.error(error);
+            }
+        }
+
+        // Exporta relatório
+        async function exportReport() {
+            try {
+                const res = await fetch('/api/analytics/performance/report');
+                const data = await res.json();
+                
+                if (data.success) {
+                    const blob = new Blob([JSON.stringify(data.report, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'bi-performance-report-' + new Date().toISOString() + '.json';
+                    a.click();
+                }
+            } catch (error) {
+                alert('Erro ao exportar relatório');
+                console.error(error);
+            }
+        }
+
+        // Auto-refresh a cada 5 segundos
+        function startAutoRefresh() {
+            autoRefreshInterval = setInterval(loadData, 5000);
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        }
+
+        // Inicialização
+        window.addEventListener('load', function() {
+            loadData();
+            startAutoRefresh();
+        });
+
+        // Para o auto-refresh quando a aba perde o foco
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopAutoRefresh();
+            } else {
+                startAutoRefresh();
+            }
+        });
+    </script>
+</body>
+</html>

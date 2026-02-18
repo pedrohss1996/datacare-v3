@@ -1,1047 +1,624 @@
-<!-- SweetAlert2 -->
+<!-- Construtor IA - Layout Full-Screen, Assistant Compacto, Visualização Ampliada -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
+<script src="/js/DataCareAutoDiscovery.js"></script>
+<script src="/js/DataCareBI.js"></script>
+<script src="/js/DataCareRenderer.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
-<!-- Analytics Builder - Interface Redesenhada para DataCare -->
-<div class="h-full bg-slate-50 flex flex-col">
-    
-    <!-- Header Principal -->
-    <div class="bg-white border-b border-slate-200 shadow-sm flex-shrink-0">
-        <div class="max-w-[1600px] mx-auto px-6 py-6">
-            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                
-                <!-- Título e Descrição -->
-                <div class="flex items-center gap-4">
-                    <div class="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                        <i class="fas fa-lightbulb text-2xl text-blue-600"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-slate-800">Analytics Builder</h1>
-                        <p class="text-sm text-slate-500 mt-1">
-                            <i class="fas fa-robot text-blue-500 mr-1"></i>
-                            Crie dashboards inteligentes com ajuda da IA
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Botões de Ação -->
-                <div class="flex flex-wrap gap-3">
-                    <button onclick="openTemplatesModal()" 
-                            class="inline-flex items-center px-4 py-2.5 border border-purple-200 rounded-xl text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 transition-all shadow-sm hover:shadow-md">
-                        <i class="fas fa-magic mr-2"></i>
-                        Templates
-                    </button>
-                    
-                    <button onclick="openQueryManager()" 
-                            class="inline-flex items-center px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-all shadow-sm hover:shadow-md">
-                        <i class="fas fa-database mr-2"></i>
-                        Gerenciar Queries
-                    </button>
-                    
-                    <a href="/analytics/lista" 
-                       class="inline-flex items-center px-4 py-2.5 border border-green-200 rounded-xl text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 transition-all shadow-sm hover:shadow-md">
-                        <i class="fas fa-list mr-2"></i>
-                        Meus Dashboards
-                    </a>
-                    
-                    <button onclick="saveCurrentPage()" 
-                            class="inline-flex items-center px-4 py-2.5 border border-transparent rounded-xl text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm hover:shadow-md">
-                        <i class="fas fa-save mr-2"></i>
-                        Salvar Dashboard
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Container Principal com Grid -->
-    <div class="flex-1 max-w-[1600px] mx-auto px-6 py-6 w-full overflow-hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
-
-            <!-- SIDEBAR ESQUERDA - Chat IA -->
-            <aside class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-                
-                <!-- Header do Chat -->
-                <div class="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-indigo-50">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm">
-                            <i class="fas fa-robot"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-slate-800 text-sm">Assistente IA</h3>
-                            <p class="text-xs text-slate-500">Gemini 2.5 Flash</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Histórico de Mensagens -->
-                <div id="chatHistory" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
-                    <div class="flex items-start gap-2">
-                        <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                            <i class="fas fa-robot text-xs"></i>
-                        </div>
-                        <div class="bg-white p-3 rounded-xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-600">
-                            Olá! 👋 Primeiro, clique em <b>"Gerenciar Queries"</b> para selecionar os dados. Depois, me diga como quer visualizar!
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Área de Input -->
-                <div class="p-4 bg-white border-t border-slate-100 space-y-3">
-                    
-                    <!-- Indicador de Query Ativa -->
-                    <div id="activeQueryIndicator" class="hidden bg-green-50 border border-green-200 rounded-lg p-2.5 flex justify-between items-center">
-                        <div class="flex items-center gap-2 flex-1 min-w-0">
-                            <i class="fas fa-check-circle text-green-600 text-xs flex-shrink-0"></i>
-                            <span class="text-[10px] text-green-700 font-medium truncate">
-                                Query: <b id="lblActiveQuery">-</b>
-                            </span>
-                        </div>
-                        <button onclick="clearActiveQuery()" 
-                                class="text-red-400 hover:text-red-600 transition flex-shrink-0">
-                            <i class="fas fa-times text-xs"></i>
-                        </button>
-                    </div>
-
-                    <!-- Textarea do Prompt -->
-                    <div class="relative">
-                        <textarea id="promptInput" 
-                                  rows="3" 
-                                  class="w-full bg-slate-50 border border-slate-200 text-sm p-3 pr-12 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white outline-none resize-none transition" 
-                                  placeholder="Ex: Crie cards de KPI e gráfico de linha..."></textarea>
-                        
-                        <button onclick="sendMessage()" 
-                                class="absolute bottom-2.5 right-2.5 bg-blue-600 hover:bg-blue-700 text-white w-9 h-9 rounded-lg flex items-center justify-center transition shadow-sm hover:shadow-md">
-                            <i class="fas fa-paper-plane text-xs"></i>
-                        </button>
-                    </div>
-
-                    <p class="text-[10px] text-slate-400 text-center">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Pressione Enter para enviar
-                    </p>
-                </div>
-            </aside>
-
-            <!-- ÁREA CENTRAL - Preview do Dashboard -->
-            <main class="lg:col-span-9 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-                
-                <!-- Toolbar Superior -->
-                <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50">
-                    
-                    <!-- Info do Dashboard -->
-                    <div class="flex-1">
-                        <h2 class="text-lg font-bold text-slate-800" id="dashboardTitle">
-                            Dashboard em Branco
-                        </h2>
-                        <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
-                            <span class="flex items-center gap-1">
-                                <i class="fas fa-circle text-[6px] text-slate-400"></i>
-                                Aguardando instruções
-                            </span>
-                            <span class="text-slate-300">|</span>
-                            <span id="dataSourceName" class="flex items-center gap-1">
-                                <i class="fas fa-database text-[10px]"></i>
-                                Nenhuma fonte
-                            </span>
-                        </p>
-                    </div>
-
-                    <!-- Botões de Ação e Toggle -->
-                    <div class="flex items-center gap-3">
-                        <!-- Botão Desfazer -->
-                        <button onclick="undoLastChange()" 
-                                id="btnUndo"
-                                disabled
-                                class="px-4 py-2 bg-slate-100 text-slate-400 rounded-lg text-sm font-medium transition-all border border-slate-200 cursor-not-allowed flex items-center gap-2"
-                                title="Desfazer última alteração">
-                            <i class="fas fa-undo"></i>
-                            <span class="hidden sm:inline">Desfazer</span>
-                        </button>
-                        
-                        <!-- Toggle Visual/Código -->
-                        <div class="bg-slate-100 p-1 rounded-lg flex text-xs font-semibold border border-slate-200">
-                            <button onclick="toggleView('visual')" 
-                                    id="btnViewVisual" 
-                                    class="px-4 py-2 rounded-md bg-white text-blue-600 shadow-sm transition-all">
-                                <i class="fas fa-eye mr-1.5"></i>
-                                Visual
-                            </button>
-                            <button onclick="toggleView('code')" 
-                                    id="btnViewCode" 
-                                    class="px-4 py-2 rounded-md text-slate-500 hover:text-slate-700 transition-all">
-                                <i class="fas fa-code mr-1.5"></i>
-                                Código
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Container do Preview -->
-                <div class="flex-1 relative overflow-hidden bg-slate-50">
-                    
-                    <!-- Modo Visual -->
-                    <div id="dashboardContainer" class="absolute inset-0 overflow-y-auto">
-                        <div class="h-full flex flex-col items-center justify-center text-slate-300">
-                            <div class="text-center space-y-4">
-                                <i class="fas fa-chart-line text-7xl opacity-20"></i>
-                                <div>
-                                    <p class="text-sm font-medium text-slate-400">Nenhum dashboard gerado ainda</p>
-                                    <p class="text-xs text-slate-400 mt-2">
-                                        Selecione uma query e envie um comando no chat
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Modo Código -->
-                    <div id="codeContainer" class="hidden absolute inset-0 bg-slate-900 relative">
-                        <textarea id="htmlOutput" 
-                                  readonly 
-                                  class="w-full h-full bg-slate-900 text-green-400 font-mono text-xs p-6 outline-none resize-none leading-relaxed" 
-                                  spellcheck="false"></textarea>
-                        
-                        <button onclick="copyHtmlCode()" 
-                                class="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-bold backdrop-blur-md transition border border-white/10 flex items-center gap-2">
-                            <i class="far fa-copy"></i>
-                            Copiar HTML
-                        </button>
-                    </div>
-
-                    <!-- Loading Overlay -->
-                    <div id="loadingOverlay" class="hidden absolute inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
-                        <div class="relative">
-                            <div class="animate-spin rounded-full h-16 w-16 border-4 border-blue-100 border-t-blue-600"></div>
-                            <i class="fas fa-robot absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-600 text-xl"></i>
-                        </div>
-                        <p class="text-slate-600 font-medium mt-6 animate-pulse">Processando com IA Gemini...</p>
-                        <p class="text-xs text-slate-400 mt-2">Isso pode levar alguns segundos</p>
-                    </div>
-                </div>
-            </main>
-
-        </div>
-    </div>
-</div>
-
-<!-- MODAL: Gerenciador de Queries -->
-<div id="queryModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm"
-     onclick="if(event.target === this) closeQueryManager()">
-    
-    <div class="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-[1000px] h-[85vh] flex flex-col overflow-hidden">
-        
-        <!-- Header -->
-        <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-database text-blue-600"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-slate-800">Gerenciador de Consultas</h3>
-                    <p class="text-xs text-slate-500">Crie e gerencie queries Oracle</p>
-                </div>
-            </div>
-            <button onclick="closeQueryManager()" 
-                    class="text-slate-400 hover:text-red-500 transition w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center">
-                <i class="fas fa-times text-lg"></i>
-            </button>
-        </div>
-
-        <!-- Corpo do Modal -->
-        <div class="flex flex-1 overflow-hidden">
-            
-            <!-- Lista de Queries Salvas -->
-            <div class="w-80 border-r border-slate-200 bg-slate-50 flex flex-col">
-                <div class="p-3 border-b border-slate-200">
-                    <button onclick="resetEditor()" 
-                            class="w-full bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700 py-2.5 rounded-lg font-medium shadow-sm transition text-sm flex items-center justify-center gap-2">
-                        <i class="fas fa-plus"></i>
-                        Nova Consulta
-                    </button>
-                </div>
-                
-                <div class="flex-1 overflow-y-auto p-2 space-y-1" id="savedQueriesList">
-                    <% if (savedWidgets && savedWidgets.length > 0) { %>
-                        <% savedWidgets.forEach(widget => { %>
-                            <div class="group flex items-center gap-2 p-3 rounded-lg hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition cursor-pointer"
-                                 onclick="loadQueryIntoEditor('<%= widget.id %>', `<%= widget.oracle_sql_query %>`, `<%= widget.title %>`)">
-                                
-                                <div class="flex-shrink-0 w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                                    <i class="fas fa-file-code text-blue-600 text-xs"></i>
-                                </div>
-                                
-                                <div class="flex-1 min-w-0">
-                                    <div class="font-semibold text-sm text-slate-700 truncate"><%= widget.title %></div>
-                                    <div class="text-[10px] text-slate-400 truncate"><%= widget.description || 'SQL Personalizado' %></div>
-                                </div>
-                                
-                                <button onclick="deleteQuery('<%= widget.id %>', event)" 
-                                        class="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition"
-                                        title="Excluir Query">
-                                    <i class="fas fa-trash-alt text-xs"></i>
-                                </button>
-                            </div>
-                        <% }) %>
-                    <% } else { %>
-                        <div class="text-center py-8">
-                            <i class="fas fa-database text-3xl text-slate-200 mb-2"></i>
-                            <p class="text-xs text-slate-400">Nenhuma query salva</p>
-                        </div>
-                    <% } %>
-                </div>
-            </div>
-
-            <!-- Editor SQL -->
-            <div class="flex-1 flex flex-col bg-slate-900 relative">
-                
-                <!-- Toolbar do Editor -->
-                <div class="px-4 py-3 bg-slate-800 border-b border-slate-700 flex justify-between items-center gap-3">
-                    <input type="text" 
-                           id="queryNameInput" 
-                           class="flex-1 bg-slate-700 text-white text-sm px-3 py-2 rounded-lg border border-slate-600 focus:border-blue-500 outline-none transition" 
-                           placeholder="Nome da Consulta (Ex: Ocupação UTI)">
-                    
-                    <div class="flex gap-2">
-                        <button onclick="runTestInModal()" 
-                                class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold transition text-sm flex items-center gap-2">
-                            <i class="fas fa-play"></i>
-                            Testar
-                        </button>
-                        <button onclick="saveQueryToLibrary()" 
-                                class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-semibold transition text-sm flex items-center gap-2">
-                            <i class="fas fa-save"></i>
-                            Salvar
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Textarea do SQL -->
-                <textarea id="modalSqlInput" 
-                          class="flex-1 w-full bg-slate-900 text-green-400 font-mono text-sm p-4 outline-none resize-none leading-relaxed" 
-                          spellcheck="false" 
-                          placeholder="-- Digite sua query Oracle aqui...&#10;SELECT * FROM dual"></textarea>
-                
-                <!-- Console de Status -->
-                <div id="modalStatusArea" 
-                     class="h-28 bg-slate-950 border-t border-slate-800 p-3 overflow-auto font-mono text-xs text-slate-400">
-                    <span class="text-slate-500">></span> Selecione uma query ou escreva uma nova...
-                </div>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center">
-            <span class="text-xs text-slate-500" id="selectionStatus">
-                <i class="fas fa-info-circle mr-1"></i>
-                Nenhuma query selecionada
+<div class="h-screen flex flex-col bg-slate-100 overflow-hidden">
+    <!-- Header minimalista -->
+    <header class="flex-shrink-0 bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <h1 class="text-lg font-bold text-slate-800">Construtor IA</h1>
+            <span id="queryBadge" class="text-xs px-2 py-1 rounded bg-slate-100 text-slate-500 hidden">
+                <i class="fas fa-database mr-1"></i><span id="lblQueryName">-</span>
             </span>
-            
-            <button onclick="applyQueryToDashboard()" 
-                    id="btnApply" 
-                    disabled 
-                    class="bg-slate-200 text-slate-400 px-6 py-2.5 rounded-lg font-bold text-sm transition cursor-not-allowed flex items-center gap-2">
-                <i class="fas fa-check"></i>
-                Usar Esta Query
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="openQueryManager()" class="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+                <i class="fas fa-database mr-1"></i>Queries
+            </button>
+            <button onclick="openTemplatesModal()" class="px-3 py-1.5 text-sm border border-purple-200 rounded-lg text-purple-600 bg-purple-50 hover:bg-purple-100 transition">
+                <i class="fas fa-magic mr-1"></i>Templates
+            </button>
+            <button onclick="saveCurrentPage()" class="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
+                <i class="fas fa-save mr-1"></i>Salvar
             </button>
         </div>
+    </header>
+
+    <!-- Corpo principal: Assistant (estreito) | Visualização (ampliada) -->
+    <div class="flex-1 flex min-h-0">
+        <!-- Painel Assistant - Compacto, colapsável -->
+        <aside id="assistantPanel" class="flex-shrink-0 w-72 bg-white border-r border-slate-200 flex flex-col overflow-hidden transition-all duration-300">
+            <div class="p-3 border-b border-slate-100 space-y-2">
+                <select id="api_model_construtor" class="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-2 bg-white">
+                    <option value="gemini-3-flash-preview" selected>Gemini 3 Flash</option>
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                    <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                </select>
+                <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                    <input type="checkbox" id="use_auto_discovery" class="rounded">
+                    Auto-Discovery (instantâneo)
+                </label>
+                <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer" title="Por padrão gera página HTML completa. Marque para usar JSON/DataCareBI.">
+                    <input type="checkbox" id="chkJsonMode" class="rounded">
+                    Modo JSON (DataCareBI)
+                </label>
+            </div>
+            <input id="indicatorNameInput" type="text" placeholder="Nome do indicador" class="mx-3 mt-2 text-sm border border-slate-200 rounded-lg px-2.5 py-2 w-[calc(100%-24px)]">
+            <div id="chatHistory" class="flex-1 overflow-y-auto p-2 space-y-2 text-xs"></div>
+            <div class="p-3 border-t border-slate-100">
+                <textarea id="promptInput" rows="2" placeholder="Ex: Adicione filtro de data / Mude cor do 1º card / Crie dashboard..." class="w-full text-sm border border-slate-200 rounded-lg p-2.5 resize-none focus:ring-2 focus:ring-blue-500"></textarea>
+                <button onclick="sendMessage()" class="mt-2 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2">
+                    <i class="fas fa-paper-plane"></i> Enviar
+                </button>
+            </div>
+        </aside>
+        <button id="btnToggleAssistant" onclick="toggleAssistant()" class="flex-shrink-0 w-6 bg-slate-100 hover:bg-slate-200 border-r border-slate-200 flex items-center justify-center text-slate-500 cursor-pointer" title="Ocultar/Mostrar assistant">
+            <i class="fas fa-chevron-left text-xs"></i>
+        </button>
+
+        <!-- Área de Visualização - Dominante -->
+        <main class="flex-1 flex flex-col min-w-0 min-h-0">
+            <div class="flex-shrink-0 px-4 py-2 bg-white border-b border-slate-200 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <span id="dashboardTitle" class="font-semibold text-slate-700">Dashboard</span>
+                    <div class="flex gap-1">
+                        <button id="btnViewDashboard" onclick="setViewMode('dashboard')" class="px-3 py-1.5 text-sm rounded-lg font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                            <i class="fas fa-chart-line mr-1"></i>Visualização
+                        </button>
+                        <button id="btnViewCode" onclick="showHtmlCode()" class="px-3 py-1.5 text-sm rounded-lg font-medium text-slate-600 hover:bg-slate-100 border border-transparent">
+                            <i class="fas fa-code mr-1"></i>Código
+                        </button>
+                    </div>
+                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" id="chkEditMode" onchange="toggleEditMode(this.checked)">
+                        <span class="text-slate-600">Editar widgets</span>
+                    </label>
+                </div>
+            </div>
+            <div class="flex-1 relative overflow-hidden bg-slate-50">
+                <!-- Vista Dashboard -->
+                <div id="dashboardContainer" class="absolute inset-0 overflow-y-auto">
+                    <div id="dashboard-inner" class="min-h-full flex flex-col items-center justify-center text-slate-400 p-8">
+                        <i class="fas fa-chart-pie text-6xl opacity-30 mb-4"></i>
+                        <p class="text-sm">Selecione uma query e envie um comando no chat</p>
+                        <p class="text-xs mt-1">Por padrão: página HTML completa com KPIs, gráficos e tabela</p>
+                    </div>
+                </div>
+                <!-- Vista Código HTML -->
+                <div id="codeViewContainer" class="hidden absolute inset-0 flex flex-col bg-[#282c34]">
+                    <div class="flex-shrink-0 px-4 py-2 bg-slate-800 flex justify-between items-center">
+                        <span class="text-white text-sm font-medium">Código HTML</span>
+                        <div class="flex gap-2">
+                            <button id="btnCodeCopy" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs">Copiar</button>
+                            <button onclick="setViewMode('dashboard')" class="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 text-white rounded text-xs">Voltar</button>
+                        </div>
+                    </div>
+                    <pre class="flex-1 m-0 p-6 overflow-auto text-sm"><code id="codeViewContent" class="language-html"></code></pre>
+                    <textarea id="codeViewRaw" class="hidden"></textarea>
+                </div>
+                <div id="loadingOverlay" class="hidden absolute inset-0 bg-white/90 flex flex-col items-center justify-center z-50">
+                    <div class="animate-spin w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full"></div>
+                    <p class="mt-4 text-slate-600 font-medium">Processando com Gemini...</p>
+                </div>
+            </div>
+        </main>
     </div>
 </div>
 
-<!-- MODAL: Templates -->
-<div id="templatesModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm"
-     onclick="if(event.target === this) closeTemplatesModal()">
-    
-    <div class="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-[1200px] max-h-[90vh] flex flex-col overflow-hidden">
-        
-        <!-- Header -->
-        <div class="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-gradient-to-r from-purple-50 to-pink-50">
-            <div class="flex items-center gap-3">
-                <div class="w-11 h-11 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
-                    <i class="fas fa-magic text-white text-lg"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-slate-800 text-lg">Templates de Dashboard</h3>
-                    <p class="text-xs text-slate-500">Layouts profissionais pré-configurados</p>
-                </div>
+<!-- Modal Queries - Layout amplo, editor central -->
+<div id="queryModal" class="hidden fixed inset-0 z-50 flex flex-col bg-slate-900" onclick="if(event.target===this)closeQueryManager()">
+    <div class="flex-1 flex min-h-0 w-full max-w-[100vw]">
+        <!-- Sidebar de queries - compacta -->
+        <aside class="w-72 flex-shrink-0 bg-slate-800 border-r border-slate-700 flex flex-col">
+            <div class="p-3 border-b border-slate-700 flex items-center justify-between">
+                <h3 class="font-semibold text-white text-sm">Queries</h3>
+                <button onclick="closeQueryManager()" class="text-slate-400 hover:text-white w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700 transition">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <button onclick="closeTemplatesModal()" 
-                    class="text-slate-400 hover:text-red-500 transition w-9 h-9 rounded-lg hover:bg-white/50 flex items-center justify-center">
-                <i class="fas fa-times text-lg"></i>
+            <button onclick="resetEditor()" class="m-3 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition">
+                <i class="fas fa-plus"></i> Nova Query
             </button>
-        </div>
-
-        <!-- Grid de Templates -->
-        <div class="p-6 overflow-y-auto flex-1 bg-slate-50">
-            <div id="templatesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                <!-- Templates serão carregados dinamicamente aqui -->
+            <div id="savedQueriesList" class="flex-1 overflow-y-auto p-2 space-y-1">
+                <% if (savedWidgets && savedWidgets.length > 0) { %>
+                    <% savedWidgets.forEach(widget => { %>
+                        <div class="query-item flex items-center gap-2 p-2.5 rounded-lg hover:bg-slate-700/50 cursor-pointer transition group border-l-2 border-l-transparent"
+                             data-id="<%= widget.id %>">
+                            <i class="fas fa-file-code text-slate-500 text-xs flex-shrink-0 w-4"></i>
+                            <span class="font-medium text-slate-200 text-sm truncate flex-1 min-w-0"><%= widget.title %></span>
+                            <button onclick="deleteQuery('<%= widget.id %>', event)" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 p-1 rounded flex-shrink-0 transition" title="Excluir">
+                                <i class="fas fa-trash-alt text-xs"></i>
+                            </button>
+                        </div>
+                    <% }); %>
+                <% } else { %>
+                    <div class="text-center py-8 text-slate-500 text-sm">Nenhuma query salva</div>
+                <% } %>
             </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="px-6 py-4 border-t border-slate-200 bg-white">
-            <div class="flex items-start gap-2 text-xs text-slate-500">
-                <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
-                <p>
-                    Os templates são pré-configurados com layouts profissionais. 
-                    <b>Selecione um e conecte com sua query</b> para gerar o dashboard automaticamente.
-                </p>
+        </aside>
+        <!-- Editor principal - domina o espaço -->
+        <main class="flex-1 flex flex-col min-w-0">
+            <div class="flex-shrink-0 bg-slate-800 border-b border-slate-700 px-4 py-2 flex items-center gap-3">
+                <input type="hidden" id="editingQueryId">
+                <input id="queryNameInput" type="text" placeholder="Nome da query..." class="flex-1 min-w-0 bg-slate-700/50 border border-slate-600 text-white placeholder-slate-400 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                <button onclick="runTestInModal()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition shrink-0">
+                    <i class="fas fa-play"></i> Testar
+                </button>
+                <button onclick="saveQueryToLibrary()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition shrink-0">
+                    <i class="fas fa-save"></i> Salvar
+                </button>
+                <button id="btnApply" disabled onclick="openApplyOptionsModal()" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600">
+                    <i class="fas fa-check"></i> Usar Esta Query
+                </button>
             </div>
-        </div>
+            <div class="flex-1 flex flex-col min-h-0">
+                <textarea id="modalSqlInput" class="flex-1 w-full bg-slate-900 text-emerald-400 font-mono text-[13px] leading-relaxed p-5 resize-none focus:outline-none focus:ring-0 placeholder-slate-500" placeholder="-- Digite sua query SQL aqui&#10;SELECT * FROM ..." spellcheck="false"></textarea>
+                <div id="modalStatusArea" class="flex-shrink-0 h-9 px-4 py-1.5 bg-slate-950 border-t border-slate-800 text-xs text-slate-500 font-mono flex items-center">
+                    <i class="fas fa-info-circle mr-2 text-slate-600"></i><span id="modalStatusText">Selecione uma query ou crie uma nova</span>
+                </div>
+            </div>
+        </main>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Modal Templates -->
+<div id="templatesModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onclick="if(event.target===this)closeTemplatesModal()">
+    <div class="bg-white rounded-xl shadow-2xl w-[90vw] max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
+        <div class="px-6 py-4 border-b flex justify-between">
+            <h3 class="font-bold text-slate-800">Templates</h3>
+            <button onclick="closeTemplatesModal()" class="text-slate-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="templatesGrid" class="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+</div>
+
 <script>
-    // ESTADO GLOBAL
+window.__SAVED_QUERIES__ = <%- (typeof savedWidgets !== 'undefined' && savedWidgets) ? JSON.stringify(savedWidgets.map(w => ({ id: w.id, title: w.title || '', sql: (w.oracle_sql_query || w.query_sql || '').toString() }))).replace(/<\//g, '<\\/') : '[]' %>;
+window.__PASTAS__ = <%- (typeof pastas !== 'undefined' && pastas) ? JSON.stringify(pastas) : '[]' %>;
+(function() {
     let activeSql = '';
     let activeQueryName = '';
     let currentHtmlCode = '';
-    
-    // SISTEMA DE HISTÓRICO (UNDO)
-    let dashboardHistory = [];
-    const MAX_HISTORY = 10; // Máximo de 10 versões no histórico
+    let lastBiConfig = null;
+    let lastRawData = null;
+    let editMode = false;
+    let viewMode = 'dashboard';
+    let assistantCollapsed = false;
 
-    // === SISTEMA DE HISTÓRICO (UNDO) ===
-    function saveToHistory(html) {
-        if (!html || html.trim() === '') return;
-        
-        // Adiciona ao histórico
-        dashboardHistory.push(html);
-        
-        // Limita o tamanho do histórico
-        if (dashboardHistory.length > MAX_HISTORY) {
-            dashboardHistory.shift(); // Remove o mais antigo
-        }
-        
-        // Atualiza o botão de desfazer
-        updateUndoButton();
-        
-        console.log(`📚 [Histórico] Versão salva. Total: ${dashboardHistory.length}`);
-    }
-    
-    function undoLastChange() {
-        if (dashboardHistory.length < 2) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Sem Histórico',
-                text: 'Não há alterações anteriores para desfazer.',
-                confirmButtonColor: '#3b82f6'
-            });
-            return;
-        }
-        
-        // Remove a versão atual (última)
-        dashboardHistory.pop();
-        
-        // Pega a versão anterior
-        const previousVersion = dashboardHistory[dashboardHistory.length - 1];
-        
-        if (previousVersion) {
-            console.log('↩️ [Histórico] Desfazendo última alteração...');
-            
-            currentHtmlCode = previousVersion;
-            renderDashboard(previousVersion);
-            
-            // Atualiza o textarea de código se estiver visível
-            if (!document.getElementById('codeContainer').classList.contains('hidden')) {
-                document.getElementById('htmlOutput').value = previousVersion;
-            }
-            
-            botReply('↩️ Alteração desfeita! Dashboard restaurado para versão anterior.');
-            updateUndoButton();
-        }
-    }
-    
-    function updateUndoButton() {
-        const btn = document.getElementById('btnUndo');
-        const hasHistory = dashboardHistory.length > 1;
-        
-        if (hasHistory) {
-            btn.disabled = false;
-            btn.classList.remove('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
-            btn.classList.add('bg-orange-50', 'text-orange-600', 'hover:bg-orange-100', 'cursor-pointer', 'border-orange-200');
-            btn.title = `Desfazer última alteração (${dashboardHistory.length - 1} versões disponíveis)`;
+    function toggleAssistant() {
+        assistantCollapsed = !assistantCollapsed;
+        const panel = document.getElementById('assistantPanel');
+        const btn = document.getElementById('btnToggleAssistant');
+        if (assistantCollapsed) {
+            panel.classList.add('hidden');
+            btn.querySelector('i').className = 'fas fa-chevron-right text-xs';
         } else {
-            btn.disabled = true;
-            btn.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
-            btn.classList.remove('bg-orange-50', 'text-orange-600', 'hover:bg-orange-100', 'cursor-pointer', 'border-orange-200');
-            btn.title = 'Nenhuma alteração para desfazer';
+            panel.classList.remove('hidden');
+            btn.querySelector('i').className = 'fas fa-chevron-left text-xs';
         }
     }
 
-    // === FUNÇÕES DE VISUALIZAÇÃO ===
-    function toggleView(mode) {
-        const visualBtn = document.getElementById('btnViewVisual');
-        const codeBtn = document.getElementById('btnViewCode');
-        const visualContainer = document.getElementById('dashboardContainer');
-        const codeContainer = document.getElementById('codeContainer');
-
-        if (mode === 'visual') {
-            visualBtn.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
-            visualBtn.classList.remove('text-slate-500');
-            codeBtn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
-            codeBtn.classList.add('text-slate-500');
-
-            visualContainer.classList.remove('hidden');
-            codeContainer.classList.add('hidden');
-        } else {
-            codeBtn.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
-            codeBtn.classList.remove('text-slate-500');
-            visualBtn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
-            visualBtn.classList.add('text-slate-500');
-
-            visualContainer.classList.add('hidden');
-            codeContainer.classList.remove('hidden');
-            
-            document.getElementById('htmlOutput').value = currentHtmlCode || '';
-        }
+    function setViewMode(mode) {
+        viewMode = mode;
+        document.getElementById('dashboardContainer').classList.toggle('hidden', mode === 'code');
+        document.getElementById('codeViewContainer').classList.toggle('hidden', mode !== 'code');
+        document.getElementById('btnViewDashboard').className = mode === 'dashboard' ? 'px-3 py-1.5 text-sm rounded-lg font-medium bg-blue-100 text-blue-700 border border-blue-200' : 'px-3 py-1.5 text-sm rounded-lg font-medium text-slate-600 hover:bg-slate-100 border border-transparent';
+        document.getElementById('btnViewCode').className = mode === 'code' ? 'px-3 py-1.5 text-sm rounded-lg font-medium bg-blue-100 text-blue-700 border border-blue-200' : 'px-3 py-1.5 text-sm rounded-lg font-medium text-slate-600 hover:bg-slate-100 border border-transparent';
     }
 
-    function copyHtmlCode() {
-        const copyText = document.getElementById("htmlOutput");
-        copyText.select();
-        document.execCommand("copy");
-        
-        // Feedback visual
-        const btn = event.target.closest('button');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check mr-2"></i>Copiado!';
-        setTimeout(() => { btn.innerHTML = originalText; }, 2000);
-    }
-
-    // === CHAT LOGIC ===
-    async function sendMessage() {
-        const prompt = document.getElementById('promptInput').value.trim();
-        
-        console.log('🚀 [FRONTEND] sendMessage() chamado');
-        
-        if (!prompt) {
-            console.warn('⚠️ [FRONTEND] Prompt vazio');
-            return;
-        }
-        
-        if (!activeSql) {
-            console.warn('⚠️ [FRONTEND] Nenhuma query ativa');
-            botReply("⚠️ Por favor, abra 'Gerenciar Queries' e selecione uma consulta primeiro.");
-            return;
-        }
-
-        // Salva a versão atual no histórico ANTES de gerar uma nova
-        if (currentHtmlCode && currentHtmlCode.trim() !== '') {
-            saveToHistory(currentHtmlCode);
-        }
-
-        addMessage(prompt, 'user');
-        document.getElementById('promptInput').value = '';
-        toggleLoading(true);
-
-        try {
-            const requestBody = { 
-                prompt: prompt,
-                sqlQuery: activeSql 
-            };
-            
-            const response = await fetch('/api/analytics/preview', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            });
-            
-            const data = await response.json();
-
-            if (data.success) {
-                console.log('✅ [FRONTEND] Dashboard gerado com sucesso!');
-                currentHtmlCode = data.previewHtml;
-                renderDashboard(data.previewHtml);
-                botReply("✅ Dashboard atualizado! Confira no preview.");
-                
-                if(!document.getElementById('codeContainer').classList.contains('hidden')) {
-                     document.getElementById('htmlOutput').value = currentHtmlCode;
-                }
-            } else {
-                console.error('❌ [FRONTEND] Erro:', data.message);
-                botReply("❌ Erro: " + (data.message || 'Desconhecido'));
-            }
-        } catch (e) {
-            console.error('❌ [FRONTEND] Erro na requisição:', e);
-            botReply("❌ Erro de conexão: " + e.message);
-        } finally {
-            toggleLoading(false);
-        }
+    function toggleEditMode(on) {
+        editMode = on;
+        document.querySelectorAll('[data-widget-id]').forEach(el => {
+            const ctrl = el.querySelector('.bi-widget-ctrl');
+            if (ctrl) ctrl.classList.toggle('hidden', !on);
+        });
     }
 
     function addMessage(text, type) {
         const history = document.getElementById('chatHistory');
         const isUser = type === 'user';
-        
-        const html = `
-            <div class="flex items-start gap-2 ${isUser ? 'justify-end' : ''} animate-fade-in">
-                ${!isUser ? `<div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><i class="fas fa-robot text-xs"></i></div>` : ''}
-                <div class="${isUser ? 'bg-blue-600 text-white rounded-xl rounded-tr-none' : 'bg-white text-slate-600 rounded-xl rounded-tl-none border border-slate-100'} p-3 shadow-sm text-xs max-w-[85%]">
-                    ${text}
-                </div>
-                ${isUser ? `<div class="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center text-slate-600 flex-shrink-0"><i class="fas fa-user text-xs"></i></div>` : ''}
-            </div>
-        `;
-        
-        history.insertAdjacentHTML('beforeend', html);
+        const div = document.createElement('div');
+        div.className = 'flex gap-2 ' + (isUser ? 'justify-end' : '');
+        div.innerHTML = (isUser ? '' : '<div class="w-6 h-6 rounded bg-blue-100 flex items-center justify-center flex-shrink-0"><i class="fas fa-robot text-blue-600 text-[10px]"></i></div>') +
+            '<div class="max-w-[90%] p-2 rounded-lg ' + (isUser ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700') + ' text-xs">' + text + '</div>' +
+            (isUser ? '<div class="w-6 h-6 rounded bg-slate-200 flex items-center justify-center flex-shrink-0"><i class="fas fa-user text-slate-600 text-[10px]"></i></div>' : '');
+        history.appendChild(div);
         history.scrollTop = history.scrollHeight;
     }
 
-    function botReply(text) { 
-        addMessage(text, 'bot'); 
+    function botReply(t) { addMessage(t, 'bot'); }
+
+    async function sendMessage() {
+        const prompt = document.getElementById('promptInput').value.trim();
+        if (!prompt) return;
+        if (!activeSql) {
+            botReply('Selecione uma query em <b>Queries</b> primeiro.');
+            return;
+        }
+        addMessage(prompt, 'user');
+        document.getElementById('promptInput').value = '';
+
+        // Padrão: página HTML completa. Marcar "Modo JSON" usa DataCareBI.
+        const useJsonMode = document.getElementById('chkJsonMode')?.checked;
+        const model = document.getElementById('api_model_construtor')?.value || 'gemini-3-flash-preview';
+
+        if (!useJsonMode) {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            try {
+                const payload = {
+                    prompt,
+                    sqlQuery: activeSql,
+                    model,
+                    contexto: activeQueryName || undefined
+                };
+                if (currentHtmlCode && currentHtmlCode !== '<!-- biConfig -->') {
+                    payload.currentHtml = currentHtmlCode;
+                    payload.modifyExisting = true;
+                }
+                const res = await fetch('/api/analytics/preview', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success && data.previewHtml) {
+                    currentHtmlCode = data.previewHtml;
+                    lastRawData = data.rawResult || lastRawData;
+                    renderDashboardHtml(data.previewHtml, data.rawResult);
+                    botReply('Dashboard atualizado!');
+                } else botReply('Erro: ' + (data.message || 'Falha'));
+            } catch (e) { botReply('Erro: ' + e.message); }
+            finally { document.getElementById('loadingOverlay').classList.add('hidden'); }
+            return;
+        }
+        await initSmartDashboard({ prompt, sqlQuery: activeSql, model });
     }
 
-    // === MODAL QUERY MANAGER ===
-    function openQueryManager() { 
-        document.getElementById('queryModal').classList.remove('hidden'); 
-    }
-    
-    function closeQueryManager() { 
-        document.getElementById('queryModal').classList.add('hidden'); 
+    function renderDashboardHtml(html, rawData) {
+        const inner = document.getElementById('dashboard-inner');
+        if (!inner) return;
+        if (rawData && Array.isArray(rawData)) {
+            window.DB_DATA = rawData;
+        }
+        const wrap = document.getElementById('dashboardContainer');
+        wrap.innerHTML = '<div id="dashboard-container" class="p-6 w-full overflow-y-auto"></div>';
+        document.getElementById('dashboard-container').innerHTML = html;
+        [].slice.call(document.querySelectorAll('#dashboard-container script')).forEach(s => {
+            const n = document.createElement('script');
+            if (s.src) n.src = s.src; else n.text = s.innerHTML;
+            document.body.appendChild(n);
+        });
+        if (rawData && Array.isArray(rawData)) window.DB_DATA = rawData;
+        setTimeout(function() {
+            if (typeof window.initDashboard === 'function') window.initDashboard();
+        }, 150);
     }
 
+    function renderSkeleton() {
+        const wrap = document.getElementById('dashboardContainer');
+        wrap.innerHTML = `<div id="dashboard-container" class="p-6 overflow-y-auto">
+            <div class="h-8 bg-slate-200 rounded w-1/4 mb-6 animate-pulse"></div>
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="h-28 bg-slate-200 rounded-xl animate-pulse"></div>
+                <div class="h-28 bg-slate-200 rounded-xl animate-pulse"></div>
+                <div class="h-28 bg-slate-200 rounded-xl animate-pulse"></div>
+                <div class="h-28 bg-slate-200 rounded-xl animate-pulse"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-6 mb-6">
+                <div class="h-72 bg-slate-200 rounded-xl animate-pulse"></div>
+                <div class="h-72 bg-slate-200 rounded-xl animate-pulse"></div>
+            </div>
+        </div>`;
+    }
+
+    async function initSmartDashboard(req) {
+        renderSkeleton();
+        botReply('Gerando dashboard...');
+        document.getElementById('loadingOverlay').classList.remove('hidden');
+
+        try {
+            if (typeof DataCareRenderer !== 'undefined' && typeof DataCareBI !== 'undefined') {
+                const result = await DataCareRenderer.renderEliteDashboard({
+                    userPrompt: req.prompt,
+                    prompt: req.prompt,
+                    sqlQuery: req.sqlQuery,
+                    model: req.model || document.getElementById('api_model_construtor')?.value,
+                    okrContext: req.okrContext || '',
+                    autoGenerateOKRs: req.autoGenerateOKRs,
+                    useStream: false,
+                    useAutoDiscovery: document.getElementById('use_auto_discovery')?.checked || false
+                }, 'dashboard-container');
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                if (result?.success) {
+                    lastBiConfig = result.biConfig;
+                    lastRawData = result.rawResult;
+                    currentHtmlCode = '<!-- biConfig -->';
+                    document.getElementById('dashboardTitle').textContent = lastBiConfig?.header?.title || activeQueryName || 'Dashboard';
+                    botReply('Dashboard pronto!');
+                    attachWidgetControls();
+                } else botReply('Erro: ' + (result?.error || 'Falha'));
+                return;
+            }
+            const res = await fetch('/api/analytics/init', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            const data = await res.json().catch(() => ({}));
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            if (!data.success) {
+                botReply('Erro: ' + (data.message || 'Falha'));
+                return;
+            }
+            lastBiConfig = data.biConfig;
+            lastRawData = data.rawResult;
+            if (typeof DataCareBI !== 'undefined') {
+                DataCareBI.applyLayout(data.biConfig, 'dashboard-container');
+                DataCareBI.updateWidgetsWithData(data.biConfig, data.rawResult, 'dashboard-container');
+                DataCareBI.attachSmartActions?.(data.biConfig, 'dashboard-container');
+            }
+            document.getElementById('dashboardTitle').textContent = data.biConfig?.header?.title || activeQueryName || 'Dashboard';
+            botReply('Dashboard pronto!');
+            attachWidgetControls();
+        } catch (e) {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            botReply('Erro: ' + e.message);
+        }
+    }
+
+    function attachWidgetControls() {
+        if (typeof DataCareBI !== 'undefined' && DataCareBI.setEditMode) {
+            DataCareBI.setEditMode(editMode);
+            DataCareBI.onWidgetRemove = removeWidget;
+        }
+    }
+
+    function removeWidget(widgetId, widgetType) {
+        if (!lastBiConfig?.widgets || !lastRawData) return;
+        lastBiConfig.widgets = lastBiConfig.widgets.filter(w => w.id !== widgetId);
+        if (typeof DataCareBI !== 'undefined') {
+            DataCareBI.applyLayout(lastBiConfig, 'dashboard-container');
+            DataCareBI.updateWidgetsWithData(lastBiConfig, lastRawData, 'dashboard-container');
+            document.getElementById('chkEditMode').checked && DataCareBI.setEditMode(true);
+        }
+        botReply('Widget removido.');
+    }
+
+    async function showHtmlCode() {
+        if (!lastBiConfig) {
+            Swal.fire({ icon: 'warning', title: 'Gere um dashboard primeiro', confirmButtonColor: '#3b82f6' });
+            return;
+        }
+        Swal.fire({ title: 'Gerando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const res = await fetch('/api/analytics/generate-page', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ biConfig: lastBiConfig, queryCode: 'QUERY_ID', formCode: 'FORM_ACTION' })
+            });
+            const html = await res.text();
+            Swal.close();
+            if (res.ok) {
+                document.getElementById('codeViewRaw').value = html;
+                const codeEl = document.getElementById('codeViewContent');
+                codeEl.textContent = html;
+                if (window.hljs) hljs.highlightElement(codeEl);
+                document.getElementById('btnCodeCopy').onclick = () => navigator.clipboard.writeText(html).then(() => Swal.fire({ icon: 'success', title: 'Copiado!', timer: 1000, showConfirmButton: false }));
+                setViewMode('code');
+            } else Swal.fire({ icon: 'error', text: 'Falha ao gerar' });
+        } catch (e) { Swal.close(); Swal.fire({ icon: 'error', text: e.message }); }
+    }
+
+    function openQueryManager() { document.getElementById('queryModal').classList.remove('hidden'); }
+    function closeQueryManager() { document.getElementById('queryModal').classList.add('hidden'); }
+    function setModalStatus(txt) {
+        const el = document.getElementById('modalStatusText');
+        if (el) el.textContent = txt;
+    }
     function resetEditor() {
+        document.getElementById('editingQueryId').value = '';
         document.getElementById('modalSqlInput').value = '';
         document.getElementById('queryNameInput').value = '';
-        document.getElementById('modalStatusArea').innerHTML = '<span class="text-slate-500">></span> Novo editor limpo.';
+        setModalStatus('Pronto para nova query');
         document.getElementById('btnApply').disabled = true;
     }
-
     function loadQueryIntoEditor(id, sql, title) {
-        document.getElementById('modalSqlInput').value = sql;
-        document.getElementById('queryNameInput').value = title;
-        document.getElementById('modalStatusArea').innerHTML = `<span class="text-green-400">></span> Query "<b>${title}</b>" carregada. Teste antes de usar.`;
-        enableApplyButton(title);
-    }
-
-    function enableApplyButton(title) {
-        const btn = document.getElementById('btnApply');
-        btn.disabled = false;
-        btn.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
-        btn.classList.add('bg-blue-600', 'text-white', 'hover:bg-blue-700', 'cursor-pointer');
-        document.getElementById('selectionStatus').innerHTML = `<i class="fas fa-check-circle text-green-500 mr-1"></i> Query selecionada: <b>${title}</b>`;
-    }
-
-    async function runTestInModal() {
-        const sql = document.getElementById('modalSqlInput').value;
-        const status = document.getElementById('modalStatusArea');
-        
-        if(!sql) {
-            status.innerHTML = '<span class="text-red-400">></span> Digite uma query SQL primeiro.';
-            return;
-        }
-        
-        status.innerHTML = '<span class="text-yellow-400">></span> Testando no Oracle... <i class="fas fa-spinner fa-spin ml-2"></i>';
-        
-        try {
-            const res = await fetch('/api/analytics/preview', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sqlQuery: sql, prompt: 'Teste' })
-            });
-            const data = await res.json();
-            
-            if(data.success && data.rawResult) {
-                status.innerHTML = `<span class="text-green-400">✓ SUCESSO:</span> ${data.rawResult.length} linha(s) retornada(s).`;
-                enableApplyButton(document.getElementById('queryNameInput').value || 'Consulta Sem Nome');
+        document.getElementById('editingQueryId').value = id || '';
+        document.getElementById('modalSqlInput').value = sql || '';
+        document.getElementById('queryNameInput').value = title || '';
+        setModalStatus('Carregada: ' + title);
+        document.getElementById('btnApply').disabled = false;
+        document.querySelectorAll('.query-item').forEach(el => {
+            el.classList.remove('bg-blue-600/20', 'border-l-blue-500', 'border-l-transparent');
+            if (String(el.dataset.id) === String(id)) {
+                el.classList.add('bg-blue-600/20', 'border-l-2', 'border-l-blue-500');
             } else {
-                status.innerHTML = `<span class="text-red-400">✗ ERRO:</span> ${data.message}`;
+                el.classList.add('border-l-2', 'border-l-transparent');
             }
-        } catch(e) { 
-            status.innerHTML = '<span class="text-red-400">✗ ERRO FATAL:</span> Falha na conexão.';
-        }
-    }
-
-    async function deleteQuery(id, event) {
-        event.stopPropagation();
-        
-        const result = await Swal.fire({
-            icon: 'warning',
-            title: 'Confirmar Exclusão',
-            text: 'Tem certeza que deseja excluir esta query permanentemente?',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#64748b',
-            confirmButtonText: 'Sim, excluir',
-            cancelButtonText: 'Cancelar'
-        });
-        
-        if (!result.isConfirmed) return;
-
-        try {
-            const res = await fetch(`/api/analytics/delete/${id}`, { method: 'POST' });
-            if(res.ok) {
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Excluído!',
-                    text: 'Query excluída com sucesso.',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-                window.location.reload();
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erro',
-                    text: 'Erro ao excluir query.',
-                    confirmButtonColor: '#3b82f6'
-                });
-            }
-        } catch(e) { 
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro de Conexão',
-                text: 'Erro de conexão ao excluir.',
-                confirmButtonColor: '#3b82f6'
-            });
-        }
-    }
-
-    async function saveQueryToLibrary() {
-        const title = document.getElementById('queryNameInput').value.trim();
-        const sql = document.getElementById('modalSqlInput').value.trim();
-        
-        if(!title || !sql) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Campos Obrigatórios',
-                text: 'Preencha o Título e o SQL da consulta.',
-                confirmButtonColor: '#3b82f6'
-            });
-            return;
-        }
-
-        const res = await fetch('/api/analytics/save', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                title, 
-                sqlQuery: sql, 
-                prompt: 'Query cadastrada manualmente',
-                htmlTemplate: '<div>Dashboard será gerado pela IA</div>'
-            })
-        });
-        
-        const data = await res.json();
-        
-        if(data.success) {
-            await Swal.fire({
-                icon: 'success',
-                title: 'Sucesso!',
-                text: 'Query salva na biblioteca com sucesso!',
-                confirmButtonColor: '#3b82f6'
-            });
-            window.location.reload();
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro ao Salvar',
-                text: data.message || 'Erro desconhecido',
-                confirmButtonColor: '#3b82f6'
-            });
-        }
-    }
-
-    function applyQueryToDashboard() {
-        activeSql = document.getElementById('modalSqlInput').value;
-        activeQueryName = document.getElementById('queryNameInput').value || 'Consulta Personalizada';
-        
-        document.getElementById('dataSourceName').innerText = activeQueryName;
-        document.getElementById('dashboardTitle').innerText = activeQueryName;
-        
-        document.getElementById('activeQueryIndicator').classList.remove('hidden');
-        document.getElementById('lblActiveQuery').innerText = activeQueryName;
-        
-        closeQueryManager();
-        botReply(`✅ Query <b>"${activeQueryName}"</b> conectada! O que vamos criar?`);
-    }
-
-    function clearActiveQuery() {
-        activeSql = '';
-        activeQueryName = '';
-        document.getElementById('activeQueryIndicator').classList.add('hidden');
-        document.getElementById('dataSourceName').innerText = 'Nenhuma fonte';
-        document.getElementById('dashboardTitle').innerText = 'Dashboard em Branco';
-        botReply("🔌 Query desconectada.");
-    }
-
-    function renderDashboard(html) {
-        const container = document.getElementById('dashboardContainer');
-        container.innerHTML = html;
-        
-        // Re-executa scripts do HTML gerado
-        const scripts = container.getElementsByTagName("script");
-        for(let i=0; i<scripts.length; i++) {
-            const s = document.createElement("script");
-            if (scripts[i].src) s.src = scripts[i].src;
-            else s.text = scripts[i].innerHTML;
-            document.body.appendChild(s);
-        }
-    }
-    
-    function toggleLoading(show) {
-        const el = document.getElementById('loadingOverlay');
-        if(show) el.classList.remove('hidden');
-        else el.classList.add('hidden');
-    }
-
-    // === MODAL TEMPLATES ===
-    let availableTemplates = [];
-
-    async function openTemplatesModal() {
-        document.getElementById('templatesModal').classList.remove('hidden');
-        
-        if (availableTemplates.length === 0) {
-            try {
-                const res = await fetch('/api/analytics/templates');
-                const data = await res.json();
-                if (data.success) {
-                    availableTemplates = data.templates;
-                    renderTemplates();
-                }
-            } catch (e) {
-                console.error('Erro ao carregar templates:', e);
-            }
-        }
-    }
-
-    function closeTemplatesModal() {
-        document.getElementById('templatesModal').classList.add('hidden');
-    }
-
-    function renderTemplates() {
-        const grid = document.getElementById('templatesGrid');
-        grid.innerHTML = '';
-
-        availableTemplates.forEach(template => {
-            const card = `
-                <div class="bg-white border-2 border-slate-200 rounded-xl p-5 hover:border-purple-500 hover:shadow-xl transition-all duration-300 cursor-pointer group"
-                     onclick="selectTemplate('${template.id}')">
-                    
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl group-hover:from-purple-200 group-hover:to-pink-200 transition-all">
-                            <i class="fas ${template.icone} text-2xl text-purple-600"></i>
-                        </div>
-                        <span class="text-[10px] font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full">
-                            TEMPLATE
-                        </span>
-                    </div>
-
-                    <h4 class="text-base font-bold text-slate-800 mb-2 group-hover:text-purple-700 transition-colors">
-                        ${template.nome}
-                    </h4>
-                    
-                    <p class="text-xs text-slate-600 mb-3 line-clamp-2 leading-relaxed">
-                        ${template.descricao}
-                    </p>
-
-                    <div class="bg-slate-50 rounded-lg p-3 border border-slate-100 mb-4">
-                        <p class="text-[11px] text-slate-500 leading-relaxed">
-                            <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
-                            <b>Exemplo:</b> ${template.exemplo}
-                        </p>
-                    </div>
-
-                    <button class="w-full py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold text-sm hover:from-purple-700 hover:to-pink-700 transition-all shadow-sm group-hover:shadow-md flex items-center justify-center gap-2">
-                        <i class="fas fa-check"></i>
-                        Usar Template
-                    </button>
-                </div>
-            `;
-            grid.insertAdjacentHTML('beforeend', card);
         });
     }
-
-    async function selectTemplate(templateId) {
-        if (!activeSql) {
-            closeTemplatesModal();
-            botReply("⚠️ Primeiro selecione uma query no 'Gerenciar Queries' antes de usar um template.");
-            return;
-        }
-
-        const template = availableTemplates.find(t => t.id === templateId);
-        if (!template) return;
-
-        closeTemplatesModal();
-        
-        // Salva a versão atual no histórico ANTES de aplicar o template
-        if (currentHtmlCode && currentHtmlCode.trim() !== '') {
-            saveToHistory(currentHtmlCode);
-        }
-        
-        botReply(`🎨 Aplicando template "<b>${template.nome}</b>"... Aguarde enquanto a IA cria seu dashboard.`);
-        
-        toggleLoading(true);
-
-        try {
-            const response = await fetch('/api/analytics/apply-template', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    templateId: templateId,
-                    sqlQuery: activeSql 
-                })
-            });
-            const data = await response.json();
-
-            if (data.success) {
-                currentHtmlCode = data.previewHtml;
-                renderDashboard(data.previewHtml);
-                botReply(`✅ Template "<b>${template.nome}</b>" aplicado com sucesso!`);
-                
-                if(!document.getElementById('codeContainer').classList.contains('hidden')) {
-                     document.getElementById('htmlOutput').value = currentHtmlCode;
-                }
-            } else {
-                botReply("❌ Erro ao aplicar template: " + data.message);
-            }
-        } catch (e) {
-            botReply("❌ Erro de conexão ao aplicar template.");
-        } finally {
-            toggleLoading(false);
-        }
-    }
-
-    async function saveCurrentPage() {
-        if(!currentHtmlCode || !activeSql) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Dashboard Vazio',
-                html: 'Você precisa gerar um dashboard primeiro!<br><br>Use o chat para criar visualizações antes de salvar.',
-                confirmButtonColor: '#3b82f6'
-            });
-            return;
-        }
-
-        const { value: formValues } = await Swal.fire({
-            title: 'Salvar Dashboard',
-            html:
-                '<input id="swal-title" class="swal2-input" placeholder="Nome do Dashboard" value="' + activeQueryName + '">' +
-                '<textarea id="swal-desc" class="swal2-textarea" placeholder="Descrição (opcional)" rows="3"></textarea>',
-            focusConfirm: false,
-            showCancelButton: true,
-            confirmButtonColor: '#3b82f6',
-            cancelButtonColor: '#64748b',
-            confirmButtonText: 'Salvar',
-            cancelButtonText: 'Cancelar',
-            preConfirm: () => {
-                const title = document.getElementById('swal-title').value;
-                if (!title) {
-                    Swal.showValidationMessage('Por favor, digite um nome para o dashboard');
-                    return false;
-                }
-                return {
-                    title: title,
-                    description: document.getElementById('swal-desc').value
-                };
-            }
-        });
-
-        if (!formValues) return;
-
-        try {
-            Swal.fire({
-                title: 'Salvando...',
-                html: 'Por favor, aguarde...',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-
-            const res = await fetch('/api/analytics/save', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    title: formValues.title, 
-                    prompt: formValues.description,
-                    sqlQuery: activeSql, 
-                    htmlTemplate: currentHtmlCode
-                })
-            });
-            
-            const data = await res.json();
-            
-            if(data.success) {
-                const result = await Swal.fire({
-                    icon: 'success',
-                    title: 'Dashboard Salvo!',
-                    html: `
-                        <p class="mb-2"><b>${formValues.title}</b> foi salvo com sucesso!</p>
-                        <p class="text-sm text-slate-500">ID: ${data.id}</p>
-                    `,
-                    showCancelButton: true,
-                    confirmButtonColor: '#3b82f6',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: '<i class="fas fa-external-link-alt mr-2"></i>Abrir Dashboard',
-                    cancelButtonText: 'Fechar'
-                });
-                
-                if(result.isConfirmed) {
-                    window.open(`/api/analytics/view/${data.id}`, '_blank');
-                }
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erro ao Salvar',
-                    text: data.message || 'Erro desconhecido',
-                    confirmButtonColor: '#3b82f6'
-                });
-            }
-        } catch(e) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro de Conexão',
-                text: e.message,
-                confirmButtonColor: '#3b82f6'
-            });
-        }
-    }
-
-    // Enter para enviar mensagem
-    document.addEventListener('DOMContentLoaded', function() {
-        const promptInput = document.getElementById('promptInput');
-        if (promptInput) {
-            promptInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
+    document.getElementById('queryModal')?.addEventListener('click', function(e) {
+        const item = e.target.closest('.query-item');
+        if (item) {
+            const id = item.getAttribute('data-id');
+            const q = (window.__SAVED_QUERIES__ || []).find(x => String(x.id) === String(id));
+            if (q) loadQueryIntoEditor(q.id, q.sql || '', q.title || '');
         }
     });
-</script>
+    function enableApplyButton(title) {
+        document.getElementById('btnApply').disabled = false;
+        setModalStatus('Pronto para usar: ' + (title || ''));
+    }
+    async function runTestInModal() {
+        const sql = document.getElementById('modalSqlInput').value;
+        if (!sql) { setModalStatus('Digite uma query primeiro'); return; }
+        setModalStatus('Executando...');
+        try {
+            const res = await fetch('/api/analytics/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sqlQuery: sql, prompt: 'Teste' }) });
+            const data = await res.json();
+            if (data.success && data.rawResult) {
+                setModalStatus('✓ ' + data.rawResult.length + ' linhas retornadas');
+                enableApplyButton(document.getElementById('queryNameInput').value);
+            } else setModalStatus('✗ Erro: ' + (data.message || ''));
+        } catch (e) { setModalStatus('✗ Erro de conexão'); }
+    }
+    async function deleteQuery(id, e) { e.stopPropagation(); if (!await Swal.fire({ icon: 'warning', title: 'Excluir?', showCancelButton: true, confirmButtonText: 'Sim' }).then(r => r.isConfirmed)) return; try { const res = await fetch('/api/analytics/delete-query/' + id, { method: 'POST' }); const d = await res.json(); if (d.success) { Swal.fire({ icon: 'success', timer: 1500, showConfirmButton: false }); location.reload(); } else Swal.fire({ icon: 'error', text: d.message }); } catch (e) { Swal.fire({ icon: 'error', text: e.message }); } }
+    async function saveQueryToLibrary() {
+        const id = document.getElementById('editingQueryId').value;
+        const title = document.getElementById('queryNameInput').value.trim();
+        const sql = document.getElementById('modalSqlInput').value.trim();
+        if (!title || !sql) { Swal.fire({ icon: 'warning', text: 'Título e SQL obrigatórios' }); return; }
+        Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const res = await fetch('/api/analytics/save-query', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id || undefined, title, sqlQuery: sql }) });
+            const d = await res.json();
+            Swal.close();
+            if (d.success) { document.getElementById('editingQueryId').value = d.id || id; Swal.fire({ icon: 'success', timer: 1500, showConfirmButton: false }); } else Swal.fire({ icon: 'error', text: d.message });
+        } catch (e) { Swal.close(); Swal.fire({ icon: 'error', text: e.message }); }
+    }
+    function openApplyOptionsModal() {
+        const sql = document.getElementById('modalSqlInput').value;
+        const title = document.getElementById('queryNameInput').value || 'Consulta';
+        if (!sql) return;
+        Swal.fire({
+            title: 'Usar esta query',
+            html: '<p class="mb-3">Conectar dados apenas ou gerar indicadores com IA?</p><div class="flex gap-3"><button id="btnConnect" class="flex-1 p-4 border-2 rounded-xl border-blue-500 bg-blue-50 font-medium">Apenas conectar</button><button id="btnGenerate" class="flex-1 p-4 border-2 rounded-xl border-purple-500 bg-purple-50 font-medium">Gerar com IA</button></div>',
+            showCancelButton: true,
+            didOpen: () => {
+                document.getElementById('btnConnect').onclick = () => { Swal.close(); applyQuery(sql, title, false); };
+                document.getElementById('btnGenerate').onclick = () => { Swal.close(); applyQuery(sql, title, true); };
+            }
+        });
+    }
+    function applyQuery(sql, title, generate) {
+        activeSql = sql;
+        activeQueryName = title;
+        document.getElementById('queryBadge').classList.remove('hidden');
+        document.getElementById('lblQueryName').textContent = title;
+        document.getElementById('dashboardTitle').textContent = title;
+        var inp = document.getElementById('indicatorNameInput');
+        if (inp && !inp.value.trim()) inp.value = title;
+        closeQueryManager();
+        botReply('Query <b>' + title + '</b> conectada.');
+        if (generate) applyAndGenerate(sql, title);
+    }
+    async function applyAndGenerate(sql, title) {
+        activeSql = sql;
+        activeQueryName = title;
+        document.getElementById('queryBadge').classList.remove('hidden');
+        document.getElementById('lblQueryName').textContent = title;
+        document.getElementById('dashboardTitle').textContent = title;
+        var inp = document.getElementById('indicatorNameInput');
+        if (inp && !inp.value.trim()) inp.value = title;
+        closeQueryManager();
+        botReply('Gerando indicadores...');
+        const useJson = document.getElementById('chkJsonMode')?.checked;
+        if (!useJson) {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            try {
+                const res = await fetch('/api/analytics/preview', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: 'Gere o dashboard completo com os melhores indicadores.', sqlQuery: sql, model: document.getElementById('api_model_construtor')?.value, contexto: activeQueryName || undefined, autoGenerateOKRs: true })
+                });
+                const data = await res.json();
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                if (data.success && data.previewHtml) {
+                    currentHtmlCode = data.previewHtml;
+                    lastRawData = data.rawResult || lastRawData;
+                    renderDashboardHtml(data.previewHtml, data.rawResult);
+                    botReply('Dashboard com página HTML completa gerado!');
+                } else {
+                    botReply('Erro: ' + (data.message || 'Falha'));
+                }
+            } catch (e) {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                botReply('Erro: ' + e.message);
+            }
+        } else {
+            await initSmartDashboard({ prompt: '', sqlQuery: sql, model: document.getElementById('api_model_construtor')?.value, autoGenerateOKRs: true });
+        }
+    }
+    async function openTemplatesModal() {
+        document.getElementById('templatesModal').classList.remove('hidden');
+        if (document.getElementById('templatesGrid').children.length === 0) {
+            try {
+                const res = await fetch('/api/analytics/templates');
+                const d = await res.json();
+                if (d.success && d.templates) {
+                    d.templates.forEach(t => {
+                        const card = document.createElement('div');
+                        card.className = 'p-4 border rounded-xl hover:border-purple-500 cursor-pointer';
+                        card.innerHTML = '<h4 class="font-bold text-slate-800 mb-1">' + t.nome + '</h4><p class="text-sm text-slate-600">' + (t.descricao || '') + '</p>';
+                        card.onclick = () => selectTemplate(t.id);
+                        document.getElementById('templatesGrid').appendChild(card);
+                    });
+                }
+            } catch (e) {}
+        }
+    }
+    function closeTemplatesModal() { document.getElementById('templatesModal').classList.add('hidden'); }
+    async function selectTemplate(id) {
+        if (!activeSql) { closeTemplatesModal(); botReply('Selecione uma query primeiro.'); return; }
+        closeTemplatesModal();
+        botReply('Aplicando template...');
+        document.getElementById('loadingOverlay').classList.remove('hidden');
+        try {
+            const res = await fetch('/api/analytics/apply-template', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templateId: id, sqlQuery: activeSql, model: document.getElementById('api_model_construtor')?.value }) });
+            const d = await res.json();
+            if (d.success && d.previewHtml) { currentHtmlCode = d.previewHtml; lastRawData = d.rawResult || lastRawData; renderDashboardHtml(d.previewHtml, d.rawResult); botReply('Template aplicado!'); }
+            else botReply('Erro: ' + (d.message || ''));
+        } catch (e) { botReply('Erro: ' + e.message); }
+        finally { document.getElementById('loadingOverlay').classList.add('hidden'); }
+    }
+    async function saveCurrentPage() {
+        if (!activeSql && !lastBiConfig && !currentHtmlCode) {
+            Swal.fire({ icon: 'warning', text: 'Gere um dashboard primeiro. Use Queries e Gerar indicadores.' });
+            return;
+        }
+        const pastasList = window.__PASTAS__ || [];
+        const pastasOpt = '<option value="">Selecione...</option>' + pastasList.map(p => '<option value="' + p.id + '">' + (p.nome || '') + '</option>').join('');
+        const { value } = await Swal.fire({
+            title: 'Salvar Dashboard',
+            html: '<input id="swal-title" class="swal2-input" placeholder="Nome" value="' + (document.getElementById('indicatorNameInput')?.value || activeQueryName || '').replace(/"/g, '&quot;') + '"><select id="swal-pasta" class="swal2-input">' + pastasOpt + '</select><textarea id="swal-desc" class="swal2-textarea" placeholder="Descrição" rows="2"></textarea>',
+            showCancelButton: true,
+            preConfirm: () => ({ title: document.getElementById('swal-title').value, pasta_id: document.getElementById('swal-pasta').value, description: document.getElementById('swal-desc').value })
+        });
+        if (!value || !value.title || !value.pasta_id) return;
+        Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const res = await fetch('/api/analytics/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: value.title, pasta_id: value.pasta_id, prompt: value.description, sqlQuery: activeSql, htmlTemplate: currentHtmlCode, biConfig: lastBiConfig }) });
+            const d = await res.json();
+            Swal.close();
+            if (d.success) {
+                const r = await Swal.fire({ icon: 'success', title: 'Salvo!', showCancelButton: true, confirmButtonText: 'Abrir', cancelButtonText: 'Fechar' });
+                if (r.isConfirmed) window.open((d.slug ? '/api/analytics/view/' + encodeURIComponent(d.slug) : '/api/analytics/view/' + d.id), '_blank');
+            } else Swal.fire({ icon: 'error', text: d.message });
+        } catch (e) { Swal.close(); Swal.fire({ icon: 'error', text: e.message }); }
+    }
 
-<style>
-    @keyframes fade-in {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .animate-fade-in {
-        animation: fade-in 0.3s ease-out;
-    }
-    
-    /* Scrollbar customizada */
-    #chatHistory::-webkit-scrollbar,
-    #savedQueriesList::-webkit-scrollbar {
-        width: 6px;
-    }
-    
-    #chatHistory::-webkit-scrollbar-track,
-    #savedQueriesList::-webkit-scrollbar-track {
-        background: #f1f5f9;
-    }
-    
-    #chatHistory::-webkit-scrollbar-thumb,
-    #savedQueriesList::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 3px;
-    }
-    
-    #chatHistory::-webkit-scrollbar-thumb:hover,
-    #savedQueriesList::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-    }
-</style>
+    document.getElementById('promptInput')?.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+    addMessage('Olá! Selecione uma <b>query</b> e envie "Gerar indicadores" ou descreva o que deseja.', 'bot');
+
+    window.openQueryManager = openQueryManager;
+    window.closeQueryManager = closeQueryManager;
+    window.openTemplatesModal = openTemplatesModal;
+    window.closeTemplatesModal = closeTemplatesModal;
+    window.saveCurrentPage = saveCurrentPage;
+    window.toggleAssistant = toggleAssistant;
+    window.toggleEditMode = toggleEditMode;
+    window.setViewMode = setViewMode;
+    window.showHtmlCode = showHtmlCode;
+    window.sendMessage = sendMessage;
+    window.resetEditor = resetEditor;
+    window.deleteQuery = deleteQuery;
+    window.runTestInModal = runTestInModal;
+    window.saveQueryToLibrary = saveQueryToLibrary;
+    window.openApplyOptionsModal = openApplyOptionsModal;
+})();
+</script>
