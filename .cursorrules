@@ -1,35 +1,36 @@
-# DataCare - Project Rules & Context
+# DataCare - Regras do Projeto & Contexto
 
-## 1. Language & Communication
-- **Chat Language:** ALWAYS respond in **Portuguese (PT-BR)**.
-- **Code Comments:** Write comments in **Portuguese (PT-BR)**.
-- **Code Naming:** KEEP variables, functions, and DB columns in **Portuguese (PT-BR)** (standard), when mapping legacy Tasy/Oracle columns (often in PT-BR or specific acronyms).
-- **Tone:** Senior Fullstack Developer. Direct, technical, solution-oriented.
+## 1. Idioma & Comunicação
+- **Idioma do Chat:** SEMPRE responda em **Português (PT-BR)**.
+- **Comentários de Código:** Escreva comentários em **Português (PT-BR)**. NÃO crie comentários óbvios ou desnecessários.
+- **Nomenclatura no Código:** MANTENHA variáveis, funções e colunas do BD em **Português (PT-BR)** (padrão), ao mapear colunas legadas do Tasy/Oracle (frequentemente em PT-BR ou siglas específicas).
+- **Tom e Economia de Tokens:** Desenvolvedor Sênior Fullstack. Direto, técnico e focado em soluções. Para economizar tokens (NO YAPPING): vá direto ao ponto, entregue APENAS o código, sem explicações extras, introduções ou conclusões. Não reescreva o arquivo inteiro para alterações pequenas.
 
-## 2. Tech Stack (Strict)
-- **Language:** JavaScript (ES6+ features: async/await, arrow functions, destructuring).
+## 2. Stack Tecnológica (Estrita)
+- **Linguagem:** JavaScript (recursos ES6+: async/await, arrow functions, destructuring).
 - **Backend:** Node.js + Express.
-- **Frontend:** EJS (Server Side Rendering) + TailwindCSS + JavaScript Vanilla (DOM manipulation).
-- **Database:** - **PostgreSQL** (App Data) via **Knex.js** (Query Builder).
-  - **Oracle** (Hospital System - Tasy) via Knex.js or OracleDB driver.
-- **Real-time:** Socket.io (Events usage).
-- **Auth:** Hybrid strategy: LDAP (Active Directory) + JWT + Express Sessions.
-- **AI/LLM:** Google Gemini API integration.
-- **Integrations:** Z-API (WhatsApp), Tasy (HIS).
+- **Frontend:** EJS (Server Side Rendering) + TailwindCSS + JavaScript Vanilla (manipulação do DOM).
+- **Banco de Dados:** - **PostgreSQL** (Dados do App) via **Knex.js** (Query Builder).
+  - **Oracle** (Sistema Hospitalar - Tasy) via Knex.js ou driver OracleDB.
+- **Tempo Real:** Socket.io (uso de eventos).
+- **Autenticação:** Estratégia Híbrida: LDAP (Active Directory) + JWT + Express Sessions.
+- **IA/LLM:** Integração com a API do Google Gemini.
+- **Integrações:** Z-API (WhatsApp), Tasy (HIS).
 
-## 3. Coding Standards & Patterns
-- **Query Builder:** ALWAYS use **SQL Raw** syntax for queries. Avoid writing raw SQL strings unless strictly necessary for complex Oracle reports.
-- **Frontend Logic:** - Do NOT use React/Vue/Angular patterns. 
-  - Use EJS tags `<%= %>` for output and `<% %>` for control flow.
-  - For client-side interactivity, write clean Vanilla JS inside `<script>` tags or separate `.js` files in `/public`.
-- **Styling:** Use TailwindCSS utility classes directly in EJS files.
-- **Security:** Use `Helmet` headers. Sanitize inputs before database queries. Handle CORS properly.
+## 3. Padrões de Código & Arquitetura
+- **Query Builder:** SEMPRE use a sintaxe do **Knex.js** para queries. Evite escrever strings de SQL puro a menos que seja estritamente necessário para relatórios complexos no Oracle.
+- **Lógica do Frontend:** - NÃO utilize padrões de React/Vue/Angular. 
+  - Use tags EJS `<%= %>` para saída de dados e `<% %>` para fluxo de controle.
+  - Para interatividade no client-side, escreva JS Vanilla limpo dentro de tags `<script>` ou em arquivos `.js` separados em `/public`.
+- **Estilização:** Use classes utilitárias do TailwindCSS diretamente nos arquivos EJS.
+- **Segurança:** Use headers do `Helmet`. Sanitize os inputs antes das queries no banco. Trate o CORS adequadamente.
 
-## 4. Hospital/SaaS Context (DataCare)
-- **Tasy Integration:** Treat Oracle (Tasy) tables as Read-Heavy/Critical. Be extremely careful with Write operations on Tasy. Prefer Stored Procedures if writing is needed.
-- **Data Privacy:** PII/PHI protection is mandatory.
-- **Dev Tools:** Use `concurrently` to run Tailwind CLI watch mode and Nodemon.
+## 4. Contexto Hospitalar/SaaS (DataCare)
+- **Integração Tasy:** Trate as tabelas do Oracle (Tasy) como operações Críticas/Leitura-Pesada (Read-Heavy). Seja extremamente cuidadoso com operações de Escrita no Tasy. Prefira Stored Procedures se a escrita for necessária.
+- **Privacidade de Dados:** A proteção de dados pessoais e de saúde (PII/PHI) é obrigatória.
+- **Ferramentas de Dev:** Use `concurrently` para rodar o modo watch do Tailwind CLI e o Nodemon simultaneamente.
 
-## 5. Specific Rules
-- **Formatting:** Use semicolons; 2 spaces indentation.
-- **Error Handling:** Centralized error handler middleware in Express.
+## 5. Regras Específicas
+- **Documentação:** NÃO crie documentações e NÃO gere arquivos `.md` extras até que seja explicitamente solicitado por mim.
+- **Formatação:** Use ponto e vírgula; indentação de 2 espaços.
+- **Tratamento de Erros:** Middleware centralizado para tratamento de erros no Express.

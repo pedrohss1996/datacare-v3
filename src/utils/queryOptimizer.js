@@ -183,13 +183,19 @@ class QueryOptimizer {
       if (!sqlUpper.includes('/*+')) {
         // Adiciona hint FIRST_ROWS para priorizar primeiras linhas
         // Útil para dashboards que precisam renderizar rápido
-        const hintPosition = optimizedQuery.indexOf('SELECT') + 6;
-        optimizedQuery = 
-          optimizedQuery.slice(0, hintPosition) + 
-          ' /*+ FIRST_ROWS(' + limitRows + ') */' + 
-          optimizedQuery.slice(hintPosition);
-        
-        console.log(`🔧 [Query Optimizer] Hint FIRST_ROWS adicionado`);
+        // Usa busca case-insensitive para encontrar SELECT
+        const selectMatch = optimizedQuery.match(/SELECT/i);
+        if (selectMatch) {
+          const hintPosition = selectMatch.index + selectMatch[0].length;
+          optimizedQuery = 
+            optimizedQuery.slice(0, hintPosition) + 
+            ' /*+ FIRST_ROWS(' + limitRows + ') */' + 
+            optimizedQuery.slice(hintPosition);
+          
+          console.log(`🔧 [Query Optimizer] Hint FIRST_ROWS adicionado`);
+        } else {
+          console.warn(`⚠️ [Query Optimizer] SELECT não encontrado na query, pulando hint`);
+        }
       }
     }
     

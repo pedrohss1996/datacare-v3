@@ -87,14 +87,16 @@ const sqlExpertContext = `
  * SYSTEM INSTRUCTION - Motor DataCare Analytics (HTML mode)
  * Define persona, design e código. Temperature 0.2 evita alucinações.
  */
-const SYSTEM_INSTRUCTION_HTML = `Você é o motor de inteligência do DataCare Analytics. Sua função é gerar TEMPLATES HTML de dashboards hospitalares. O backend injetará os dados — NUNCA inclua dados no seu output.
+const SYSTEM_INSTRUCTION_HTML = `Você é o motor de inteligência do DataCare Analytics. Sua função é gerar TEMPLATES HTML de dashboards hospitalares PROFISSIONAIS e COMPLETOS. O backend injetará os dados — NUNCA inclua dados no seu output.
 
 REGRA CRÍTICA - SEPARAÇÃO DE RESPONSABILIDADES:
 - Você gera APENAS o esqueleto: HTML + CSS + JS.
 - Use o placeholder exato: {{DB_DATA}} (o backend fará .replace com os dados reais).
 - NUNCA escreva JSON/dados no HTML. NUNCA invente valores.
-- Em um <script>, inclua: window.DB_DATA = {{DB_DATA}}; e após, chame window.initDashboard() no load.
-- O placeholder {{DB_DATA}} será substituído pelo backend por um array JSON.
+- IMPORTANTE: O placeholder {{DB_DATA}} será substituído pelo backend por um array JSON COMPLETO.
+- NUNCA tente definir window.DB_DATA manualmente com dados mockados ou exemplos.
+- SEMPRE use: window.DB_DATA = {{DB_DATA}}; (o backend substitui {{DB_DATA}} pelo JSON completo).
+- Após definir window.DB_DATA, chame window.initDashboard() no load.
 
 Stack Tecnológica (versões fixas):
 - Tailwind CSS v3.4.1: design e layout responsivo (CDN JIT). Use classes utilitárias; nunca CSS inline.
@@ -102,10 +104,103 @@ Stack Tecnológica (versões fixas):
 - FontAwesome v6.0.0: ícones nos cards de KPI e interface.
 - JavaScript ES6+ (Vanilla JS): filter, map, reduce, Arrow Functions; sem jQuery.
 
+REGRA CRÍTICA - FILTRO DE PERÍODO:
+- O filtro de período SEMPRE deve ser de Data Inicial até Data Final
+- Use SEMPRE dois inputs type="date": um para data inicial (id="dataInicio") e outro para data final (id="dataFim")
+- NUNCA use input type="number" para horas ou período em horas
+- NUNCA crie filtro de período usando horas (ex: "últimas 24 horas", "período em horas")
+- O filtro de período é OBRIGATÓRIO em todos os dashboards que tenham dados temporais
+
+REGRA CRÍTICA - DATASETS GRANDES:
+- Se window.DB_DATA_TOTAL existir e for maior que window.DB_DATA.length, significa que os dados foram limitados
+- Sempre verifique: if (window.DB_DATA_TOTAL && window.DB_DATA_TOTAL > window.DB_DATA.length) { ... }
+- Exiba um aviso visual quando dados estão limitados: "Exibindo X de Y registros. Use filtros para ver mais dados."
+- Processe apenas window.DB_DATA (dados iniciais limitados) para renderização rápida
+- Use filtros e agregações para trabalhar com os dados disponíveis
+
+ESTRUTURA OBRIGATÓRIA DO DASHBOARD:
+
+1. **HEADER** (Sempre no topo):
+   - Título principal (h1, text-3xl font-bold)
+   - Subtítulo/descrição (text-gray-500)
+   - Botões de ação: "Exibir/Ocultar Filtros" e "Atualizar" (canto superior direito)
+
+2. **FILTROS COLAPSÁVEIS** (Container com toggle):
+   - Container com id="filters-container" e classe "hidden" inicialmente
+   - Grid responsivo: grid-cols-1 md:grid-cols-2 lg:grid-cols-4
+   - Filtros obrigatórios:
+     * Busca textual (input text)
+     * Período: Data Inicial (input type="date", id="dataInicio") e Data Final (input type="date", id="dataFim") - SEMPRE use data inicial e data final, NUNCA use horas ou período em horas
+     * Selects dinâmicos (status, categoria, etc) - populados via JS
+   - Botão "Limpar Filtros"
+   - Checkboxes para filtros especiais (ex: "Mostrar apenas retornos")
+
+3. **KPIs** (Mínimo 4, máximo 12):
+   - Grid: grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 (ou mais se necessário)
+   - Cards com: título (text-gray-500), valor (text-3xl font-bold), cor semântica
+   - Ícones FontAwesome por tipo de KPI
+   - Cores: cyan (info), yellow (alerta), blue (processo), green (sucesso), purple (especial), red (crítico)
+
+4. **GRÁFICOS** (Mínimo 2, máximo 4):
+   - Grid: grid-cols-1 lg:grid-cols-2
+   - Cada gráfico em card branco (bg-white p-5 rounded-xl shadow-card)
+   - Título do gráfico (text-lg font-semibold)
+   - Canvas com altura fixa (h-80)
+   - Chart.js configurado com onClick para drill-down
+
+5. **TABELA DETALHAMENTO**:
+   - Card branco com overflow-x-auto
+   - Thead com bg-gray-50
+   - Tbody com hover:bg-gray-50
+   - Linhas clicáveis (onclick para modal)
+   - Paginação (se necessário)
+   - Mensagem "Nenhum resultado" quando vazio
+
+6. **MODAIS**:
+   - Modal de detalhes (id="details-modal")
+   - Modal de cálculos/explicações (id="calculation-modal")
+   - Backdrop escuro (bg-black/50)
+   - Botão fechar (X)
+   - Conteúdo scrollável (max-h-[90vh] overflow-y-auto)
+
+FUNCIONALIDADES OBRIGATÓRIAS NO JAVASCRIPT:
+
+1. **Estado Global**:
+   let allSanitizedData = [];
+   let filtersInitialized = false;
+   let chartInstances = {};
+
+2. **Funções OBRIGATÓRIAS (devem estar no escopo window)**:
+   - window.initDashboard() - OBRIGATÓRIO: Inicializa tudo, deve estar no escopo window
+   - window.toggleFilters() - OBRIGATÓRIO: Alterna visibilidade dos filtros, deve estar no escopo window
+   - fetchData() - Busca dados (usa window.requestQuery ou fetch)
+   - renderKPIs(data) - Renderiza cards KPI
+   - updateCharts(data) - Atualiza gráficos Chart.js
+   - renderTable(data) - Renderiza tabela
+   - applyFilters() - Aplica filtros e atualiza tudo
+   - showDetailsModal(id) - Abre modal de detalhes
+   
+   REGRA CRÍTICA: window.initDashboard e window.toggleFilters DEVEM estar definidas no escopo window para que os botões funcionem.
+
+3. **Event Listeners**:
+   - Toggle filters button
+   - Refresh button
+   - Clear filters button
+   - Inputs de filtro (input, change events)
+   - Close modal buttons
+
+4. **Chart.js Setup**:
+   - Inicializar todos os gráficos no initializeCharts()
+   - Usar cores consistentes
+   - Adicionar onClick para drill-down
+   - Tooltips customizados
+
 Diretrizes de Design:
-- Crie cards de KPI com ícones do FontAwesome. Cada card deve ter um título, valor principal e subtexto.
-- Paleta: Slate e Blue (sistemas SaaS médicos).
-- Tabela de detalhamento responsiva com hover.
+- Cards KPI: bg-white p-5 rounded-xl shadow-card
+- Cores semânticas por status/tipo
+- Transições suaves (transition-all)
+- Loading states (skeleton ou spinner)
+- Responsividade mobile-first
 
 Diretrizes de Código:
 - Gere HTML único e auto-contido.
@@ -113,10 +208,41 @@ Diretrizes de Código:
 - Todo código de renderização em window.initDashboard = function() { ... }.
 - OBRIGATÓRIO: no script, use window.DB_DATA = {{DB_DATA}}; — o backend substituirá {{DB_DATA}}.
 - NUNCA coloque dados no output; use sempre window.DB_DATA.
-- Ao final do script, execute initDashboard: if (document.readyState==='complete') initDashboard(); else window.addEventListener('load',initDashboard);
+- OBRIGATÓRIO: Defina window.toggleFilters = function() { ... } para o botão de filtros funcionar.
+- OBRIGATÓRIO: Defina window.initDashboard = function() { ... } no escopo window (não apenas initDashboard).
+- VALIDAÇÃO DE SINTAXE: Certifique-se de que todas as chaves {}, parênteses () e colchetes [] estão balanceados.
+- VALIDAÇÃO DE SINTAXE: Não deixe vírgulas finais em objetos/arrays (ex: {a: 1,} é inválido).
+- VALIDAÇÃO DE SINTAXE: Certifique-se de que todas as strings estão fechadas corretamente.
+- Ao final do script, execute: if (document.readyState==='complete') window.initDashboard(); else window.addEventListener('load', () => window.initDashboard());
 - Use as colunas EXATAS do metadata.colunas (Oracle retorna UPPERCASE: SETOR, CONVENIO, VALOR).
+- Inclua função requestQuery compatível no script:
+  window.requestQuery = async function(queryId, params, successCallback, errorCallback) {
+    try {
+      const response = await fetch(\`/api/analytics/data/\${queryId}\`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params || {})
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Erro ao buscar dados' }));
+        if (errorCallback) errorCallback(error);
+        return;
+      }
+      const result = await response.json();
+      if (result.success && result.data) {
+        if (successCallback) successCallback(result.data);
+      } else if (Array.isArray(result)) {
+        if (successCallback) successCallback(result);
+      } else {
+        if (errorCallback) errorCallback({ message: 'Formato de dados inválido' });
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados:', error);
+      if (errorCallback) errorCallback(error);
+    }
+  };
 
-Tom de Voz: Técnico, preciso e focado em escalabilidade.`;
+Tom de Voz: Técnico, preciso e focado em escalabilidade. Gere código profissional de nível SaaS.`;
 
 /**
  * CONTEXTO BI (legado): "REAL-TIME CALCULATION MODE + INTERATIVIDADE"
@@ -271,13 +397,17 @@ const biExpertContext = `
            document.body.appendChild(modal);
        }
     
-    C. **FILTROS POR PERÍODO**:
-       Quando pedir "filtro de data", "período", "range":
+    C. **FILTROS POR PERÍODO** (OBRIGATÓRIO - SEMPRE USE DATA INICIAL E DATA FINAL):
+       IMPORTANTE: O filtro de período SEMPRE deve ser de Data Inicial até Data Final. NUNCA use horas, período em horas, ou input type="number" para período.
+       
+       Quando pedir "filtro de data", "período", "range", ou qualquer filtro temporal:
        
        <div class="bg-white p-4 rounded-lg shadow mb-6">
            <label class="text-sm font-bold text-slate-700 mb-2 block">Filtrar por Período:</label>
-           <div class="flex gap-3">
+           <div class="flex gap-3 items-center">
+               <label class="text-xs text-slate-600 whitespace-nowrap">Data Inicial:</label>
                <input type="date" id="dataInicio" class="border border-slate-300 rounded px-3 py-2 text-sm">
+               <label class="text-xs text-slate-600 whitespace-nowrap">Data Final:</label>
                <input type="date" id="dataFim" class="border border-slate-300 rounded px-3 py-2 text-sm">
                <button onclick="filtrarPorPeriodo()" class="bg-blue-600 text-white px-4 py-2 rounded font-semibold text-sm">
                    <i class="fas fa-filter mr-2"></i>Aplicar
@@ -286,16 +416,27 @@ const biExpertContext = `
        </div>
        
        function filtrarPorPeriodo() {
-           const inicio = new Date(document.getElementById('dataInicio').value);
-           const fim = new Date(document.getElementById('dataFim').value);
+           const inicioInput = document.getElementById('dataInicio');
+           const fimInput = document.getElementById('dataFim');
+           
+           if (!inicioInput.value || !fimInput.value) {
+               alert('Por favor, selecione data inicial e data final');
+               return;
+           }
+           
+           const inicio = new Date(inicioInput.value + 'T00:00:00');
+           const fim = new Date(fimInput.value + 'T23:59:59');
            
            const dadosFiltrados = window.DB_DATA.filter(item => {
-               const data = new Date(item.DATA);
-               return data >= inicio && data <= fim;
+               // Tenta diferentes nomes de coluna de data
+               const dataItem = new Date(item.DATA || item.DT_ENTRADA || item.DT_ALTA || item.DATA_ENTRADA || item.DATA_ATUALIZACAO || item.DT_AGENDA);
+               return dataItem >= inicio && dataItem <= fim;
            });
            
            atualizarDashboard(dadosFiltrados);
        }
+       
+       REGRA CRÍTICA: NUNCA crie filtro de período usando horas (input type="number" para horas). SEMPRE use dois inputs type="date" (data inicial e data final).
     
     D. **BUSCA/PESQUISA**:
        Quando pedir "busca", "pesquisa", "search":
@@ -951,27 +1092,84 @@ const analyticsController = {
                         setTimeout(() => reject(new Error(`Query timeout: Consulta excedeu ${timeoutMs / 1000} segundos`)), timeoutMs);
                     });
                     
-                    // Usa QueryStreamer para execução inteligente
-                    // Ele decide automaticamente se usa batch, streaming ou execução normal
-                    const queryPromise = QueryStreamer.smartExecute(connection, generatedSql, {
-                        threshold: 10000, // Acima de 10k registros, usa batch
-                        batchSize: 5000,
-                        maxBatches: 10,   // Máximo 50k registros (10 batches de 5k)
-                        onBatch: (batchData, info) => {
-                            console.log(`📦 [Query Executor] Batch ${info.batchNum} processado: ${batchData.length} registros (total: ${info.totalSoFar})`);
+                    // Validação de filtros de data para grandes datasets
+                    const LargeDatasetHandler = require('../utils/largeDatasetHandler');
+                    const validation = LargeDatasetHandler.validateDateFilters(generatedSql);
+                    
+                    // Função auxiliar para estimar quantidade de registros
+                    async function estimateRowCount(conn, sql) {
+                        try {
+                            const countQuery = sql
+                                .replace(/SELECT.*?FROM/is, 'SELECT COUNT(*) as total FROM')
+                                .replace(/ORDER BY.*$/is, '')
+                                .replace(/FETCH.*$/is, '')
+                                .replace(/OFFSET.*$/is, '')
+                                .trim();
+                            
+                            const result = await conn.raw(countQuery);
+                            let total = 0;
+                            if (result.rows && result.rows[0]) {
+                                total = parseInt(result.rows[0].TOTAL || result.rows[0].total || 0);
+                            } else if (Array.isArray(result[0]) && result[0][0]) {
+                                total = parseInt(result[0][0].TOTAL || result[0][0].total || 0);
+                            }
+                            return total;
+                        } catch (e) {
+                            console.warn('⚠️ [Query] Erro ao estimar registros:', e.message);
+                            return null;
                         }
-                    });
+                    }
+                    
+                    // Se query não tem filtro de data nem limite, força limite padrão
+                    if (validation.requiresDateFilter && !validation.hasLimit) {
+                        console.warn('⚠️ [Query] Query sem filtro de data detectada. Adicionando limite de segurança...');
+                        // Adiciona limite padrão de 10k se não tiver
+                        if (!/FETCH\s+FIRST|ROWNUM/i.test(generatedSql)) {
+                            generatedSql = generatedSql.replace(/;?\s*$/, '') + ' FETCH FIRST 10000 ROWS ONLY';
+                        }
+                    }
+                    
+                    // Usa LargeDatasetHandler para queries grandes (acima de 50k estimados)
+                    // Ou QueryStreamer para queries menores
+                    const estimatedRows = await estimateRowCount(connection, generatedSql).catch(() => null);
+                    const isLargeQuery = estimatedRows && estimatedRows > 50000;
+                    
+                    let queryPromise;
+                    
+                    if (isLargeQuery) {
+                        console.log(`🌊 [Query] Query grande detectada (~${estimatedRows} registros). Usando LargeDatasetHandler...`);
+                        const cacheKey = LargeDatasetHandler.generateCacheKey(generatedSql, {});
+                        queryPromise = LargeDatasetHandler.executeLargeQuery(connection, generatedSql, {
+                            maxRows: 500000,  // Máximo 500k registros
+                            batchSize: 10000, // 10k por batch
+                            cacheKey,
+                            cacheTTL: 3600000, // 1 hora
+                            onProgress: (progress) => {
+                                console.log(`📊 [Query] Progresso: ${progress.totalProcessed} registros (${progress.progress.toFixed(1)}%)`);
+                            }
+                        });
+                    } else {
+                        // Usa QueryStreamer para execução inteligente (queries menores)
+                        queryPromise = QueryStreamer.smartExecute(connection, generatedSql, {
+                            threshold: 10000, // Acima de 10k registros, usa batch
+                            batchSize: 5000,
+                            maxBatches: 20,   // Máximo 100k registros (20 batches de 5k)
+                            onBatch: (batchData, info) => {
+                                console.log(`📦 [Query Executor] Batch ${info.batchNum} processado: ${batchData.length} registros (total: ${info.totalSoFar})`);
+                            }
+                        });
+                    }
                     
                     data = await Promise.race([queryPromise, timeoutPromise]);
                     
                     const executionTime = Date.now() - executionStart;
                     
                     // ========================================
-                    // PROTEÇÃO: Limita resultado a 50000 registros
+                    // PROTEÇÃO: Limita resultado a 500k registros (aumentado para grandes datasets)
                     // ========================================
-                    if (data.length > 50000) {
-                        console.warn(`⚠️ [Oracle] Resultado MUITO grande (${data.length} registros), limitando a 50000`);
-                        data = data.slice(0, 50000);
+                    if (data.length > 500000) {
+                        console.warn(`⚠️ [Oracle] Resultado MUITO grande (${data.length} registros), limitando a 500000`);
+                        data = data.slice(0, 500000);
                     }
                     
                     const dataSize = JSON.stringify(data).length;
@@ -1160,25 +1358,213 @@ const analyticsController = {
             console.log(`📄 [AI-BI] HTML gerado: ${htmlAI.length} caracteres`);
 
             // Injeção de dados: replace do placeholder {{DB_DATA}} (separação de responsabilidades)
-            const dataJson = JSON.stringify(data);
-            if (htmlAI.includes('{{DB_DATA}}')) {
-                htmlAI = htmlAI.replace(/\{\{DB_DATA\}\}/g, dataJson);
-                console.log('✅ [AI-BI] Dados injetados via placeholder {{DB_DATA}}');
-            } else {
-                // Fallback: IA não usou placeholder — injeta script manualmente
-                const dataInjectionScript = `
-            <script>
-                window.DB_DATA = ${dataJson};
-                window.addEventListener('load', function() {
-                    if (typeof window.initDashboard === 'function') window.initDashboard();
+            // PROTEÇÃO: Limita dados iniciais para evitar travamento do navegador
+            const MAX_INITIAL_ROWS = 10000; // Máximo 10k registros no HTML inicial
+            const totalRecords = data.length;
+            let dataForInjection = data;
+            let isLimited = false;
+            
+            // Valida se há dados
+            if (!data || !Array.isArray(data) || data.length === 0) {
+                console.error('❌ [AI-BI] ERRO: Dados vazios ou inválidos!');
+                console.error('❌ [AI-BI] Tipo de data:', typeof data);
+                console.error('❌ [AI-BI] Valor de data:', data);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Query não retornou dados. Verifique a query SQL e os filtros aplicados.'
                 });
-            </script>
-            `;
-                if (htmlAI.includes('</head>')) {
+            }
+            
+            if (data.length > MAX_INITIAL_ROWS) {
+                console.warn(`⚠️ [AI-BI] Dataset muito grande (${data.length} registros). Limitando a ${MAX_INITIAL_ROWS} para renderização inicial.`);
+                dataForInjection = data.slice(0, MAX_INITIAL_ROWS);
+                isLimited = true;
+            }
+            
+            // Valida dados para injeção
+            if (!dataForInjection || !Array.isArray(dataForInjection) || dataForInjection.length === 0) {
+                console.error('❌ [AI-BI] ERRO: dataForInjection está vazio após processamento!');
+                return res.status(500).json({
+                    success: false,
+                    message: 'Erro ao processar dados para injeção no dashboard.'
+                });
+            }
+            
+            const dataJson = JSON.stringify(dataForInjection);
+            const dataSizeKB = dataJson.length / 1024;
+            
+            console.log(`📊 [AI-BI] Preparando injeção de dados: ${dataForInjection.length} registros (de ${totalRecords} total)`);
+            console.log(`📊 [AI-BI] Tamanho do JSON: ${dataSizeKB.toFixed(2)} KB`);
+            console.log(`📊 [AI-BI] Primeiro registro para injeção:`, JSON.stringify(dataForInjection[0], null, 2).substring(0, 200));
+            
+            if (isLimited) {
+                console.warn(`⚠️ [AI-BI] Dados limitados para renderização. Total disponível: ${totalRecords} registros`);
+            }
+            
+            if (htmlAI.includes('{{DB_DATA}}')) {
+                // Método 1: Substitui placeholder
+                const beforeReplace = htmlAI.includes('{{DB_DATA}}');
+                
+                // Valida se o JSON está completo antes de substituir
+                try {
+                    JSON.parse(dataJson);
+                    console.log('✅ [AI-BI] JSON validado antes de substituir placeholder');
+                } catch (jsonError) {
+                    console.error('❌ [AI-BI] ERRO: JSON inválido!', jsonError.message);
+                    console.error('❌ [AI-BI] Primeiros 500 chars do JSON:', dataJson.substring(0, 500));
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Erro ao gerar JSON dos dados. Tente novamente ou use uma query com menos registros.'
+                    });
+                }
+                
+                htmlAI = htmlAI.replace(/\{\{DB_DATA\}\}/g, dataJson);
+                const afterReplace = !htmlAI.includes('{{DB_DATA}}');
+                
+                if (beforeReplace && afterReplace) {
+                    console.log('✅ [AI-BI] Dados injetados via placeholder {{DB_DATA}}');
+                    console.log(`📊 [AI-BI] HTML final: ${htmlAI.length} caracteres`);
+                    
+                    // Verifica se o JSON foi injetado corretamente (não está cortado)
+                    const jsonInHTML = htmlAI.match(/window\.DB_DATA\s*=\s*(\[[\s\S]*?\])/);
+                    if (jsonInHTML) {
+                        try {
+                            JSON.parse(jsonInHTML[1]);
+                            console.log('✅ [AI-BI] JSON no HTML validado após substituição');
+                        } catch (e) {
+                            console.error('❌ [AI-BI] ERRO: JSON no HTML está incompleto/cortado!', e.message);
+                            // Tenta corrigir adicionando dados via script separado
+                            console.log('🔧 [AI-BI] Adicionando script de garantia para definir window.DB_DATA...');
+                            const ensureScript = `<script>
+                                if (typeof window.DB_DATA === 'undefined' || !Array.isArray(window.DB_DATA) || window.DB_DATA.length === 0) {
+                                    window.DB_DATA = ${dataJson};
+                                    console.log('✅ [Dashboard] window.DB_DATA definido via script de garantia:', window.DB_DATA.length, 'registros');
+                                }
+                            </script>`;
+                            htmlAI = htmlAI.replace('</body>', `${ensureScript}</body>`);
+                        }
+                    }
+                } else {
+                    console.warn('⚠️ [AI-BI] Placeholder {{DB_DATA}} não foi substituído corretamente!');
+                }
+                
+                // Garante que window.DB_DATA seja definido mesmo se o script não executar
+                const ensureDataScript = `<script>
+                    // Garantia de que window.DB_DATA existe
+                    if (typeof window.DB_DATA === 'undefined' || !Array.isArray(window.DB_DATA) || window.DB_DATA.length === 0) {
+                        console.warn('⚠️ [Dashboard] window.DB_DATA não encontrado, tentando extrair do HTML...');
+                        // Tenta encontrar dados no HTML
+                        const scripts = document.querySelectorAll('script');
+                        scripts.forEach(s => {
+                            const content = s.textContent || s.innerHTML;
+                            if (content.includes('window.DB_DATA') && content.includes('[')) {
+                                try {
+                                    eval(content);
+                                    console.log('✅ [Dashboard] window.DB_DATA definido via script encontrado');
+                                } catch (e) {
+                                    console.error('❌ [Dashboard] Erro ao executar script:', e);
+                                }
+                            }
+                        });
+                    }
+                    ${isLimited ? `
+                    window.DB_DATA_TOTAL = ${totalRecords};
+                    window.DB_DATA_LIMITED = true;
+                    console.log('ℹ️ [Dashboard] Dados limitados: ${dataForInjection.length} de ${totalRecords} registros carregados inicialmente');
+                    ` : ''}
+                </script>`;
+                
+                // Adiciona script de garantia antes do </body>
+                if (htmlAI.includes('</body>')) {
+                    htmlAI = htmlAI.replace('</body>', `${ensureDataScript}</body>`);
+                } else {
+                    htmlAI += ensureDataScript;
+                }
+            } else {
+                // Método 2: Fallback - injeta script com window.DB_DATA e inicialização forçada
+                const dataInjectionScript = `<script>
+                    // Injeção de dados do backend (FALLBACK - IA não usou {{DB_DATA}})
+                    console.log('🔧 [Dashboard] Iniciando injeção de dados (fallback)...');
+                    try {
+                        window.DB_DATA = ${dataJson};
+                        ${isLimited ? `window.DB_DATA_TOTAL = ${totalRecords}; window.DB_DATA_LIMITED = true;` : ''}
+                        console.log('✅ [Dashboard] Dados carregados:', window.DB_DATA ? window.DB_DATA.length : 0, 'registros${isLimited ? ` (de ${totalRecords} total)` : ''}');
+                        console.log('📊 [Dashboard] Tipo de window.DB_DATA:', Array.isArray(window.DB_DATA) ? 'Array' : typeof window.DB_DATA);
+                        ${isLimited ? `console.warn('⚠️ [Dashboard] Dados limitados para renderização inicial. Total disponível: ${totalRecords} registros');` : ''}
+                        if (window.DB_DATA && Array.isArray(window.DB_DATA) && window.DB_DATA.length > 0) {
+                            console.log('📊 [Dashboard] Primeiro registro:', window.DB_DATA[0]);
+                            console.log('📊 [Dashboard] Colunas disponíveis:', Object.keys(window.DB_DATA[0]));
+                        } else {
+                            console.error('❌ [Dashboard] window.DB_DATA está vazio ou inválido após injeção!');
+                            console.error('❌ [Dashboard] window.DB_DATA:', window.DB_DATA);
+                        }
+                    } catch (e) {
+                        console.error('❌ [Dashboard] Erro ao injetar dados:', e);
+                        window.DB_DATA = [];
+                    }
+                    
+                    // Função fallback para toggleFilters (se não existir)
+                    if (typeof window.toggleFilters === 'undefined') {
+                        window.toggleFilters = function() {
+                            const container = document.getElementById('filters-container');
+                            if (container) {
+                                container.classList.toggle('hidden');
+                            } else {
+                                console.warn('⚠️ [Dashboard] Elemento filters-container não encontrado');
+                            }
+                        };
+                        console.log('✅ [Dashboard] Função toggleFilters criada (fallback)');
+                    }
+                    
+                    // Função para inicializar dashboard (múltiplas tentativas)
+                    function forceInitDashboard() {
+                        if (typeof window.initDashboard === 'function') {
+                            console.log('🚀 [Dashboard] Chamando initDashboard()...');
+                            try {
+                                window.initDashboard();
+                            } catch (err) {
+                                console.error('❌ [Dashboard] Erro em initDashboard():', err);
+                                console.error('Stack:', err.stack);
+                            }
+                        } else {
+                            console.warn('⚠️ [Dashboard] initDashboard() não encontrado ainda, tentando novamente em 200ms...');
+                            setTimeout(forceInitDashboard, 200);
+                        }
+                    }
+                    
+                    // Múltiplos métodos de inicialização (garante execução)
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', function() {
+                            setTimeout(forceInitDashboard, 100);
+                        });
+                    } else {
+                        // DOM já pronto
+                        setTimeout(forceInitDashboard, 100);
+                    }
+                    
+                    // Fallback adicional no window.load
+                    window.addEventListener('load', function() {
+                        setTimeout(forceInitDashboard, 200);
+                    });
+                    
+                    // Último recurso: timeout de 1 segundo
+                    setTimeout(function() {
+                        if (window.DB_DATA && window.DB_DATA.length > 0 && typeof window.initDashboard === 'function') {
+                            console.log('⏰ [Dashboard] Fallback timeout: forçando inicialização');
+                            forceInitDashboard();
+                        }
+                    }, 1000);
+                </script>`;
+                
+                // Insere o script no melhor lugar possível
+                if (htmlAI.includes('</body>')) {
+                    htmlAI = htmlAI.replace('</body>', `${dataInjectionScript}</body>`);
+                } else if (htmlAI.includes('</head>')) {
                     htmlAI = htmlAI.replace('</head>', `${dataInjectionScript}</head>`);
                 } else if (htmlAI.includes('<body>')) {
                     htmlAI = htmlAI.replace('<body>', `<body>${dataInjectionScript}`);
                 } else {
+                    // Último recurso: adiciona no final
                     htmlAI += dataInjectionScript;
                 }
                 console.log('⚠️ [AI-BI] Fallback: dados injetados via script (IA não usou {{DB_DATA}})');
@@ -1191,9 +1577,13 @@ const analyticsController = {
                 success: true, 
                 previewHtml: htmlAI, 
                 generatedSql: generatedSql, 
-                rawResult: data,
+                rawResult: dataForInjection, // Envia apenas dados limitados
+                rawResultTotal: totalRecords, // Total disponível
+                isLimited: isLimited,
                 metadata: {
-                    totalRecords: data.length,
+                    totalRecords: totalRecords,
+                    initialRecords: dataForInjection.length,
+                    isLimited: isLimited,
                     columns: actualColumns,
                     detectedLabelColumn: labelCol,
                     detectedValueColumn: valueCol
@@ -1858,6 +2248,11 @@ const analyticsController = {
                     const meta = cacheDashboards.getMetadata(widgetId);
                     cacheAge = meta ? Math.round((Date.now() - meta.timestamp) / 1000) : 0;
                     console.log(`[Analytics] 🚀 Dados carregados do CACHE (${cacheAge}s atrás, ${data.length} registros)`);
+                    console.log(`⚠️ [Analytics] ATENÇÃO: Dados podem estar desatualizados! Use ?refresh=true na URL para forçar atualização.`);
+                    
+                    // Verifica convênios no cache para debug
+                    const conveniosCache = [...new Set(data.map(r => r.NM_CONVENIO || r.CONVENIO || r.CD_CONVENIO || 'N/A'))];
+                    console.log(`🏥 [Analytics] Convênios no CACHE (${conveniosCache.length}):`, conveniosCache.slice(0, 10));
                 }
             } else {
                 console.log(`[Analytics] 🔄 Refresh forçado - ignorando cache`);
@@ -1884,6 +2279,10 @@ const analyticsController = {
                     const timeoutPromise = new Promise((_, reject) => {
                         setTimeout(() => reject(new Error('Query timeout: Consulta excedeu 60 segundos')), 60000);
                     });
+                    
+                    // Log da query exata que será executada
+                    console.log(`📝 [Analytics] Query SQL a ser executada:`);
+                    console.log(widget.query_sql);
                     
                     const queryPromise = connection.raw(widget.query_sql);
                     
@@ -1924,6 +2323,12 @@ const analyticsController = {
                     });
                     
                     console.log(`✅ [Analytics] Dashboard ID ${widgetId}: ${data.length} registros carregados em ${executionTime}ms`);
+                    console.log(`📋 [Analytics] Query executada: ${widget.query_sql.substring(0, 200)}...`);
+                    console.log(`🔍 [Analytics] Primeiros 3 registros:`, JSON.stringify(data.slice(0, 3), null, 2));
+                    
+                    // Verifica se há convênios únicos para debug
+                    const convenios = [...new Set(data.map(r => r.NM_CONVENIO || r.CONVENIO || r.CD_CONVENIO || 'N/A'))];
+                    console.log(`🏥 [Analytics] Convênios encontrados (${convenios.length}):`, convenios.slice(0, 10));
                     
                     // ========================================
                     // SALVA NO CACHE (TTL dinâmico baseado no tempo de execução)
@@ -2326,6 +2731,231 @@ if(typeof DataCareBI!=='undefined'&&window.DB_DATA!==undefined&&b){DataCareBI.re
             // TODO: Implementar exportação com Puppeteer
             res.json({ success: false, message: 'Funcionalidade em desenvolvimento' });
         } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    },
+
+    /**
+     * POST /api/analytics/data/:queryId
+     * Endpoint para substituir requestQuery (compatibilidade AppMed)
+     * Aceita parâmetros dinâmicos e executa query SQL salva
+     */
+    fetchQueryData: async (req, res) => {
+        try {
+            const { queryId } = req.params;
+            const params = req.body || {}; // Parâmetros dinâmicos (INICIO, FINAL, etc)
+
+            // Busca query salva no banco
+            const savedQuery = await db('saved_queries')
+                .where('id', queryId)
+                .orWhere('slug', queryId)
+                .first();
+
+            if (!savedQuery) {
+                return res.status(404).json({ 
+                    success: false, 
+                    message: 'Query não encontrada' 
+                });
+            }
+
+            let sqlQuery = savedQuery.sql_query;
+
+            // Substitui placeholders pelos parâmetros
+            // Ex: :INICIO, :FINAL, etc
+            Object.keys(params).forEach(key => {
+                const value = params[key];
+                // Escapa aspas simples para SQL
+                const escapedValue = typeof value === 'string' 
+                    ? value.replace(/'/g, "''") 
+                    : value;
+                sqlQuery = sqlQuery.replace(new RegExp(`:${key}`, 'g'), `'${escapedValue}'`);
+            });
+
+            // Valida segurança
+            if (!QueryOptimizer.isSafe(sqlQuery).safe) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Query bloqueada por segurança' 
+                });
+            }
+
+            // Executa query
+            const connection = db.oracle ? db.oracle : db;
+            const result = await QueryStreamer.smartExecute(connection, sqlQuery, {
+                threshold: 10000,
+                batchSize: 5000,
+                maxBatches: 10
+            });
+
+            return res.json({
+                success: true,
+                data: result || []
+            });
+
+        } catch (error) {
+            console.error('❌ [Analytics fetchQueryData]', error);
+            res.status(500).json({ 
+                success: false, 
+                message: error.message 
+            });
+        }
+    },
+
+    /**
+     * POST /api/analytics/stream-progressive
+     * Streaming progressivo para grandes datasets
+     * Retorna dados em chunks com progresso
+     */
+    streamProgressive: async (req, res) => {
+        try {
+            const { sqlQuery, queryId } = req.body;
+            
+            if (!sqlQuery && !queryId) {
+                return res.status(400).json({ success: false, message: 'sqlQuery ou queryId é obrigatório' });
+            }
+            
+            let finalSql = sqlQuery;
+            
+            // Se queryId, busca query salva
+            if (queryId) {
+                const savedQuery = await db('saved_queries')
+                    .where('id', queryId)
+                    .where('ativo', true)
+                    .first();
+                
+                if (!savedQuery) {
+                    return res.status(404).json({ success: false, message: 'Query não encontrada' });
+                }
+                
+                finalSql = savedQuery.oracle_sql_query || savedQuery.query_sql;
+            }
+            
+            // Valida filtros de data
+            const LargeDatasetHandler = require('../utils/largeDatasetHandler');
+            const validation = LargeDatasetHandler.validateDateFilters(finalSql);
+            
+            if (validation.requiresDateFilter && !validation.hasLimit) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Query sem filtro de data detectada. Para queries grandes, é obrigatório usar filtro de data (ex: WHERE DT_ENTRADA >= ...). Adicione um filtro de período na query.',
+                    requiresDateFilter: true
+                });
+            }
+            
+            // Configura streaming NDJSON
+            res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+            res.setHeader('Transfer-Encoding', 'chunked');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.flushHeaders && res.flushHeaders();
+            
+            const writeLine = (obj) => res.write(JSON.stringify(obj) + '\n');
+            
+            // Header inicial
+            writeLine({
+                type: 'header',
+                success: true,
+                message: 'Iniciando streaming progressivo...'
+            });
+            
+            // Executa query em batches
+            const oracleConnection = require('../infra/database/oracleConnection');
+            const connection = await oracleConnection.getConnection();
+            
+            try {
+                const cacheKey = LargeDatasetHandler.generateCacheKey(finalSql, {});
+                
+                // Verifica cache primeiro
+                const cacheDashboards = require('../utils/cacheDashboards');
+                const cached = cacheDashboards.get(cacheKey);
+                
+                if (cached) {
+                    console.log(`✅ [StreamProgressive] Cache hit: ${cached.length} registros`);
+                    writeLine({
+                        type: 'progress',
+                        total: cached.length,
+                        fromCache: true
+                    });
+                    
+                    // Envia dados do cache em chunks
+                    const chunkSize = 10000;
+                    for (let i = 0; i < cached.length; i += chunkSize) {
+                        const chunk = cached.slice(i, i + chunkSize);
+                        writeLine({
+                            type: 'chunk',
+                            data: chunk,
+                            offset: i,
+                            total: cached.length,
+                            progress: Math.min(100, ((i + chunk.length) / cached.length) * 100)
+                        });
+                    }
+                    
+                    writeLine({
+                        type: 'end',
+                        total: cached.length,
+                        fromCache: true
+                    });
+                    res.end();
+                    return;
+                }
+                
+                // Executa query em batches e envia progressivamente
+                let totalProcessed = 0;
+                
+                const allData = await LargeDatasetHandler.executeLargeQuery(connection, finalSql, {
+                    maxRows: 500000,
+                    batchSize: 10000,
+                    cacheKey,
+                    cacheTTL: 3600000,
+                    onProgress: (progress) => {
+                        totalProcessed = progress.totalProcessed;
+                        writeLine({
+                            type: 'progress',
+                            batchNum: progress.batchNum,
+                            batchSize: progress.batchSize,
+                            totalProcessed: progress.totalProcessed,
+                            progress: progress.progress
+                        });
+                    }
+                });
+                
+                // Envia dados completos em chunks finais
+                const chunkSize = 10000;
+                for (let i = 0; i < allData.length; i += chunkSize) {
+                    const chunk = allData.slice(i, i + chunkSize);
+                    writeLine({
+                        type: 'chunk',
+                        data: chunk,
+                        offset: i,
+                        total: allData.length,
+                        progress: Math.min(100, ((i + chunk.length) / allData.length) * 100)
+                    });
+                }
+                
+                writeLine({
+                    type: 'end',
+                    total: allData.length
+                });
+                
+            } catch (error) {
+                console.error('❌ [StreamProgressive] Erro:', error.message);
+                writeLine({
+                    type: 'error',
+                    success: false,
+                    message: error.message
+                });
+            } finally {
+                if (connection) {
+                    try {
+                        await connection.close();
+                    } catch (e) {
+                        console.error('❌ [StreamProgressive] Erro ao fechar conexão:', e.message);
+                    }
+                }
+                res.end();
+            }
+            
+        } catch (error) {
+            console.error('❌ [StreamProgressive] Erro geral:', error.message);
             res.status(500).json({ success: false, message: error.message });
         }
     }

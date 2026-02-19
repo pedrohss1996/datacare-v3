@@ -102,7 +102,7 @@
                             <button onclick="setViewMode('dashboard')" class="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 text-white rounded text-xs">Voltar</button>
                         </div>
                     </div>
-                    <pre class="flex-1 m-0 p-6 overflow-auto text-sm"><code id="codeViewContent" class="language-html"></code></pre>
+                    <pre class="flex-1 m-0 p-6 overflow-auto text-sm bg-[#282c34]"><code id="codeViewContent" class="language-html text-slate-100"></code></pre>
                     <textarea id="codeViewRaw" class="hidden"></textarea>
                 </div>
                 <div id="loadingOverlay" class="hidden absolute inset-0 bg-white/90 flex flex-col items-center justify-center z-50">
@@ -272,6 +272,18 @@ window.__PASTAS__ = <%- (typeof pastas !== 'undefined' && pastas) ? JSON.stringi
                 if (data.success && data.previewHtml) {
                     currentHtmlCode = data.previewHtml;
                     lastRawData = data.rawResult || lastRawData;
+                    
+                    // Validação e logs
+                    console.log('📊 [Frontend] Resposta recebida do backend:');
+                    console.log('  - previewHtml:', data.previewHtml ? `${data.previewHtml.length} caracteres` : 'vazio');
+                    console.log('  - rawResult:', data.rawResult ? (Array.isArray(data.rawResult) ? `${data.rawResult.length} registros` : typeof data.rawResult) : 'null/undefined');
+                    console.log('  - metadata:', data.metadata);
+                    
+                    if (!data.rawResult || !Array.isArray(data.rawResult) || data.rawResult.length === 0) {
+                        console.warn('⚠️ [Frontend] ATENÇÃO: rawResult está vazio ou inválido!');
+                        console.warn('⚠️ [Frontend] rawResult recebido:', data.rawResult);
+                    }
+                    
                     renderDashboardHtml(data.previewHtml, data.rawResult);
                     botReply('Dashboard atualizado!');
                 } else botReply('Erro: ' + (data.message || 'Falha'));
@@ -283,23 +295,450 @@ window.__PASTAS__ = <%- (typeof pastas !== 'undefined' && pastas) ? JSON.stringi
     }
 
     function renderDashboardHtml(html, rawData) {
-        const inner = document.getElementById('dashboard-inner');
-        if (!inner) return;
-        if (rawData && Array.isArray(rawData)) {
-            window.DB_DATA = rawData;
+        try {
+            const inner = document.getElementById('dashboard-inner');
+            if (!inner) return;
+            
+            // Valida e injeta dados primeiro
+            console.log('📊 [Dashboard] Recebendo dados para renderização...');
+            console.log('📊 [Dashboard] rawData:', rawData ? (Array.isArray(rawData) ? `${rawData.length} registros` : typeof rawData) : 'null/undefined');
+            
+            if (rawData && Array.isArray(rawData)) {
+                window.DB_DATA = rawData;
+                console.log('✅ [Dashboard] window.DB_DATA definido com', rawData.length, 'registros');
+                if (rawData.length > 0) {
+                    console.log('📋 [Dashboard] Primeiro registro:', rawData[0]);
+                }
+            } else {
+                console.warn('⚠️ [Dashboard] rawData inválido ou vazio:', rawData);
+                window.DB_DATA = [];
+            }
+            
+            // Verifica se há dados limitados (vem do backend via metadata)
+            // Isso será definido pelo script injetado no HTML
+            
+            const wrap = document.getElementById('dashboardContainer');
+            if (!wrap) {
+                console.error('❌ [Dashboard] Container não encontrado');
+                return;
+            }
+            
+            // Limpa scripts antigos do dashboard
+            document.querySelectorAll('script[data-dashboard-script]').forEach(s => s.remove());
+            
+            // Cria container
+            wrap.innerHTML = '<div id="dashboard-container" class="p-6 w-full overflow-y-auto"></div>';
+            const container = document.getElementById('dashboard-container');
+            
+            if (!container) {
+                console.error('❌ [Dashboard] Container interno não criado');
+                return;
+            }
+            
+            // Valida HTML antes de injetar
+            if (!html || typeof html !== 'string' || html.trim().length === 0) {
+                console.error('❌ [Dashboard] HTML inválido ou vazio');
+                container.innerHTML = '<div class="text-center p-8 text-red-600"><i class="fas fa-exclamation-triangle text-4xl mb-4"></i><p>Erro: HTML gerado está vazio ou inválido</p></div>';
+                return;
+            }
+            
+            // INJEÇÃO PRIORITÁRIA: Define window.DB_DATA ANTES de injetar HTML
+            // Isso garante que os dados estejam disponíveis quando os scripts do dashboard executarem
+            if (rawData && Array.isArray(rawData) && rawData.length > 0) {
+                window.DB_DATA = rawData;
+                console.log('✅ [Dashboard] window.DB_DATA definido ANTES de injetar HTML:', rawData.length, 'registros');
+            } else {
+                console.warn('⚠️ [Dashboard] rawData inválido ou vazio, window.DB_DATA não será definido previamente');
+            }
+            
+            // Injeta HTML
+            try {
+                container.innerHTML = html;
+                
+                // Verifica se window.DB_DATA foi definido pelo HTML injetado
+                setTimeout(() => {
+                    if (!window.DB_DATA || !Array.isArray(window.DB_DATA) || window.DB_DATA.length === 0) {
+                        console.warn('⚠️ [Dashboard] window.DB_DATA não encontrado após injetar HTML. Tentando definir a partir de rawData...');
+                        if (rawData && Array.isArray(rawData) && rawData.length > 0) {
+                            window.DB_DATA = rawData;
+                            console.log('✅ [Dashboard] window.DB_DATA definido a partir de rawData:', rawData.length, 'registros');
+                        }
+                    }
+                }, 100);
+            } catch (e) {
+                console.error('❌ [Dashboard] Erro ao injetar HTML:', e);
+                container.innerHTML = '<div class="text-center p-8 text-red-600"><i class="fas fa-exclamation-triangle text-4xl mb-4"></i><p>Erro ao renderizar dashboard: ' + e.message + '</p></div>';
+                return;
+            }
+            
+            // Processa scripts do dashboard
+            const scripts = document.querySelectorAll('#dashboard-container script');
+            scripts.forEach((s, index) => {
+                try {
+                    const n = document.createElement('script');
+                    n.setAttribute('data-dashboard-script', 'true');
+                    
+                    if (s.src) {
+                        n.src = s.src;
+                        n.onerror = () => console.error('❌ [Dashboard] Erro ao carregar script externo:', s.src);
+                        document.body.appendChild(n);
+                    } else {
+                        // Valida e corrige sintaxe JavaScript antes de executar
+                        let scriptContent = s.innerHTML || s.textContent || '';
+                        if (scriptContent.trim()) {
+                            // Verifica se o script contém window.DB_DATA (pode estar cortado)
+                            const hasDBData = scriptContent.includes('window.DB_DATA');
+                            const hasIncompleteJSON = hasDBData && (
+                                (scriptContent.match(/\[/g) || []).length !== (scriptContent.match(/\]/g) || []).length ||
+                                (scriptContent.match(/\{/g) || []).length !== (scriptContent.match(/\}/g) || []).length
+                            );
+                            
+                            if (hasIncompleteJSON) {
+                                console.warn(`⚠️ [Dashboard] Script ${index + 1} contém JSON incompleto (window.DB_DATA). Tentando extrair código funcional...`);
+                                console.warn('Script problemático (primeiros 500 chars):', scriptContent.substring(0, 500));
+                                
+                                // Tenta extrair apenas a parte funcional (após window.DB_DATA = [...])
+                                // Procura por window.initDashboard ou outras funções importantes
+                                if (scriptContent.includes('window.initDashboard') || scriptContent.includes('initDashboard')) {
+                                    console.log('🔧 [Dashboard] Tentando extrair initDashboard do script cortado...');
+                                    
+                                    try {
+                                        // Remove a parte do window.DB_DATA que está cortada
+                                        // Procura pelo padrão: window.DB_DATA = [ ... (cortado)
+                                        let cleanScript = scriptContent;
+                                        
+                                        // Tenta encontrar onde o JSON cortado termina e o código continua
+                                        // Procura por padrões como: ]; ou }]; seguido de código
+                                        const jsonEndMatch = cleanScript.match(/window\.DB_DATA\s*=\s*\[[^]*?(\];|window\.|function|const|let|var)/);
+                                        
+                                        if (jsonEndMatch) {
+                                            // Encontra a posição onde o código funcional começa
+                                            const cutPoint = cleanScript.indexOf('window.DB_DATA');
+                                            const afterCut = cleanScript.substring(cutPoint);
+                                            
+                                            // Tenta encontrar onde o código funcional realmente começa (após o JSON)
+                                            // Procura por padrões que indicam início de código funcional
+                                            const functionalStart = afterCut.search(/(\]\s*;|window\.initDashboard|function|const|let|var)/);
+                                            
+                                            if (functionalStart > 0) {
+                                                // Pula a parte do JSON cortado e pega o código funcional
+                                                const jsonPart = afterCut.substring(0, functionalStart);
+                                                const functionalPart = afterCut.substring(functionalStart);
+                                                
+                                                // Remove a linha com window.DB_DATA = [ (cortada) e mantém o resto
+                                                cleanScript = cleanScript.substring(0, cutPoint) + 
+                                                    '// window.DB_DATA já foi definido anteriormente\n' +
+                                                    functionalPart.replace(/^\s*\]\s*;\s*/, '');
+                                                
+                                                console.log('🔧 [Dashboard] Código funcional extraído (primeiros 300 chars):', cleanScript.substring(0, 300));
+                                                
+                                                // Valida sintaxe
+                                                try {
+                                                    new Function(cleanScript);
+                                                    console.log('✅ [Dashboard] Script limpo validado, executando...');
+                                                    n.text = cleanScript;
+                                                    document.body.appendChild(n);
+                                                    return; // Script executado
+                                                } catch (validateError) {
+                                                    console.warn('⚠️ [Dashboard] Script limpo ainda tem erros:', validateError.message);
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Fallback: tenta remover apenas a linha problemática
+                                        cleanScript = cleanScript.replace(/window\.DB_DATA\s*=\s*\[[^\]]*$/m, '// window.DB_DATA já definido');
+                                        
+                                        // Se ainda tiver window.DB_DATA, substitui por referência aos dados já definidos
+                                        if (cleanScript.includes('window.DB_DATA') && !cleanScript.includes('window.DB_DATA =')) {
+                                            // OK, apenas referências
+                                        }
+                                        
+                                        // Tenta executar o script limpo
+                                        new Function(cleanScript);
+                                        console.log('✅ [Dashboard] Script limpo validado (fallback), executando...');
+                                        n.text = cleanScript;
+                                        document.body.appendChild(n);
+                                        return; // Script executado
+                                    } catch (extractError) {
+                                        console.warn('⚠️ [Dashboard] Não foi possível extrair código funcional:', extractError.message);
+                                    }
+                                }
+                                
+                                // Se não conseguiu extrair, pula o script (dados já foram definidos)
+                                console.log('✅ [Dashboard] Pulando script com JSON incompleto - dados já disponíveis em window.DB_DATA');
+                                return;
+                            }
+                            
+                            try {
+                                // Tenta fazer parse para validar sintaxe
+                                new Function(scriptContent);
+                                n.text = scriptContent;
+                                document.body.appendChild(n);
+                            } catch (syntaxError) {
+                                console.warn(`⚠️ [Dashboard] Erro de sintaxe no script ${index + 1}:`, syntaxError.message);
+                                console.warn('Script problemático (primeiros 500 chars):', scriptContent.substring(0, 500));
+                                
+                                // Se o script contém window.DB_DATA e já temos dados definidos, pula
+                                if (hasDBData && window.DB_DATA && Array.isArray(window.DB_DATA) && window.DB_DATA.length > 0) {
+                                    console.log('✅ [Dashboard] Pulando script com erro - window.DB_DATA já está definido com', window.DB_DATA.length, 'registros');
+                                    return;
+                                }
+                                
+                                // Tenta corrigir erros comuns
+                                let fixedScript = scriptContent;
+                                
+                                // Remove comentários HTML dentro do script (comum em templates)
+                                fixedScript = fixedScript.replace(/<!--[\s\S]*?-->/g, '');
+                                
+                                // Tenta corrigir parênteses/chaves desbalanceados (básico)
+                                const openParens = (fixedScript.match(/\(/g) || []).length;
+                                const closeParens = (fixedScript.match(/\)/g) || []).length;
+                                const openBraces = (fixedScript.match(/\{/g) || []).length;
+                                const closeBraces = (fixedScript.match(/\}/g) || []).length;
+                                
+                                // Se houver desbalanceamento, tenta adicionar fechamentos
+                                if (openParens > closeParens) {
+                                    fixedScript += ')'.repeat(openParens - closeParens);
+                                }
+                                if (openBraces > closeBraces) {
+                                    fixedScript += '}'.repeat(openBraces - closeBraces);
+                                }
+                                
+                                // Tenta executar versão corrigida
+                                try {
+                                    new Function(fixedScript);
+                                    console.log('✅ [Dashboard] Script corrigido automaticamente');
+                                    n.text = fixedScript;
+                                    document.body.appendChild(n);
+                                } catch (fixError) {
+                                    console.error('❌ [Dashboard] Não foi possível corrigir o script:', fixError.message);
+                                    // Se já temos window.DB_DATA definido, não precisa executar este script
+                                    if (window.DB_DATA && Array.isArray(window.DB_DATA) && window.DB_DATA.length > 0) {
+                                        console.log('✅ [Dashboard] Script com erro ignorado - dados já disponíveis em window.DB_DATA');
+                                        return;
+                                    }
+                                    // Último recurso: tenta executar mesmo com erro
+                                    console.warn('⚠️ [Dashboard] Tentando executar script mesmo com erro de sintaxe...');
+                                    try {
+                                        n.text = scriptContent;
+                                        document.body.appendChild(n);
+                                    } catch (finalError) {
+                                        console.error('❌ [Dashboard] Script rejeitado completamente:', finalError.message);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (scriptError) {
+                    console.error(`❌ [Dashboard] Erro ao processar script ${index + 1}:`, scriptError);
+                }
+            });
+            
+            // Garante que DB_DATA está disponível (dupla verificação)
+            if (rawData && Array.isArray(rawData) && rawData.length > 0) {
+                window.DB_DATA = rawData;
+                console.log('✅ [Dashboard] window.DB_DATA confirmado:', window.DB_DATA.length, 'registros');
+                console.log('📊 [Dashboard] Primeiro registro confirmado:', window.DB_DATA[0]);
+            } else if (rawData && Array.isArray(rawData) && rawData.length === 0) {
+                window.DB_DATA = [];
+                console.warn('⚠️ [Dashboard] rawData é um array vazio!');
+            } else if (!window.DB_DATA || !Array.isArray(window.DB_DATA) || window.DB_DATA.length === 0) {
+                // Tenta aguardar um pouco para ver se o script injetado define window.DB_DATA
+                setTimeout(() => {
+                    if (!window.DB_DATA || !Array.isArray(window.DB_DATA) || window.DB_DATA.length === 0) {
+                        window.DB_DATA = [];
+                        console.error('❌ [Dashboard] window.DB_DATA não foi definido após 500ms. Dados não disponíveis.');
+                        console.error('❌ [Dashboard] rawData recebido:', rawData);
+                    }
+                }, 500);
+            }
+            
+            // Log final para debug
+            console.log('📊 [Dashboard] Estado final - window.DB_DATA:', window.DB_DATA ? (Array.isArray(window.DB_DATA) ? `${window.DB_DATA.length} registros` : typeof window.DB_DATA) : 'undefined');
+            
+            // Funções auxiliares obrigatórias (fallback se não existirem)
+            if (typeof window.toggleFilters === 'undefined') {
+                window.toggleFilters = function() {
+                    const container = document.getElementById('filters-container');
+                    if (container) {
+                        container.classList.toggle('hidden');
+                    } else {
+                        console.warn('⚠️ [Dashboard] Elemento filters-container não encontrado');
+                    }
+                };
+                console.log('✅ [Dashboard] Função toggleFilters criada (fallback)');
+            }
+            
+            // Verifica se window.DB_DATA foi definido após scripts executarem
+            setTimeout(function() {
+                // Verifica dados - PRIORIDADE: usar rawData se window.DB_DATA não estiver disponível
+                if (!window.DB_DATA || !Array.isArray(window.DB_DATA) || window.DB_DATA.length === 0) {
+                    console.warn('⚠️ [Dashboard] window.DB_DATA não está disponível após scripts executarem!');
+                    console.warn('⚠️ [Dashboard] Tipo:', typeof window.DB_DATA);
+                    console.warn('⚠️ [Dashboard] Valor:', window.DB_DATA);
+                    
+                    // Tenta definir novamente a partir do rawData (FONTE PRIMÁRIA)
+                    if (rawData && Array.isArray(rawData) && rawData.length > 0) {
+                        window.DB_DATA = rawData;
+                        console.log('✅ [Dashboard] window.DB_DATA definido a partir de rawData:', rawData.length, 'registros');
+                    } else {
+                        console.error('❌ [Dashboard] rawData também está vazio ou inválido!');
+                        console.error('❌ [Dashboard] rawData:', rawData);
+                    }
+                } else {
+                    console.log('✅ [Dashboard] window.DB_DATA confirmado:', window.DB_DATA.length, 'registros');
+                }
+                
+                // Verifica se initDashboard foi definida pelos scripts (pode estar em script cortado)
+                // Tenta extrair e executar initDashboard dos scripts que falharam
+                if (typeof window.initDashboard === 'undefined') {
+                    console.warn('⚠️ [Dashboard] initDashboard() não foi definida pelo código gerado. Tentando extrair de scripts...');
+                    
+                    // Procura por definições de initDashboard nos scripts do container
+                    const containerScripts = document.querySelectorAll('#dashboard-container script');
+                    let foundInitDashboard = false;
+                    
+                    containerScripts.forEach((script, idx) => {
+                        const content = script.innerHTML || script.textContent || '';
+                        // Procura por padrões como: window.initDashboard = function, initDashboard = function, function initDashboard
+                        if (content.includes('initDashboard') && !foundInitDashboard) {
+                            console.log(`🔍 [Dashboard] Script ${idx} contém referência a initDashboard, tentando executar...`);
+                            try {
+                                // Tenta executar o script completo (pode ter erro mas pode definir a função)
+                                const scriptEl = document.createElement('script');
+                                scriptEl.textContent = content;
+                                document.body.appendChild(scriptEl);
+                                // Remove após tentar executar
+                                setTimeout(() => scriptEl.remove(), 100);
+                                
+                                if (typeof window.initDashboard === 'function') {
+                                    foundInitDashboard = true;
+                                    console.log('✅ [Dashboard] initDashboard encontrada e definida a partir do script!');
+                                }
+                            } catch (e) {
+                                console.warn(`⚠️ [Dashboard] Erro ao executar script ${idx}:`, e.message);
+                            }
+                        }
+                    });
+                }
+                
+                // Função initDashboard fallback básica (se ainda não existir)
+                if (typeof window.initDashboard === 'undefined') {
+                    window.initDashboard = function() {
+                        console.warn('⚠️ [Dashboard] Usando fallback initDashboard - renderizando dados básicos.');
+                        
+                        // Garante que window.DB_DATA existe antes de usar
+                        if (!window.DB_DATA || !Array.isArray(window.DB_DATA) || window.DB_DATA.length === 0) {
+                            if (rawData && Array.isArray(rawData) && rawData.length > 0) {
+                                window.DB_DATA = rawData;
+                                console.log('✅ [Dashboard] window.DB_DATA definido a partir de rawData no initDashboard');
+                            } else {
+                                console.error('❌ [Dashboard] Nenhum dado disponível para renderizar!');
+                                return;
+                            }
+                        }
+                        
+                        const dados = window.DB_DATA;
+                        console.log('✅ [Dashboard] Fallback initDashboard executado com', dados.length, 'registros');
+                        
+                        // Tenta renderizar KPIs básicos se existirem elementos
+                        try {
+                            const kpiElements = document.querySelectorAll('#dashboard-container [id^="kpi-"], #dashboard-container .kpi-card, #dashboard-container [class*="kpi"], #dashboard-container [id*="kpi"]');
+                            if (kpiElements.length > 0) {
+                                console.log('📊 [Dashboard] Encontrados', kpiElements.length, 'elementos KPI para atualizar');
+                                
+                                // Tenta atualizar valores dos KPIs com dados reais
+                                kpiElements.forEach((kpiEl, idx) => {
+                                    try {
+                                        // Procura por elementos de valor dentro do KPI
+                                        const valueEl = kpiEl.querySelector('[class*="text-3xl"], [class*="text-4xl"], [id*="value"], .kpi-value, .value, [class*="font-bold"]');
+                                        if (valueEl && dados.length > 0) {
+                                            // Tenta calcular um valor básico baseado nos dados
+                                            const kpiText = (kpiEl.textContent || '').toLowerCase();
+                                            const kpiTitle = (kpiEl.querySelector('h3, h4, .title, [class*="title"]')?.textContent || '').toLowerCase();
+                                            const allText = (kpiText + ' ' + kpiTitle).toLowerCase();
+                                            
+                                            let calculatedValue = null;
+                                            
+                                            // Detecta tipo de KPI pelo texto
+                                            if (allText.includes('total') || allText.includes('registros') || allText.includes('quantidade')) {
+                                                calculatedValue = dados.length.toLocaleString('pt-BR');
+                                            } else if (allText.includes('média') || allText.includes('media') || allText.includes('avg')) {
+                                                // Tenta calcular média de algum campo numérico
+                                                const numericFields = Object.keys(dados[0]).filter(k => 
+                                                    typeof dados[0][k] === 'number' && !isNaN(dados[0][k])
+                                                );
+                                                if (numericFields.length > 0) {
+                                                    const field = numericFields[0];
+                                                    const sum = dados.reduce((acc, r) => acc + (r[field] || 0), 0);
+                                                    const avg = (sum / dados.length).toFixed(2);
+                                                    calculatedValue = avg;
+                                                }
+                                            } else if (allText.includes('soma') || allText.includes('sum') || allText.includes('total valor')) {
+                                                const numericFields = Object.keys(dados[0]).filter(k => 
+                                                    typeof dados[0][k] === 'number' && !isNaN(dados[0][k])
+                                                );
+                                                if (numericFields.length > 0) {
+                                                    const field = numericFields[0];
+                                                    const sum = dados.reduce((acc, r) => acc + (r[field] || 0), 0);
+                                                    calculatedValue = sum.toLocaleString('pt-BR');
+                                                }
+                                            }
+                                            
+                                            if (calculatedValue !== null) {
+                                                valueEl.textContent = calculatedValue;
+                                                console.log(`✅ [Dashboard] KPI ${idx} atualizado:`, calculatedValue);
+                                            } else {
+                                                // Fallback: mostra total de registros
+                                                valueEl.textContent = dados.length.toLocaleString('pt-BR');
+                                            }
+                                        }
+                                    } catch (e) {
+                                        console.warn(`⚠️ [Dashboard] Erro ao atualizar KPI ${idx}:`, e);
+                                    }
+                                });
+                            }
+                            
+                            // Tenta atualizar gráficos se existirem (Chart.js precisa ser inicializado pelo código da IA)
+                            const chartElements = document.querySelectorAll('#dashboard-container canvas, #dashboard-container [id*="chart"], #dashboard-container [class*="chart"]');
+                            if (chartElements.length > 0) {
+                                console.log('📊 [Dashboard] Encontrados', chartElements.length, 'elementos de gráfico');
+                                console.log('ℹ️ [Dashboard] Gráficos Chart.js precisam ser inicializados pelo código gerado pela IA');
+                            }
+                            
+                            // Tenta atualizar tabelas se existirem
+                            const tableBodies = document.querySelectorAll('#dashboard-container tbody');
+                            if (tableBodies.length > 0 && dados.length > 0) {
+                                console.log('📊 [Dashboard] Encontradas', tableBodies.length, 'tabelas para atualizar');
+                                // Nota: Tabelas precisam ser renderizadas pelo código da IA com estrutura específica
+                            }
+                        } catch (e) {
+                            console.warn('⚠️ [Dashboard] Erro ao tentar atualizar elementos:', e);
+                        }
+                    };
+                    console.log('✅ [Dashboard] Função initDashboard criada (fallback básico)');
+                }
+                
+                // Tenta executar initDashboard
+                if (typeof window.initDashboard === 'function') {
+                    try {
+                        window.initDashboard();
+                    } catch (initError) {
+                        console.error('❌ [Dashboard] Erro ao executar initDashboard:', initError);
+                        console.error('Stack:', initError.stack);
+                    }
+                } else {
+                    console.error('❌ [Dashboard] initDashboard() não encontrada mesmo após fallback');
+                }
+            }, 500);
+            
+        } catch (error) {
+            console.error('❌ [Dashboard] Erro geral ao renderizar:', error);
+            const wrap = document.getElementById('dashboardContainer');
+            if (wrap) {
+                wrap.innerHTML = '<div class="text-center p-8 text-red-600"><i class="fas fa-exclamation-triangle text-4xl mb-4"></i><p>Erro ao renderizar dashboard: ' + error.message + '</p></div>';
+            }
         }
-        const wrap = document.getElementById('dashboardContainer');
-        wrap.innerHTML = '<div id="dashboard-container" class="p-6 w-full overflow-y-auto"></div>';
-        document.getElementById('dashboard-container').innerHTML = html;
-        [].slice.call(document.querySelectorAll('#dashboard-container script')).forEach(s => {
-            const n = document.createElement('script');
-            if (s.src) n.src = s.src; else n.text = s.innerHTML;
-            document.body.appendChild(n);
-        });
-        if (rawData && Array.isArray(rawData)) window.DB_DATA = rawData;
-        setTimeout(function() {
-            if (typeof window.initDashboard === 'function') window.initDashboard();
-        }, 150);
     }
 
     function renderSkeleton() {
@@ -392,27 +831,104 @@ window.__PASTAS__ = <%- (typeof pastas !== 'undefined' && pastas) ? JSON.stringi
     }
 
     async function showHtmlCode() {
-        if (!lastBiConfig) {
-            Swal.fire({ icon: 'warning', title: 'Gere um dashboard primeiro', confirmButtonColor: '#3b82f6' });
+        let html = '';
+        
+        // Prioridade 1: HTML completo já gerado (modo HTML)
+        if (currentHtmlCode && currentHtmlCode !== '<!-- biConfig -->' && currentHtmlCode.trim().length > 100) {
+            html = currentHtmlCode;
+        }
+        // Prioridade 2: Modo JSON (biConfig) - precisa gerar HTML
+        else if (lastBiConfig) {
+            Swal.fire({ title: 'Gerando HTML...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            try {
+                const res = await fetch('/api/analytics/generate-page', {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ biConfig: lastBiConfig, queryCode: 'QUERY_ID', formCode: 'FORM_ACTION' })
+                });
+                if (res.ok) {
+                    html = await res.text();
+                } else {
+                    Swal.close();
+                    Swal.fire({ icon: 'error', text: 'Falha ao gerar HTML' });
+                    return;
+                }
+            } catch (e) { 
+                Swal.close(); 
+                Swal.fire({ icon: 'error', text: e.message }); 
+                return;
+            }
+            Swal.close();
+        }
+        // Nenhum dashboard gerado
+        else {
+            Swal.fire({ 
+                icon: 'warning', 
+                title: 'Gere um dashboard primeiro', 
+                text: 'Crie um dashboard antes de visualizar o código.',
+                confirmButtonColor: '#3b82f6' 
+            });
             return;
         }
-        Swal.fire({ title: 'Gerando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        try {
-            const res = await fetch('/api/analytics/generate-page', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ biConfig: lastBiConfig, queryCode: 'QUERY_ID', formCode: 'FORM_ACTION' })
-            });
-            const html = await res.text();
-            Swal.close();
-            if (res.ok) {
-                document.getElementById('codeViewRaw').value = html;
-                const codeEl = document.getElementById('codeViewContent');
-                codeEl.textContent = html;
-                if (window.hljs) hljs.highlightElement(codeEl);
-                document.getElementById('btnCodeCopy').onclick = () => navigator.clipboard.writeText(html).then(() => Swal.fire({ icon: 'success', title: 'Copiado!', timer: 1000, showConfirmButton: false }));
-                setViewMode('code');
-            } else Swal.fire({ icon: 'error', text: 'Falha ao gerar' });
-        } catch (e) { Swal.close(); Swal.fire({ icon: 'error', text: e.message }); }
+        
+        // Exibe o código formatado
+        if (html && html.trim().length > 0) {
+            // Salva no textarea (para copiar)
+            document.getElementById('codeViewRaw').value = html;
+            
+            // Formata e exibe no code element
+            const codeEl = document.getElementById('codeViewContent');
+            codeEl.textContent = html;
+            
+            // Aplica syntax highlighting
+            if (typeof hljs !== 'undefined') {
+                try {
+                    // Registra linguagem HTML se necessário
+                    if (hljs.getLanguage && !hljs.getLanguage('html')) {
+                        hljs.registerLanguage('html', hljs.getLanguage('xml') || function() { return {}; });
+                    }
+                    hljs.highlightElement(codeEl);
+                } catch (e) {
+                    console.warn('Erro ao aplicar highlight:', e);
+                    // Fallback: tenta highlight manual
+                    try {
+                        codeEl.innerHTML = hljs.highlight(html, { language: 'html' }).value;
+                    } catch (e2) {
+                        console.warn('Fallback highlight também falhou:', e2);
+                    }
+                }
+            }
+            
+            // Botão copiar
+            document.getElementById('btnCodeCopy').onclick = () => {
+                const textToCopy = document.getElementById('codeViewRaw').value || html;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    Swal.fire({ 
+                        icon: 'success', 
+                        title: 'Código copiado!', 
+                        timer: 1500, 
+                        showConfirmButton: false 
+                    });
+                }).catch(() => {
+                    // Fallback para navegadores antigos
+                    const textarea = document.createElement('textarea');
+                    textarea.value = textToCopy;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    Swal.fire({ 
+                        icon: 'success', 
+                        title: 'Código copiado!', 
+                        timer: 1500, 
+                        showConfirmButton: false 
+                    });
+                });
+            };
+            
+            // Muda para visualização de código
+            setViewMode('code');
+        }
     }
 
     function openQueryManager() { document.getElementById('queryModal').classList.remove('hidden'); }
@@ -531,8 +1047,27 @@ window.__PASTAS__ = <%- (typeof pastas !== 'undefined' && pastas) ? JSON.stringi
                 if (data.success && data.previewHtml) {
                     currentHtmlCode = data.previewHtml;
                     lastRawData = data.rawResult || lastRawData;
+                    
+                    // Validação e logs
+                    console.log('📊 [Frontend] Dashboard gerado (applyAndGenerate):');
+                    console.log('  - rawResult:', data.rawResult ? (Array.isArray(data.rawResult) ? `${data.rawResult.length} registros` : typeof data.rawResult) : 'null/undefined');
+                    console.log('  - rawResultTotal:', data.rawResultTotal || data.metadata?.totalRecords || 'não informado');
+                    console.log('  - isLimited:', data.isLimited || data.metadata?.isLimited || false);
+                    console.log('  - metadata:', data.metadata);
+                    
+                    if (!data.rawResult || !Array.isArray(data.rawResult) || data.rawResult.length === 0) {
+                        console.error('❌ [Frontend] ERRO: rawResult está vazio! Dashboard não terá dados.');
+                        botReply('⚠️ Dashboard gerado, mas sem dados. Verifique a query e os logs do console.');
+                    } else if (data.isLimited || (data.metadata?.isLimited && data.metadata?.totalRecords > data.rawResult.length)) {
+                        const total = data.metadata?.totalRecords || data.rawResultTotal || data.rawResult.length;
+                        console.warn(`⚠️ [Frontend] Dados limitados: ${data.rawResult.length} de ${total} registros`);
+                        botReply(`Dashboard gerado! (Exibindo ${data.rawResult.length} de ${total} registros - use filtros para trabalhar com os dados)`);
+                    } else {
+                        console.log('✅ [Frontend] Dados válidos recebidos:', data.rawResult.length, 'registros');
+                        botReply('Dashboard com página HTML completa gerado!');
+                    }
+                    
                     renderDashboardHtml(data.previewHtml, data.rawResult);
-                    botReply('Dashboard com página HTML completa gerado!');
                 } else {
                     botReply('Erro: ' + (data.message || 'Falha'));
                 }
@@ -613,6 +1148,12 @@ window.__PASTAS__ = <%- (typeof pastas !== 'undefined' && pastas) ? JSON.stringi
     window.toggleAssistant = toggleAssistant;
     window.toggleEditMode = toggleEditMode;
     window.setViewMode = setViewMode;
+    // Inicializa highlight.js quando a página carregar
+    if (typeof hljs !== 'undefined') {
+        // Garante que HTML está registrado
+        hljs.configure({ languages: ['html', 'xml', 'javascript', 'css'] });
+    }
+    
     window.showHtmlCode = showHtmlCode;
     window.sendMessage = sendMessage;
     window.resetEditor = resetEditor;

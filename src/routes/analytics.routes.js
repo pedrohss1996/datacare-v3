@@ -52,6 +52,13 @@ router.post('/api/analytics/init', loginRequired, analyticsController.init);
 // POST /api/analytics/generate-page - Gera HTML completo (estilo Dashboard Pendências)
 router.post('/api/analytics/generate-page', loginRequired, analyticsController.generatePage);
 
+// POST /api/analytics/data/:queryId - Endpoint para substituir requestQuery (compatibilidade AppMed)
+// Aceita parâmetros dinâmicos e executa query SQL salva
+router.post('/api/analytics/data/:queryId', loginRequired, analyticsController.fetchQueryData);
+
+// POST /api/analytics/stream-progressive - Streaming progressivo para grandes datasets
+router.post('/api/analytics/stream-progressive', loginRequired, analyticsController.streamProgressive);
+
 // POST /api/analytics/save - Salva widget/dashboard no PostgreSQL (exige pasta)
 router.post('/api/analytics/save', loginRequired, analyticsController.saveWidget);
 
