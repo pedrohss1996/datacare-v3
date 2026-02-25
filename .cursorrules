@@ -31,6 +31,6 @@
 - **Ferramentas de Dev:** Use `concurrently` para rodar o modo watch do Tailwind CLI e o Nodemon simultaneamente.
 
 ## 5. Regras Específicas
-- **Documentação:** NÃO crie documentações e NÃO gere arquivos `.md` extras até que seja explicitamente solicitado por mim.
+- **Documentação:** NÃO crie documentações e nem comentarios desnecessarios e NÃO gere arquivos `.md` extras até que seja explicitamente solicitado por mim.
 - **Formatação:** Use ponto e vírgula; indentação de 2 espaços.
 - **Tratamento de Erros:** Middleware centralizado para tratamento de erros no Express.
