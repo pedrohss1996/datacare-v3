@@ -1,0 +1,464 @@
+<!-- AI Dashboards - Assistente gera HTML conectado ao dataset -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<style>
+  .ai-dashboards-root { height: 100%; min-height: 0; display: flex; flex-direction: column; background: #f1f5f9; overflow: hidden; overflow-x: hidden; }
+  .ai-dashboards-root main { min-height: 0; }
+  #dashboardPreviewWrap { min-height: 420px; }
+  #dashboardPreviewIframe { width: 100%; height: 100%; min-height: 400px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; display: block; }
+  #htmlEditor { font-family: monospace; font-size: 12px; min-height: 400px; }
+</style>
+<div class="ai-dashboards-root">
+  <header class="flex-shrink-0 bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <h1 class="text-lg font-bold text-slate-800">AI Dashboards</h1>
+      <span id="datasetBadge" class="text-xs px-2 py-1 rounded bg-slate-100 text-slate-500 hidden">
+        <i class="fas fa-database mr-1"></i><span id="lblDatasetName">-</span>
+      </span>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="/ai-datasets" class="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 transition">Datasets</a>
+      <button type="button" id="btnToggleHtml" class="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+        <i class="fas fa-code mr-1"></i><span id="btnToggleHtmlLabel">Ver / Editar HTML</span>
+      </button>
+      <button type="button" id="btnSaveDashboard" class="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+        <i class="fas fa-save mr-1"></i>Salvar
+      </button>
+    </div>
+  </header>
+
+  <div class="flex-1 flex min-h-0">
+    <aside id="assistantPanel" class="flex-shrink-0 w-72 bg-white border-r border-slate-200 flex flex-col overflow-hidden">
+      <div class="p-3 border-b border-slate-100">
+        <button type="button" id="btnOpenDatasets" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 flex items-center justify-center gap-2">
+          <i class="fas fa-database"></i> Selecionar dataset
+        </button>
+      </div>
+      <input id="dashboardNameInput" type="text" placeholder="Nome do dashboard" class="mx-3 mt-2 text-sm border border-slate-200 rounded-lg px-2.5 py-2 w-[calc(100%-24px)]">
+      <div id="chatHistory" class="flex-1 overflow-y-auto p-2 space-y-2 text-xs"></div>
+      <div class="p-3 border-t border-slate-100">
+        <textarea id="promptInput" rows="3" placeholder="Ex: Crie um dashboard com gráfico de barras. Ou: troque o gráfico por pizza..." class="w-full text-sm border border-slate-200 rounded-lg p-2.5 resize-none focus:ring-2 focus:ring-blue-500"></textarea>
+        <button type="button" id="btnSendPrompt" class="mt-2 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2">
+          <i class="fas fa-paper-plane"></i> Enviar
+        </button>
+      </div>
+    </aside>
+    <button type="button" id="btnToggleAssistant" class="flex-shrink-0 w-6 bg-slate-100 hover:bg-slate-200 border-r border-slate-200 flex items-center justify-center text-slate-500 cursor-pointer" title="Ocultar/Mostrar assistant">
+      <i class="fas fa-chevron-left text-xs"></i>
+    </button>
+
+    <main class="flex-1 flex flex-col min-w-0 min-h-0">
+      <div class="flex-shrink-0 px-4 py-2 bg-white border-b border-slate-200 flex items-center justify-between">
+        <span id="dashboardTitle" class="font-semibold text-slate-700">Dashboard</span>
+        <div id="editorToolbar" class="hidden gap-2">
+          <button type="button" id="btnApplyHtml" class="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Aplicar HTML</button>
+        </div>
+      </div>
+      <div class="flex-1 relative overflow-hidden bg-slate-50 p-4">
+        <div id="dashboardContainer" class="absolute inset-4 flex flex-col overflow-hidden">
+          <div id="dashboardPlaceholder" class="min-h-full flex flex-col items-center justify-center text-slate-400 p-8">
+            <i class="fas fa-chart-area text-6xl opacity-30 mb-4"></i>
+            <p class="text-sm">Selecione um dataset e descreva o dashboard no chat</p>
+            <p class="text-xs mt-1">O assistente gera HTML conectado aos dados da sua query.</p>
+          </div>
+          <div id="dashboardPreviewWrap" class="hidden flex-1 min-h-0 flex flex-col">
+            <iframe id="dashboardPreviewIframe" title="Preview do dashboard" sandbox="allow-scripts allow-same-origin"></iframe>
+          </div>
+          <div id="dashboardEditorWrap" class="hidden flex-1 min-h-0 flex flex-col">
+            <textarea id="htmlEditor" class="flex-1 w-full border border-slate-200 rounded-lg p-3" placeholder="HTML do dashboard (gerado pela IA ou editado por você)"></textarea>
+          </div>
+        </div>
+        <div id="loadingOverlay" class="hidden absolute inset-0 bg-white/90 flex flex-col items-center justify-center z-50">
+          <div class="animate-spin w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full"></div>
+          <p class="mt-4 text-slate-600 font-medium">Processando...</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Modal Selecionar Dataset -->
+<div id="modalDatasets" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" data-close-on-backdrop="true">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+    <div class="px-4 py-3 border-b flex justify-between items-center">
+      <h3 class="font-semibold text-slate-800">Selecionar dataset</h3>
+      <button type="button" id="btnCloseDatasetsModal" class="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+    </div>
+    <p class="px-4 py-2 text-xs text-slate-500 border-b">Todos os datasets aparecem aqui. Para gerar o dashboard, o dataset precisa ter sido executado em AI Datasets.</p>
+    <div id="datasetsModalList" class="flex-1 overflow-y-auto p-4 space-y-2 min-h-[200px]">
+      <p class="text-slate-500 text-sm">Clique em &quot;Selecionar dataset&quot; para carregar a lista.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  try {
+  const API = '/api/ai-dashboard';
+  var activeDatasetId = null;
+  var activeDatasetName = '';
+  var activeDatasetExecuted = false;
+  var lastHtml = '';
+  var lastData = [];
+  var chatMessages = [];
+  var editMode = false;
+
+  function openDatasetsModal() {
+    var modal = document.getElementById('modalDatasets');
+    var listEl = document.getElementById('datasetsModalList');
+    if (!modal || !listEl) return;
+    modal.classList.remove('hidden');
+    listEl.innerHTML = '<p class="text-slate-500 text-sm">Carregando...</p>';
+    if (typeof axios === 'undefined') {
+      listEl.innerHTML = '<p class="text-red-500 text-sm">Erro: axios não carregado. Verifique sua conexão.</p>';
+      return;
+    }
+    axios.get(API + '/datasets').then(function(r) {
+      var raw = r.data;
+      var list = (raw && raw.data && Array.isArray(raw.data)) ? raw.data : (Array.isArray(raw) ? raw : []);
+      if (!list.length) {
+        listEl.innerHTML = '<p class="text-slate-500 text-sm">Nenhum dataset cadastrado. Crie um em <a href="/ai-datasets" class="text-blue-600 underline">AI Datasets</a> primeiro.</p>';
+        return;
+      }
+      listEl.innerHTML = list.map(function(d) {
+        var id = d.id != null ? String(d.id) : '';
+        var name = (d.name != null && d.name !== '') ? String(d.name) : id || 'Dataset';
+        var executed = !!d.last_execution;
+        var statusLabel = executed ? 'Pronto' : 'Não executado';
+        var statusClass = executed ? 'text-emerald-600' : 'text-amber-600';
+        var connName = d.connection_name ? String(d.connection_name) : '';
+        var nameEscaped = name.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        return '<button type="button" class="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition dataset-option" data-id="' + id + '" data-name="' + nameEscaped + '" data-executed="' + (executed ? '1' : '0') + '">' +
+          '<span class="font-medium text-slate-800">' + nameEscaped + '</span>' +
+          '<span class="text-xs ' + statusClass + ' block mt-0.5">' + statusLabel + (connName ? ' • ' + connName.replace(/</g, '&lt;') : '') + '</span></button>';
+      }).join('');
+      /* clique nos itens é tratado por delegação no listener de datasetsModalList */
+    }).catch(function(err) {
+      var listEl = document.getElementById('datasetsModalList');
+      if (listEl) listEl.innerHTML = '<p class="text-red-500 text-sm">Erro ao carregar: ' + (err.response && err.response.data && err.response.data.message ? err.response.data.message : err.message || 'Erro') + '</p>';
+    });
+  }
+  window.openDatasetsModal = openDatasetsModal;
+
+  function toggleAssistant() {
+    var panel = document.getElementById('assistantPanel');
+    var btn = document.getElementById('btnToggleAssistant');
+    if (!panel || !btn) return;
+    if (panel.classList.contains('hidden')) {
+      panel.classList.remove('hidden');
+      var icon = btn.querySelector('i');
+      if (icon) icon.className = 'fas fa-chevron-left text-xs';
+    } else {
+      panel.classList.add('hidden');
+      var icon = btn.querySelector('i');
+      if (icon) icon.className = 'fas fa-chevron-right text-xs';
+    }
+  }
+
+  function addMessage(text, type) {
+    var history = document.getElementById('chatHistory');
+    if (!history) return;
+    var isUser = type === 'user';
+    var div = document.createElement('div');
+    div.className = 'flex gap-2 ' + (isUser ? 'justify-end' : '');
+    div.innerHTML = (isUser ? '' : '<div class="w-6 h-6 rounded bg-blue-100 flex items-center justify-center flex-shrink-0"><i class="fas fa-robot text-blue-600 text-[10px]"></i></div>') +
+      '<div class="max-w-[90%] p-2 rounded-lg ' + (isUser ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700') + ' text-xs">' + text + '</div>' +
+      (isUser ? '<div class="w-6 h-6 rounded bg-slate-200 flex items-center justify-center flex-shrink-0"><i class="fas fa-user text-slate-600 text-[10px]"></i></div>' : '');
+    history.appendChild(div);
+    history.scrollTop = history.scrollHeight;
+  }
+
+  function botReply(t) { addMessage(t, 'bot'); }
+
+  function closeDatasetsModal() {
+    var modal = document.getElementById('modalDatasets');
+    if (modal) modal.classList.add('hidden');
+  }
+  window.closeDatasetsModal = closeDatasetsModal;
+
+  function selectDatasetFromButton(btn) {
+    if (!btn || !btn.getAttribute) return;
+    activeDatasetId = btn.getAttribute('data-id');
+    activeDatasetName = btn.getAttribute('data-name') || 'Dataset';
+    var executed = btn.getAttribute('data-executed') === '1';
+    activeDatasetExecuted = executed;
+    var badge = document.getElementById('datasetBadge');
+    var lblName = document.getElementById('lblDatasetName');
+    var title = document.getElementById('dashboardTitle');
+    if (badge) badge.classList.remove('hidden');
+    if (lblName) lblName.textContent = activeDatasetName;
+    if (title) title.textContent = activeDatasetName;
+    closeDatasetsModal();
+    chatMessages = [];
+    lastHtml = '';
+    lastData = [];
+    var ph = document.getElementById('dashboardPlaceholder');
+    var wrap = document.getElementById('dashboardPreviewWrap');
+    var editorWrap = document.getElementById('dashboardEditorWrap');
+    if (ph) ph.classList.remove('hidden');
+    if (wrap) wrap.classList.add('hidden');
+    if (editorWrap) editorWrap.classList.add('hidden');
+    if (executed) {
+      botReply('Dataset <b>' + activeDatasetName + '</b> selecionado. Descreva o dashboard que quer (ex: &quot;Crie um dashboard com gráfico de barras usando os dados&quot;) ou peça alterações depois.');
+    } else {
+      botReply('Dataset <b>' + activeDatasetName + '</b> selecionado. Para gerar o dashboard, execute este dataset em <a href="/ai-datasets" class="text-blue-600 underline">AI Datasets</a> (botão Executar) e depois volte aqui para descrever o dashboard.');
+    }
+  }
+
+  function extractBodyContent(html) {
+    if (!html || typeof html !== 'string') return html || '';
+    var s = html.trim();
+    var bodyStart = s.indexOf('<body');
+    if (bodyStart === -1) return s;
+    var start = s.indexOf('>', bodyStart) + 1;
+    var end = s.lastIndexOf('</body>');
+    if (end === -1) return s;
+    return s.slice(start, end).trim();
+  }
+
+  function buildIframeDoc(html) {
+    var bodyContent = extractBodyContent(html || '');
+    if (!bodyContent) bodyContent = html || '';
+    var safeHtml = String(bodyContent).replace(/<\/script/gi, '<\\/script');
+    var openScripts = (safeHtml.match(/<script/gi) || []).length;
+    var closeScripts = (safeHtml.match(/<\\/script>/g) || []).length;
+    if (openScripts > closeScripts) safeHtml += '</scr' + 'ipt>';
+    var dataStr = JSON.stringify(lastData || []);
+    var headLibs = '<meta charset="UTF-8">' +
+      '<script src="https://cdn.tailwindcss.com"><\\/script>' +
+      '<script src="https://cdn.jsdelivr.net/npm/chart.js"><\\/script>' +
+      '<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"><\\/script>' +
+      '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">' +
+      '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">';
+    return '<!DOCTYPE html><html lang="pt-BR"><head>' + headLibs +
+      '</head><body><script>window.DASHBOARD_DATA = ' + dataStr + ';<\\/script>' +
+      safeHtml +
+      '</body></html>';
+  }
+
+  function applyHtmlAndRender(html) {
+    if (typeof html !== 'string' || !html.trim()) return;
+    lastHtml = html.trim();
+    document.getElementById('dashboardPlaceholder').classList.add('hidden');
+    document.getElementById('dashboardEditorWrap').classList.add('hidden');
+    var wrap = document.getElementById('dashboardPreviewWrap');
+    var iframe = document.getElementById('dashboardPreviewIframe');
+    if (!wrap || !iframe) return;
+    wrap.classList.remove('hidden');
+    var docStr = buildIframeDoc(lastHtml);
+    function writeDoc() {
+      try {
+        var doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open();
+        doc.write(docStr);
+        doc.close();
+      } catch (e) {
+        wrap.innerHTML = '<p class="text-red-500 text-sm p-4">Erro ao renderizar: ' + e.message + '</p>';
+      }
+    }
+    requestAnimationFrame(function() {
+      requestAnimationFrame(writeDoc);
+    });
+    document.getElementById('htmlEditor').value = lastHtml;
+    document.getElementById('btnSaveDashboard').disabled = false;
+  }
+
+  function toggleHtmlEdit() {
+    editMode = !editMode;
+    var ph = document.getElementById('dashboardPlaceholder');
+    var wrap = document.getElementById('dashboardPreviewWrap');
+    var editorWrap = document.getElementById('dashboardEditorWrap');
+    var toolbar = document.getElementById('editorToolbar');
+    var lbl = document.getElementById('btnToggleHtmlLabel');
+    if (editMode) {
+      editorWrap.classList.remove('hidden');
+      if (lastHtml) {
+        document.getElementById('htmlEditor').value = lastHtml;
+        wrap.classList.add('hidden');
+      }
+      ph.classList.add('hidden');
+      toolbar.classList.remove('hidden');
+      lbl.textContent = 'Ver preview';
+    } else {
+      editorWrap.classList.add('hidden');
+      toolbar.classList.add('hidden');
+      lbl.textContent = 'Ver / Editar HTML';
+      if (lastHtml) {
+        wrap.classList.remove('hidden');
+        applyHtmlAndRender(document.getElementById('htmlEditor').value || lastHtml);
+      } else {
+        ph.classList.remove('hidden');
+      }
+    }
+  }
+
+  function applyEditorHtml() {
+    var raw = document.getElementById('htmlEditor').value || '';
+    if (!raw.trim()) return;
+    lastHtml = raw.trim();
+    applyHtmlAndRender(lastHtml);
+    editMode = false;
+    document.getElementById('dashboardEditorWrap').classList.add('hidden');
+    document.getElementById('editorToolbar').classList.add('hidden');
+    document.getElementById('btnToggleHtmlLabel').textContent = 'Ver / Editar HTML';
+  }
+
+  function sendPrompt() {
+    var prompt = (document.getElementById('promptInput').value || '').trim();
+    if (!prompt) return;
+    if (!activeDatasetId) {
+      botReply('Selecione um dataset em <b>Selecionar dataset</b> primeiro.');
+      return;
+    }
+    if (!activeDatasetExecuted) {
+      botReply('Execute este dataset em <a href="/ai-datasets" class="text-blue-600 underline">AI Datasets</a> (botão Executar) antes de gerar o dashboard. Depois volte aqui e envie sua mensagem.');
+      return;
+    }
+    addMessage(prompt, 'user');
+    chatMessages.push({ role: 'user', content: prompt });
+    document.getElementById('promptInput').value = '';
+
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+    axios.post(API + '/chat', {
+      datasetId: activeDatasetId,
+      messages: chatMessages,
+      currentHtml: lastHtml || null
+    })
+      .then(function(chatRes) {
+        var data = chatRes.data.data || {};
+        var reply = data.reply || 'Pronto.';
+        var html = (data.html != null && typeof data.html === 'string') ? data.html.trim() : '';
+        chatMessages.push({ role: 'model', content: reply });
+        addMessage(reply, 'bot');
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        function doRender(htmlContent) {
+          if (!htmlContent) return;
+          applyHtmlAndRender(htmlContent);
+        }
+        if (html) {
+          if (!lastData || lastData.length === 0) {
+            axios.get(API + '/datasets/' + activeDatasetId + '/data').then(function(dataRes) {
+              lastData = dataRes.data.data || [];
+              doRender(html);
+            }).catch(function() { lastData = []; doRender(html); });
+          } else {
+            doRender(html);
+          }
+        } else {
+          axios.get(API + '/datasets/' + activeDatasetId + '/default-html').then(function(r) {
+            var h = (r.data.data && r.data.data.html) ? r.data.data.html.trim() : '';
+            if (h && (!lastData || lastData.length === 0)) {
+              axios.get(API + '/datasets/' + activeDatasetId + '/data').then(function(dRes) {
+                lastData = dRes.data.data || [];
+                doRender(h);
+              }).catch(function() { doRender(h); });
+            } else if (h) {
+              doRender(h);
+            }
+          }).catch(function() {});
+        }
+      })
+      .catch(function(e) {
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        var msg = (e.response && e.response.data && e.response.data.message) ? e.response.data.message : (e.message || 'Erro.');
+        botReply('Erro: ' + msg + ' Mostrando dashboard padrão.');
+        chatMessages.pop();
+        axios.get(API + '/datasets/' + activeDatasetId + '/default-html').then(function(r) {
+          var h = (r.data.data && r.data.data.html) ? r.data.data.html : '';
+          if (h) {
+            if (!lastData || lastData.length === 0) {
+              axios.get(API + '/datasets/' + activeDatasetId + '/data').then(function(dRes) {
+                lastData = dRes.data.data || [];
+                applyHtmlAndRender(h);
+              }).catch(function() { applyHtmlAndRender(h); });
+            } else {
+              applyHtmlAndRender(h);
+            }
+          }
+        }).catch(function() {});
+      });
+  }
+
+  function saveDashboard() {
+    var name = (document.getElementById('dashboardNameInput').value || '').trim() || activeDatasetName || 'Dashboard';
+    if (!activeDatasetId) {
+      alert('Selecione um dataset e gere o dashboard antes de salvar.');
+      return;
+    }
+    var htmlToSave = editMode ? (document.getElementById('htmlEditor').value || '').trim() : lastHtml;
+    if (!htmlToSave) {
+      alert('Gere um dashboard no chat antes de salvar.');
+      return;
+    }
+    axios.post(API + '/dashboards', {
+      name: name,
+      dataset_id: activeDatasetId,
+      config_json: {},
+      html_content: htmlToSave
+    })
+      .then(function(r) {
+        window.location.href = '/ai-dashboard/' + r.data.data.id;
+      })
+      .catch(function(e) {
+        alert((e.response && e.response.data && e.response.data.message) || e.message || 'Erro ao salvar.');
+      });
+  }
+
+  var btnOpenDs = document.getElementById('btnOpenDatasets');
+  if (btnOpenDs) btnOpenDs.onclick = openDatasetsModal;
+  var btnToggle = document.getElementById('btnToggleAssistant');
+  if (btnToggle) btnToggle.onclick = toggleAssistant;
+  var btnSend = document.getElementById('btnSendPrompt');
+  if (btnSend) btnSend.onclick = sendPrompt;
+  var btnSave = document.getElementById('btnSaveDashboard');
+  if (btnSave) btnSave.onclick = saveDashboard;
+  var btnToggleHtml = document.getElementById('btnToggleHtml');
+  if (btnToggleHtml) btnToggleHtml.onclick = toggleHtmlEdit;
+  var btnApply = document.getElementById('btnApplyHtml');
+  if (btnApply) btnApply.onclick = applyEditorHtml;
+  var promptInput = document.getElementById('promptInput');
+  if (promptInput) promptInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPrompt(); }
+  });
+
+  /* Delegação: clique em qualquer lugar do botão "Selecionar dataset" */
+  document.addEventListener('click', function(e) {
+    if (e.target.closest && e.target.closest('#btnOpenDatasets')) { openDatasetsModal(); return; }
+    if (e.target.closest && e.target.closest('#btnCloseDatasetsModal')) { closeDatasetsModal(); return; }
+    if (e.target && e.target.id === 'modalDatasets') { closeDatasetsModal(); return; }
+  });
+
+  /* Delegação: clique em um item da lista de datasets (funciona para itens carregados depois) */
+  var listContainer = document.getElementById('datasetsModalList');
+  if (listContainer) {
+    listContainer.addEventListener('click', function(e) {
+      var btn = e.target.closest && e.target.closest('.dataset-option');
+      if (btn) selectDatasetFromButton(btn);
+    });
+  }
+
+  var chatHistoryEl = document.getElementById('chatHistory');
+  if (chatHistoryEl) addMessage('Olá! Selecione um dataset e descreva o dashboard que quer. O assistente gera HTML conectado aos dados da sua query. Você pode pedir alterações e editar o HTML manualmente em &quot;Ver / Editar HTML&quot;.', 'bot');
+
+  axios.get(API + '/dashboards').then(function(r) {
+    var list = r.data.data || [];
+    if (list.length) {
+      var container = document.getElementById('dashboardContainer');
+      if (container) {
+        var linkList = '<div class="mb-4 p-3 bg-white rounded-lg border border-slate-200"><p class="text-xs font-medium text-slate-500 mb-2">Dashboards salvos</p><div class="flex flex-wrap gap-2">';
+        list.forEach(function(d) {
+          linkList += '<a href="/ai-dashboard/' + d.id + '" class="px-2 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded">' + (d.name || d.id) + '</a>';
+        });
+        linkList += '</div></div>';
+        var ph = document.getElementById('dashboardPlaceholder');
+        if (ph && ph.parentNode) ph.parentNode.insertAdjacentHTML('afterbegin', linkList);
+      }
+    }
+  }).catch(function() {});
+  } catch (err) {
+    console.error('[AI Dashboards] Erro na inicialização:', err);
+    var ph = document.getElementById('dashboardPlaceholder');
+    if (ph) ph.innerHTML = '<p class="text-red-500 text-sm">Erro ao carregar a página. Recarregue (F5) ou abra o console (F12) para mais detalhes.</p>';
+  }
+})();
+</script>

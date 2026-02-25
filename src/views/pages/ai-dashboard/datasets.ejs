@@ -1,0 +1,313 @@
+<div class="max-w-7xl mx-auto px-4 py-6">
+  <h1 class="text-2xl font-bold text-slate-800 mb-6">AI Datasets</h1>
+  <p class="text-slate-600 mb-6">Cadastre conexões Oracle e queries SELECT. Execute e salve os dados no PostgreSQL para usar nos dashboards.</p>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- Conexões Oracle -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+        <h2 class="font-semibold text-slate-800">Conexões Oracle</h2>
+        <button type="button" id="btnNewConnection" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Nova</button>
+      </div>
+      <div id="connectionsList" class="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+        <div class="p-4 text-slate-500 text-sm">Carregando...</div>
+      </div>
+    </div>
+
+    <!-- Datasets -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+        <h2 class="font-semibold text-slate-800">Datasets</h2>
+        <button type="button" id="btnNewDataset" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">Novo</button>
+      </div>
+      <div id="datasetsList" class="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+        <div class="p-4 text-slate-500 text-sm">Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Conexão -->
+  <div id="modalConnection" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)closeConnectionModal()">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md" onclick="event.stopPropagation()">
+      <div class="px-4 py-3 border-b flex justify-between items-center">
+        <h3 class="font-semibold text-slate-800" id="modalConnectionTitle">Nova conexão</h3>
+        <button type="button" onclick="closeConnectionModal()" class="text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+      <div class="p-4 space-y-3">
+        <input type="hidden" id="connectionId">
+        <input type="text" id="connectionName" placeholder="Nome" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+        <input type="text" id="connectionHost" placeholder="Host" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+        <input type="number" id="connectionPort" placeholder="Porta (1521)" value="1521" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+        <input type="text" id="connectionService" placeholder="Service Name" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+        <input type="text" id="connectionUser" placeholder="Usuário" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+        <input type="password" id="connectionPassword" placeholder="Senha (deixe em branco para manter)" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div class="px-4 py-3 border-t flex justify-end gap-2">
+        <button type="button" onclick="testConnection()" class="px-3 py-1.5 border border-slate-200 rounded-lg text-sm">Testar</button>
+        <button type="button" onclick="saveConnection()" class="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Dataset -->
+  <div id="modalDataset" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)closeDatasetModal()">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+      <div class="px-4 py-3 border-b flex justify-between items-center">
+        <h3 class="font-semibold text-slate-800" id="modalDatasetTitle">Novo dataset</h3>
+        <button type="button" onclick="closeDatasetModal()" class="text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+      <div class="p-4 space-y-3 flex-1 overflow-y-auto">
+        <input type="hidden" id="datasetId">
+        <input type="text" id="datasetName" placeholder="Nome do dataset" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+        <label class="block text-sm text-slate-600">Conexão Oracle</label>
+        <select id="datasetConnectionId" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"></select>
+        <label class="block text-sm text-slate-600">Query SELECT</label>
+        <textarea id="datasetSql" rows="8" placeholder="SELECT ... FROM ..." class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono"></textarea>
+      </div>
+      <div class="px-4 py-3 border-t flex justify-end gap-2">
+        <button type="button" onclick="previewDataset()" class="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Preview</button>
+        <button type="button" onclick="executeDataset()" class="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-sm font-medium">Executar</button>
+        <button type="button" onclick="saveDataset()" class="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-sm font-medium">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Preview -->
+  <div id="modalPreview" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)closePreviewModal()">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+      <div class="px-4 py-3 border-b flex justify-between items-center">
+        <h3 class="font-semibold text-slate-800">Preview dos dados (100 primeiras linhas)</h3>
+        <button type="button" onclick="closePreviewModal()" class="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+      </div>
+      <div id="previewContent" class="flex-1 overflow-auto p-4">
+        <p class="text-slate-500 text-sm">Carregando...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+(function() {
+  const API = '/api/ai-dashboard';
+  function listConnections() {
+    axios.get(API + '/connections').then(r => {
+      const el = document.getElementById('connectionsList');
+      const list = r.data.data || [];
+      if (!list.length) { el.innerHTML = '<div class="p-4 text-slate-500 text-sm">Nenhuma conexão. Clique em Nova.</div>'; return; }
+      el.innerHTML = list.map(c => `
+        <div class="p-3 flex justify-between items-center hover:bg-slate-50">
+          <span class="font-medium text-slate-800">${c.name}</span>
+          <div class="flex gap-1">
+            <button type="button" onclick="window.editConnection('${c.id}')" class="text-blue-600 text-sm">Editar</button>
+            <button type="button" onclick="window.deleteConnection('${c.id}')" class="text-red-600 text-sm">Excluir</button>
+          </div>
+        </div>
+      `).join('');
+    }).catch(() => { document.getElementById('connectionsList').innerHTML = '<div class="p-4 text-red-500 text-sm">Erro ao carregar.</div>'; });
+  }
+  function listDatasets() {
+    axios.get(API + '/datasets').then(r => {
+      const el = document.getElementById('datasetsList');
+      const list = r.data.data || [];
+      if (!list.length) { el.innerHTML = '<div class="p-4 text-slate-500 text-sm">Nenhum dataset. Clique em Novo.</div>'; return; }
+      el.innerHTML = list.map(d => `
+        <div class="p-3 flex justify-between items-center hover:bg-slate-50">
+          <div>
+            <span class="font-medium text-slate-800">${d.name}</span>
+            <span class="text-xs text-slate-500 ml-2">${d.connection_name || ''}</span>
+            ${d.last_execution ? `<span class="text-xs text-emerald-600">Executado</span>` : '<span class="text-xs text-amber-600">Não executado</span>'}
+          </div>
+          <div class="flex gap-1 flex-wrap">
+            <button type="button" onclick="window.previewDatasetById('${d.id}')" class="text-cyan-600 text-sm">Preview</button>
+            <button type="button" onclick="window.executeDatasetById('${d.id}')" class="text-amber-600 text-sm">Executar</button>
+            <button type="button" data-dataset-id="${d.id}" class="btn-edit-dataset text-blue-600 text-sm">Editar</button>
+            <button type="button" onclick="window.deleteDataset('${d.id}')" class="text-red-600 text-sm">Excluir</button>
+          </div>
+        </div>
+      `).join('');
+      document.querySelectorAll('.btn-edit-dataset').forEach(btn => {
+        btn.onclick = () => window.editDataset(btn.getAttribute('data-dataset-id'));
+      });
+    }).catch(() => { document.getElementById('datasetsList').innerHTML = '<div class="p-4 text-red-500 text-sm">Erro ao carregar.</div>'; });
+  }
+  window.editConnection = function(id) {
+    axios.get(API + '/connections').then(r => {
+      const c = (r.data.data || []).find(x => x.id === id);
+      if (!c) return;
+      document.getElementById('connectionId').value = c.id;
+      document.getElementById('connectionName').value = c.name;
+      document.getElementById('connectionHost').value = c.host;
+      document.getElementById('connectionPort').value = c.port || 1521;
+      document.getElementById('connectionService').value = c.service_name;
+      document.getElementById('connectionUser').value = c.username;
+      document.getElementById('connectionPassword').value = '';
+      document.getElementById('modalConnectionTitle').textContent = 'Editar conexão';
+      document.getElementById('modalConnection').classList.remove('hidden');
+    });
+  };
+  window.deleteConnection = function(id) {
+    if (!confirm('Excluir esta conexão?')) return;
+    axios.delete(API + '/connections/' + id).then(() => { listConnections(); listDatasets(); }).catch(e => alert(e.response?.data?.message || e.message));
+  };
+  window.editDataset = function(id) {
+    axios.get(API + '/datasets/' + id).then(r => {
+      const d = r.data.data;
+      if (!d) return;
+      document.getElementById('datasetId').value = d.id;
+      document.getElementById('datasetName').value = d.name || '';
+      document.getElementById('datasetSql').value = d.sql_original || '';
+      document.getElementById('datasetConnectionId').value = d.oracle_connection_id || '';
+      document.getElementById('modalDatasetTitle').textContent = 'Editar dataset';
+      document.getElementById('modalDataset').classList.remove('hidden');
+    }).catch(e => alert(e.response?.data?.message || e.message));
+  };
+  window.deleteDataset = function(id) {
+    if (!confirm('Excluir este dataset?')) return;
+    axios.delete(API + '/datasets/' + id).then(() => listDatasets()).catch(e => alert(e.response?.data?.message || e.message));
+  };
+  window.executeDatasetById = function(id) {
+    if (!confirm('Executar query no Oracle e salvar no PostgreSQL?')) return;
+    axios.post(API + '/datasets/' + id + '/execute').then(r => {
+      alert('Executado: ' + (r.data.data?.rowsCount || 0) + ' linhas.');
+      listDatasets();
+    }).catch(e => alert(e.response?.data?.message || e.message));
+  };
+  function openConnectionModal() {
+    document.getElementById('connectionId').value = '';
+    document.getElementById('connectionName').value = '';
+    document.getElementById('connectionHost').value = '';
+    document.getElementById('connectionPort').value = 1521;
+    document.getElementById('connectionService').value = '';
+    document.getElementById('connectionUser').value = '';
+    document.getElementById('connectionPassword').value = '';
+    document.getElementById('modalConnectionTitle').textContent = 'Nova conexão';
+    document.getElementById('modalConnection').classList.remove('hidden');
+  }
+  function closeConnectionModal() { document.getElementById('modalConnection').classList.add('hidden'); }
+  function saveConnection() {
+    const id = document.getElementById('connectionId').value;
+    const payload = {
+      name: document.getElementById('connectionName').value,
+      host: document.getElementById('connectionHost').value,
+      port: parseInt(document.getElementById('connectionPort').value, 10) || 1521,
+      service_name: document.getElementById('connectionService').value,
+      username: document.getElementById('connectionUser').value
+    };
+    const pwd = document.getElementById('connectionPassword').value;
+    if (pwd) payload.password = pwd;
+    const req = id ? axios.put(API + '/connections/' + id, payload) : axios.post(API + '/connections', payload);
+    req.then(function(r) {
+      closeConnectionModal();
+      listConnections();
+      alert(id ? 'Conexão atualizada.' : 'Conexão cadastrada com sucesso.');
+    }).catch(function(e) {
+      var msg = (e.response && e.response.data && e.response.data.message) ? e.response.data.message : (e.message || 'Erro ao salvar.');
+      alert(msg);
+    });
+  }
+  function testConnection() {
+    const id = document.getElementById('connectionId').value;
+    if (!id) { alert('Salve a conexão antes de testar.'); return; }
+    axios.post(API + '/connections/' + id + '/test').then(r => alert(r.data.success ? 'Conexão OK.' : r.data.message)).catch(e => alert(e.response?.data?.message || e.message));
+  }
+  function openDatasetModal() {
+    document.getElementById('datasetId').value = '';
+    document.getElementById('datasetName').value = '';
+    document.getElementById('datasetSql').value = '';
+    document.getElementById('datasetConnectionId').value = '';
+    document.getElementById('modalDatasetTitle').textContent = 'Novo dataset';
+    axios.get(API + '/connections').then(r => {
+      const opts = (r.data.data || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      document.getElementById('datasetConnectionId').innerHTML = '<option value="">Selecione...</option>' + opts;
+    });
+    document.getElementById('modalDataset').classList.remove('hidden');
+  }
+  function closeDatasetModal() { document.getElementById('modalDataset').classList.add('hidden'); }
+  function saveDataset() {
+    const id = document.getElementById('datasetId').value;
+    const payload = {
+      name: document.getElementById('datasetName').value,
+      sql_original: document.getElementById('datasetSql').value.trim(),
+      oracle_connection_id: document.getElementById('datasetConnectionId').value
+    };
+    if (!payload.name || !payload.sql_original || !payload.oracle_connection_id) { alert('Preencha nome, conexão e SQL.'); return; }
+    const req = id ? axios.put(API + '/datasets/' + id, payload) : axios.post(API + '/datasets', payload);
+    req.then(() => { closeDatasetModal(); listDatasets(); }).catch(e => alert(e.response?.data?.message || e.message));
+  }
+  function executeDataset() {
+    const id = document.getElementById('datasetId').value;
+    if (!id) { alert('Salve o dataset antes de executar.'); return; }
+    axios.post(API + '/datasets/' + id + '/execute').then(r => {
+      alert('Executado: ' + (r.data.data?.rowsCount || 0) + ' linhas.');
+      listDatasets();
+    }).catch(e => alert(e.response?.data?.message || e.message));
+  }
+  function closePreviewModal() { document.getElementById('modalPreview').classList.add('hidden'); }
+  function showPreviewTable(data) {
+    const content = document.getElementById('previewContent');
+    if (!data || !data.rows) { content.innerHTML = '<p class="text-slate-500">Nenhum dado.</p>'; return; }
+    const cols = data.columns && data.columns.length ? data.columns.map(function(c) { return c.name; }) : (data.rows[0] ? Object.keys(data.rows[0]) : []);
+    if (!cols.length) { content.innerHTML = '<p class="text-slate-500">Nenhuma coluna.</p>'; return; }
+    var html = '<div class="overflow-x-auto border border-slate-200 rounded-lg"><table class="min-w-full text-sm"><thead><tr class="bg-slate-100">';
+    cols.forEach(function(c) { html += '<th class="px-3 py-2 text-left font-medium text-slate-700 whitespace-nowrap">' + escapeHtml(c) + '</th>'; });
+    html += '</tr></thead><tbody>';
+    data.rows.slice(0, 100).forEach(function(row, i) {
+      html += '<tr class="' + (i % 2 ? 'bg-slate-50' : '') + '">';
+      cols.forEach(function(col) { html += '<td class="px-3 py-2 text-slate-800 border-t border-slate-100">' + escapeHtml(row[col] != null ? String(row[col]) : '') + '</td>'; });
+      html += '</tr>';
+    });
+    html += '</tbody></table></div><p class="text-xs text-slate-500 mt-2">Exibindo ' + Math.min(data.rows.length, 100) + ' de ' + data.rows.length + ' linhas.</p>';
+    content.innerHTML = html;
+  }
+  function escapeHtml(s) { if (s == null) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function previewDataset() {
+    var id = document.getElementById('datasetId').value;
+    var connId = document.getElementById('datasetConnectionId').value;
+    var sql = (document.getElementById('datasetSql').value || '').trim();
+    document.getElementById('modalPreview').classList.remove('hidden');
+    document.getElementById('previewContent').innerHTML = '<p class="text-slate-500">Executando query no Oracle...</p>';
+    if (id) {
+      axios.get(API + '/datasets/' + id + '/preview?limit=100').then(function(r) {
+        showPreviewTable(r.data.data);
+      }).catch(function(e) {
+        document.getElementById('previewContent').innerHTML = '<p class="text-red-500">' + escapeHtml((e.response && e.response.data && e.response.data.message) || e.message || 'Erro') + '</p>';
+      });
+    } else {
+      if (!connId || !sql) { document.getElementById('previewContent').innerHTML = '<p class="text-amber-600">Selecione a conexão e digite a query para ver o preview.</p>'; return; }
+      axios.post(API + '/datasets/preview', { oracle_connection_id: connId, sql_original: sql, limit: 100 }).then(function(r) {
+        showPreviewTable(r.data.data);
+      }).catch(function(e) {
+        document.getElementById('previewContent').innerHTML = '<p class="text-red-500">' + escapeHtml((e.response && e.response.data && e.response.data.message) || e.message || 'Erro') + '</p>';
+      });
+    }
+  }
+  window.previewDatasetById = function(id) {
+    document.getElementById('modalPreview').classList.remove('hidden');
+    document.getElementById('previewContent').innerHTML = '<p class="text-slate-500">Carregando preview...</p>';
+    axios.get(API + '/datasets/' + id + '/preview?limit=100').then(function(r) {
+      showPreviewTable(r.data.data);
+    }).catch(function(e) {
+      document.getElementById('previewContent').innerHTML = '<p class="text-red-500">' + escapeHtml((e.response && e.response.data && e.response.data.message) || e.message || 'Erro') + '</p>';
+    });
+  };
+  document.getElementById('btnNewConnection').onclick = openConnectionModal;
+  document.getElementById('btnNewDataset').onclick = openDatasetModal;
+  listConnections();
+  listDatasets();
+  axios.get(API + '/connections').then(r => {
+    const opts = (r.data.data || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    const sel = document.getElementById('datasetConnectionId');
+    if (sel && !sel.innerHTML) sel.innerHTML = '<option value="">Selecione...</option>' + opts;
+  });
+
+  window.saveConnection = saveConnection;
+  window.testConnection = testConnection;
+  window.closeConnectionModal = closeConnectionModal;
+  window.closeDatasetModal = closeDatasetModal;
+  window.saveDataset = saveDataset;
+  window.executeDataset = executeDataset;
+  window.previewDataset = previewDataset;
+  window.closePreviewModal = closePreviewModal;
+})();
+</script>

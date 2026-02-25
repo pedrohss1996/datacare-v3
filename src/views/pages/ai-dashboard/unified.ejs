@@ -1,0 +1,1249 @@
+<%# Dashboards & Dados — página unificada (Conexões, Datasets, Assistente Gemini, Preview) %>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --brand: #6366f1;
+    --brand-dark: #4f46e5;
+    --surface: #ffffff;
+    --bg: #f1f5f9;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+    --success: #059669;
+    --warning: #d97706;
+    --danger: #dc2626;
+    --sidebar-w: 360px;
+  }
+  * { box-sizing: border-box; }
+  .ai-page {
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 56px);
+    min-height: 500px;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  /* ── Topbar ── */
+  .ai-topbar {
+    flex-shrink: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    z-index: 10;
+  }
+  .ai-topbar h1 { font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .ai-topbar h1 i { color: var(--brand); }
+  .ai-topbar-right { display: flex; align-items: center; gap: 8px; }
+  /* ── Layout ── */
+  .ai-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+  /* ── Sidebar ── */
+  .ai-sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .ai-sidebar-scroll { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .ai-sidebar-scroll::-webkit-scrollbar { width: 4px; }
+  .ai-sidebar-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  /* ── Cards ── */
+  .s-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .s-card-head {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #f1f5f9;
+    background: #f8fafc;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    cursor: pointer;
+    user-select: none;
+  }
+  .s-card-head i.chevron { transition: transform 0.2s; color: var(--muted); margin-left: auto; margin-right: 0; }
+  .s-card-head.collapsed i.chevron { transform: rotate(-90deg); }
+  .s-card-body { padding: 10px; }
+  .s-card-body.hidden { display: none; }
+  /* ── Listas ── */
+  .s-list { display: flex; flex-direction: column; gap: 2px; }
+  .s-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    font-size: 12.5px;
+    transition: background 0.15s;
+  }
+  .s-list-item:hover { background: #f8fafc; }
+  .s-list-item.active { background: #eff6ff; border: 1px solid #bfdbfe; }
+  .s-list-item-name { flex: 1; min-width: 0; }
+  .s-list-item-name .name { font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .s-list-item-name .meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .s-list-actions { display: flex; gap: 3px; flex-shrink: 0; }
+  /* ── Botões ── */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; padding: 4px 10px; border: 1px solid transparent; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-ghost { background: transparent; border-color: var(--border); color: var(--muted); }
+  .btn-ghost:hover:not(:disabled) { background: #f1f5f9; color: var(--text); }
+  .btn-primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
+  .btn-success { background: var(--success); color: #fff; border-color: var(--success); }
+  .btn-success:hover:not(:disabled) { background: #047857; }
+  .btn-danger { background: transparent; border-color: transparent; color: var(--danger); }
+  .btn-danger:hover:not(:disabled) { background: #fee2e2; }
+  .btn-warning { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+  .btn-warning:hover:not(:disabled) { background: #d97706; }
+  .btn-lg { padding: 8px 18px; font-size: 13px; border-radius: 8px; }
+  .btn-icon { padding: 4px 6px; }
+  /* Status badges */
+  .badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 20px; font-size: 10.5px; font-weight: 600; }
+  .badge-ok { background: #d1fae5; color: #065f46; }
+  .badge-warn { background: #fef3c7; color: #92400e; }
+  .badge-info { background: #dbeafe; color: #1e40af; }
+  /* ── Chat ── */
+  .chat-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .chat-ds-info { font-size: 11.5px; color: var(--muted); padding: 6px 8px; background: #f8fafc; border-radius: 7px; }
+  .chat-ds-info strong { color: var(--text); }
+  .chat-history {
+    min-height: 110px;
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px 0;
+  }
+  .chat-history::-webkit-scrollbar { width: 3px; }
+  .chat-history::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  .chat-msg { display: flex; gap: 6px; align-items: flex-end; }
+  .chat-msg.user { flex-direction: row-reverse; }
+  .chat-bubble {
+    max-width: 88%;
+    padding: 7px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .chat-msg.bot .chat-bubble { background: #f1f5f9; color: var(--text); border-bottom-left-radius: 3px; }
+  .chat-msg.user .chat-bubble { background: var(--brand); color: #fff; border-bottom-right-radius: 3px; }
+  .chat-avatar { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
+  .chat-avatar.bot { background: #e0e7ff; color: var(--brand); }
+  .chat-avatar.user { background: #e2e8f0; color: var(--muted); }
+  .chat-input-row { display: flex; gap: 6px; align-items: flex-end; }
+  .chat-textarea {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    font-family: inherit;
+    line-height: 1.4;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    max-height: 90px;
+    overflow-y: auto;
+  }
+  .chat-textarea:focus { border-color: var(--brand); }
+  /* ── Main area ── */
+  .ai-main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 14px; overflow: hidden; gap: 10px; }
+  .ai-main-toolbar { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .ai-main-toolbar-left { display: flex; align-items: center; gap: 8px; }
+  .ai-main-toolbar-right { display: flex; align-items: center; gap: 6px; }
+  .preview-zone {
+    flex: 1;
+    min-height: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+  .preview-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    text-align: center;
+    padding: 32px;
+    background: var(--surface);
+    gap: 10px;
+  }
+  .preview-placeholder i { font-size: 48px; opacity: 0.35; }
+  .preview-placeholder p { font-size: 13px; max-width: 300px; line-height: 1.5; }
+  .preview-iframe-wrap { position: absolute; inset: 0; display: none; }
+  .preview-iframe-wrap.visible { display: block; }
+  .preview-iframe-wrap iframe { width: 100%; height: 100%; border: none; }
+  .editor-wrap { position: absolute; inset: 0; display: none; flex-direction: column; }
+  .editor-wrap.visible { display: flex; }
+  .editor-wrap textarea { flex: 1; width: 100%; padding: 14px; font-family: 'JetBrains Mono', 'Cascadia Code', monospace; font-size: 12px; line-height: 1.55; border: none; outline: none; resize: none; color: #1e293b; background: #1e293b; color: #e2e8f0; }
+  /* ── Loading overlay ── */
+  .loading-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(2px);
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .loading-overlay.visible { display: flex; }
+  .spinner { width: 36px; height: 36px; border: 3px solid #e2e8f0; border-top-color: var(--brand); border-radius: 50%; animation: spin 0.75s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-label { font-size: 13px; color: var(--muted); font-weight: 500; }
+  /* ── Modais ── */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,0.55);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    backdrop-filter: blur(2px);
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal-box { background: var(--surface); border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,0.18); width: 100%; max-height: 90vh; display: flex; flex-direction: column; }
+  .modal-sm { max-width: 440px; }
+  .modal-md { max-width: 560px; }
+  .modal-lg { max-width: 820px; }
+  .modal-head { padding: 16px 20px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-head h3 { font-size: 15px; font-weight: 700; color: var(--text); }
+  .modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 12px; }
+  .modal-foot { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    background: #fff;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+  }
+  .field textarea { resize: vertical; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .toast-item {
+    padding: 10px 16px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    animation: toastIn 0.25s ease, toastOut 0.3s ease 2.7s forwards;
+    pointer-events: auto;
+  }
+  .toast-ok { background: #059669; }
+  .toast-err { background: #dc2626; }
+  .toast-info { background: #6366f1; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes toastOut { from { opacity: 1; } to { opacity: 0; pointer-events: none; } }
+  /* ── Preview table ── */
+  .preview-table-wrap { overflow: auto; max-height: 400px; }
+  .preview-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .preview-table thead th { background: #f8fafc; padding: 8px 12px; text-align: left; font-weight: 600; color: var(--muted); border-bottom: 2px solid var(--border); white-space: nowrap; position: sticky; top: 0; }
+  .preview-table tbody td { padding: 7px 12px; border-bottom: 1px solid #f1f5f9; color: var(--text); }
+  .preview-table tbody tr:hover td { background: #f8fafc; }
+  /* saved dashboards list */
+  .saved-badge { font-size: 10px; background: #ede9fe; color: #5b21b6; padding: 2px 6px; border-radius: 20px; font-weight: 600; }
+  /* empty state */
+  .empty { text-align: center; padding: 18px 10px; color: var(--muted); font-size: 12.5px; }
+  .empty i { font-size: 22px; display: block; margin-bottom: 6px; opacity: 0.45; }
+  /* tabs for connections/datasets */
+  .tab-bar { display: flex; border-bottom: 1px solid var(--border); padding: 0 14px; background: #f8fafc; gap: 0; }
+  .tab-btn { padding: 9px 14px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+  .tab-btn:hover { color: var(--brand); }
+  .tab-btn.active { color: var(--brand); border-bottom-color: var(--brand); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+</style>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="ai-page">
+
+  <!-- Topbar -->
+  <header class="ai-topbar">
+    <h1><i class="fas fa-chart-area"></i> Dashboards & Dados</h1>
+    <div class="ai-topbar-right">
+      <span id="activeDsBadge" style="display:none" class="badge badge-info">
+        <i class="fas fa-database"></i> <span id="activeDsName">-</span>
+      </span>
+      <button id="btnToggleEditor" class="btn btn-ghost btn-lg" style="display:none">
+        <i class="fas fa-code"></i> <span id="toggleEditorLabel">Ver HTML</span>
+      </button>
+      <button id="btnApplyEditor" class="btn btn-success btn-lg" style="display:none">
+        <i class="fas fa-check"></i> Aplicar HTML
+      </button>
+      <button id="btnSaveDashboard" class="btn btn-primary btn-lg" disabled>
+        <i class="fas fa-save"></i> Salvar dashboard
+      </button>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <div class="ai-body">
+
+    <!-- ── Sidebar ── -->
+    <aside class="ai-sidebar">
+      <!-- Tabs -->
+      <div class="tab-bar" id="sidebarTabBar">
+        <span class="tab-btn active" data-tab="tab-data"><i class="fas fa-database mr-1"></i>Dados</span>
+        <span class="tab-btn" data-tab="tab-dashboards"><i class="fas fa-chart-bar mr-1"></i>Dashboards</span>
+      </div>
+
+      <!-- Tab: Dados (Conexões + Datasets + Chat) -->
+      <div id="tab-data" class="tab-panel active ai-sidebar-scroll">
+
+        <!-- Conexões Oracle -->
+        <div class="s-card" id="cardConnections">
+          <div class="s-card-head" id="headConnections">
+            <span><i class="fas fa-plug mr-1.5 text-blue-500"></i>Conexões Oracle</span>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="btn btn-primary btn-icon" id="btnNewConn" title="Nova conexão" onclick="event.stopPropagation()">
+                <i class="fas fa-plus"></i>
+              </button>
+              <i class="fas fa-chevron-down chevron"></i>
+            </div>
+          </div>
+          <div class="s-card-body" id="bodyConnections">
+            <div id="connList" class="s-list">
+              <div class="empty"><i class="fas fa-circle-notch fa-spin"></i>Carregando...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Datasets -->
+        <div class="s-card" id="cardDatasets">
+          <div class="s-card-head" id="headDatasets">
+            <span><i class="fas fa-table mr-1.5 text-emerald-500"></i>Datasets</span>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="btn btn-success btn-icon" id="btnNewDs" title="Novo dataset" onclick="event.stopPropagation()">
+                <i class="fas fa-plus"></i>
+              </button>
+              <i class="fas fa-chevron-down chevron"></i>
+            </div>
+          </div>
+          <div class="s-card-body" id="bodyDatasets">
+            <div id="dsList" class="s-list">
+              <div class="empty"><i class="fas fa-circle-notch fa-spin"></i>Carregando...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Assistente Gemini -->
+        <div class="s-card" id="cardAssistant" style="flex:1">
+          <div class="s-card-head" style="cursor:default">
+            <span><i class="fas fa-robot mr-1.5 text-violet-500"></i>Assistente Gemini</span>
+          </div>
+          <div class="s-card-body">
+            <div class="chat-wrap">
+              <div class="chat-ds-info" id="chatDsInfo">
+                <i class="fas fa-info-circle mr-1"></i>
+                Selecione um dataset acima e clique em <strong>Usar</strong>.
+              </div>
+              <div class="chat-history" id="chatHistory"></div>
+              <div class="field" style="margin:0">
+                <input type="text" id="dashboardNameInput" placeholder="Nome do dashboard (opcional)" style="font-size:12px;padding:7px 10px;margin-bottom:6px">
+              </div>
+              <div class="chat-input-row">
+                <textarea id="promptInput" class="chat-textarea" rows="3" placeholder="Descreva o dashboard... (Enter para enviar)"></textarea>
+                <button id="btnSend" class="btn btn-primary" style="padding:8px 12px;align-self:flex-end" title="Enviar (Enter)">
+                  <i class="fas fa-paper-plane"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tab-data -->
+
+      <!-- Tab: Dashboards salvos -->
+      <div id="tab-dashboards" class="tab-panel ai-sidebar-scroll">
+        <div class="s-card">
+          <div class="s-card-head" style="cursor:default">
+            <span><i class="fas fa-layer-group mr-1.5 text-indigo-500"></i>Dashboards Salvos</span>
+            <button class="btn btn-ghost btn-icon" id="btnReloadDashboards" title="Recarregar">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+          <div class="s-card-body">
+            <div id="savedDashboardsList" class="s-list">
+              <div class="empty"><i class="fas fa-circle-notch fa-spin"></i>Carregando...</div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /tab-dashboards -->
+
+    </aside><!-- /sidebar -->
+
+    <!-- ── Main ── -->
+    <main class="ai-main">
+      <div class="ai-main-toolbar">
+        <div class="ai-main-toolbar-left">
+          <span id="previewTitle" class="font-semibold text-slate-700" style="font-size:14px">Preview</span>
+        </div>
+        <div class="ai-main-toolbar-right" id="previewMeta" style="display:none">
+          <span class="badge badge-info" id="previewDsLabel"></span>
+        </div>
+      </div>
+
+      <div class="preview-zone" id="previewZone">
+        <div class="preview-placeholder" id="previewPlaceholder">
+          <i class="fas fa-chart-area"></i>
+          <p>Selecione um dataset, clique em <strong>Usar</strong> e descreva o dashboard no Assistente para gerar.</p>
+        </div>
+
+        <div class="preview-iframe-wrap" id="previewIframeWrap">
+          <iframe id="previewIframe" title="Dashboard Preview" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+        </div>
+
+        <div class="editor-wrap" id="editorWrap">
+          <textarea id="htmlEditor" spellcheck="false" placeholder="HTML do dashboard..."></textarea>
+        </div>
+
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="spinner"></div>
+          <span class="loading-label" id="loadingLabel">Processando...</span>
+        </div>
+      </div>
+    </main>
+
+  </div>
+</div><!-- /ai-page -->
+
+<!-- ══ Toast ══ -->
+<div id="toast"></div>
+
+<!-- ══ Modal: Conexão ══ -->
+<div class="modal-backdrop" id="modalConn">
+  <div class="modal-box modal-sm" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="modalConnTitle">Nova conexão Oracle</h3>
+      <button class="btn btn-ghost btn-icon" id="btnCloseConn"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="connId">
+      <div class="field"><label>Nome *</label><input type="text" id="connName" placeholder="Ex: TASY Produção" autocomplete="off"></div>
+      <div class="field-row">
+        <div class="field"><label>Host *</label><input type="text" id="connHost" placeholder="10.0.0.100" autocomplete="off"></div>
+        <div class="field"><label>Porta</label><input type="number" id="connPort" value="1521" placeholder="1521"></div>
+      </div>
+      <div class="field"><label>Service Name *</label><input type="text" id="connService" placeholder="dbprod" autocomplete="off"></div>
+      <div class="field-row">
+        <div class="field"><label>Usuário *</label><input type="text" id="connUser" autocomplete="off"></div>
+        <div class="field"><label>Senha <span id="connPwdHint" style="text-transform:none;font-size:10px">(obrigatória)</span></label>
+          <input type="password" id="connPwd" autocomplete="new-password"></div>
+      </div>
+      <div id="connTestResult" style="font-size:12px;display:none"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="btnTestConn"><i class="fas fa-plug"></i> Testar</button>
+      <button class="btn btn-primary" id="btnSaveConn"><i class="fas fa-save"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Dataset ══ -->
+<div class="modal-backdrop" id="modalDs">
+  <div class="modal-box modal-lg" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="modalDsTitle">Novo dataset</h3>
+      <button class="btn btn-ghost btn-icon" id="btnCloseDs"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="dsId">
+      <div class="field-row">
+        <div class="field"><label>Nome do dataset *</label><input type="text" id="dsName" placeholder="Ex: Pendências por setor" autocomplete="off"></div>
+        <div class="field"><label>Conexão Oracle *</label><select id="dsConnId"><option value="">Selecione...</option></select></div>
+      </div>
+      <div class="field">
+        <label>Query SELECT *</label>
+        <textarea id="dsSql" rows="8" style="font-family:'Cascadia Code',monospace;font-size:12.5px" placeholder="SELECT col1, col2 FROM tabela WHERE ..."></textarea>
+      </div>
+      <div id="dsPreviewArea" style="display:none">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em">Preview (100 linhas)</div>
+        <div id="dsPreviewContent" class="preview-table-wrap"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="btnPreviewDs"><i class="fas fa-eye"></i> Preview</button>
+      <button class="btn btn-warning" id="btnExecuteDs"><i class="fas fa-bolt"></i> Executar</button>
+      <button class="btn btn-success" id="btnSaveDs"><i class="fas fa-save"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var API = '/api/ai-dashboard';
+  var state = {
+    activeDs: null,        // { id, name, executed }
+    lastHtml: '',
+    lastData: [],
+    chatMessages: [],
+    editorVisible: false,
+    loadingDashboard: null // id do dashboard carregado nos salvos
+  };
+
+  /* ═══════════════════════════════
+     Utilitários
+  ══════════════════════════════ */
+  function esc(s) {
+    if (s == null) return '';
+    var d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+  }
+
+  function toast(msg, type) {
+    type = type || 'ok';
+    var el = document.createElement('div');
+    el.className = 'toast-item toast-' + type;
+    el.textContent = msg;
+    document.getElementById('toast').appendChild(el);
+    setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 3200);
+  }
+
+  function showLoading(label) {
+    var ov = document.getElementById('loadingOverlay');
+    document.getElementById('loadingLabel').textContent = label || 'Processando...';
+    ov.classList.add('visible');
+  }
+  function hideLoading() {
+    document.getElementById('loadingOverlay').classList.remove('visible');
+  }
+
+  /* fetch wrapper — sempre retorna JSON ou lança erro legível */
+  function api(method, path, body) {
+    var opts = {
+      method: method,
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' }
+    };
+    if (body != null) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    return fetch(API + path, opts).then(function(res) {
+      return res.json().then(function(data) {
+        if (!res.ok) {
+          var msg = (data && (data.message || data.error)) || ('Erro ' + res.status);
+          throw new Error(msg);
+        }
+        return data;
+      });
+    });
+  }
+
+  function getList(data) {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data.data)) return data.data;
+    return [];
+  }
+
+  /* ═══════════════════════════════
+     Tabs sidebar
+  ══════════════════════════════ */
+  document.getElementById('sidebarTabBar').addEventListener('click', function(e) {
+    var btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    var target = btn.getAttribute('data-tab');
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById(target).classList.add('active');
+    if (target === 'tab-dashboards') loadSavedDashboards();
+  });
+
+  /* ═══════════════════════════════
+     Collapsible cards
+  ══════════════════════════════ */
+  ['headConnections', 'headDatasets'].forEach(function(headId) {
+    document.getElementById(headId).addEventListener('click', function(e) {
+      if (e.target.closest('button')) return;
+      var head = document.getElementById(headId);
+      var bodyId = headId.replace('head', 'body');
+      var body = document.getElementById(bodyId);
+      head.classList.toggle('collapsed');
+      body.classList.toggle('hidden');
+    });
+  });
+
+  /* ═══════════════════════════════
+     Conexões Oracle
+  ══════════════════════════════ */
+  function loadConnections() {
+    document.getElementById('connList').innerHTML = '<div class="empty"><i class="fas fa-circle-notch fa-spin"></i>Carregando...</div>';
+    api('GET', '/connections').then(function(data) {
+      var list = getList(data);
+      renderConnections(list);
+    }).catch(function(e) {
+      document.getElementById('connList').innerHTML = '<div class="empty" style="color:var(--danger)"><i class="fas fa-exclamation-triangle"></i>' + esc(e.message) + '</div>';
+    });
+  }
+
+  function renderConnections(list) {
+    if (!list.length) {
+      document.getElementById('connList').innerHTML = '<div class="empty"><i class="fas fa-plug"></i>Nenhuma conexão. Clique em +</div>';
+      return;
+    }
+    document.getElementById('connList').innerHTML = list.map(function(c) {
+      return '<div class="s-list-item" data-cid="' + c.id + '">' +
+        '<div class="s-list-item-name"><div class="name">' + esc(c.name) + '</div>' +
+        '<div class="meta">' + esc(c.host) + ':' + (c.port || 1521) + ' / ' + esc(c.service_name) + '</div></div>' +
+        '<div class="s-list-actions">' +
+        '<button class="btn btn-ghost btn-icon btn-conn-edit" data-id="' + c.id + '" title="Editar"><i class="fas fa-pen"></i></button>' +
+        '<button class="btn btn-danger btn-icon btn-conn-del" data-id="' + c.id + '" data-name="' + esc(c.name) + '" title="Excluir"><i class="fas fa-trash"></i></button>' +
+        '</div></div>';
+    }).join('');
+    document.getElementById('connList').querySelectorAll('.btn-conn-edit').forEach(function(btn) {
+      btn.onclick = function() { openConnModal(btn.getAttribute('data-id')); };
+    });
+    document.getElementById('connList').querySelectorAll('.btn-conn-del').forEach(function(btn) {
+      btn.onclick = function() {
+        if (!confirm('Excluir a conexão "' + btn.getAttribute('data-name') + '"?')) return;
+        api('DELETE', '/connections/' + btn.getAttribute('data-id'))
+          .then(function() { toast('Conexão excluída.'); loadConnections(); loadDatasets(); })
+          .catch(function(e) { toast(e.message, 'err'); });
+      };
+    });
+  }
+
+  /* Modal conexão */
+  function openConnModal(editId) {
+    document.getElementById('connId').value = editId || '';
+    document.getElementById('connName').value = '';
+    document.getElementById('connHost').value = '';
+    document.getElementById('connPort').value = '1521';
+    document.getElementById('connService').value = '';
+    document.getElementById('connUser').value = '';
+    document.getElementById('connPwd').value = '';
+    document.getElementById('connTestResult').style.display = 'none';
+
+    if (editId) {
+      document.getElementById('modalConnTitle').textContent = 'Editar conexão Oracle';
+      document.getElementById('connPwdHint').textContent = '(deixe em branco para manter)';
+      api('GET', '/connections').then(function(data) {
+        var c = getList(data).find(function(x) { return String(x.id) === String(editId); });
+        if (!c) return;
+        document.getElementById('connName').value = c.name || '';
+        document.getElementById('connHost').value = c.host || '';
+        document.getElementById('connPort').value = c.port || 1521;
+        document.getElementById('connService').value = c.service_name || '';
+        document.getElementById('connUser').value = c.username || '';
+      });
+    } else {
+      document.getElementById('modalConnTitle').textContent = 'Nova conexão Oracle';
+      document.getElementById('connPwdHint').textContent = '(obrigatória)';
+    }
+    document.getElementById('modalConn').classList.add('open');
+  }
+  function closeConnModal() { document.getElementById('modalConn').classList.remove('open'); }
+
+  document.getElementById('btnNewConn').onclick = function() { openConnModal(null); };
+  document.getElementById('btnCloseConn').onclick = closeConnModal;
+  document.getElementById('modalConn').onclick = function(e) { if (e.target === this) closeConnModal(); };
+
+  document.getElementById('btnSaveConn').onclick = function() {
+    var id = document.getElementById('connId').value;
+    var payload = {
+      name: document.getElementById('connName').value.trim(),
+      host: document.getElementById('connHost').value.trim(),
+      port: parseInt(document.getElementById('connPort').value, 10) || 1521,
+      service_name: document.getElementById('connService').value.trim(),
+      username: document.getElementById('connUser').value.trim()
+    };
+    var pwd = document.getElementById('connPwd').value;
+    if (pwd) payload.password = pwd;
+    if (!payload.name || !payload.host || !payload.service_name || !payload.username) {
+      toast('Preencha nome, host, service name e usuário.', 'err'); return;
+    }
+    if (!id && !pwd) { toast('Informe a senha para nova conexão.', 'err'); return; }
+    var method = id ? 'PUT' : 'POST';
+    var path = id ? '/connections/' + id : '/connections';
+    document.getElementById('btnSaveConn').disabled = true;
+    api(method, path, payload)
+      .then(function() { toast(id ? 'Conexão atualizada.' : 'Conexão salva.'); closeConnModal(); loadConnections(); loadDatasets(); })
+      .catch(function(e) { toast(e.message, 'err'); })
+      .finally(function() { document.getElementById('btnSaveConn').disabled = false; });
+  };
+
+  document.getElementById('btnTestConn').onclick = function() {
+    var id = document.getElementById('connId').value;
+    if (!id) { toast('Salve a conexão antes de testar.', 'err'); return; }
+    var res = document.getElementById('connTestResult');
+    res.style.display = 'block';
+    res.style.color = '#64748b';
+    res.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-1"></i>Testando...';
+    api('POST', '/connections/' + id + '/test')
+      .then(function(data) {
+        res.innerHTML = '<span style="color:#059669"><i class="fas fa-check-circle mr-1"></i>' + (data.message || 'Conexão OK.') + '</span>';
+      })
+      .catch(function(e) {
+        res.innerHTML = '<span style="color:#dc2626"><i class="fas fa-times-circle mr-1"></i>' + esc(e.message) + '</span>';
+      });
+  };
+
+  /* ═══════════════════════════════
+     Datasets
+  ══════════════════════════════ */
+  function loadDatasets() {
+    document.getElementById('dsList').innerHTML = '<div class="empty"><i class="fas fa-circle-notch fa-spin"></i>Carregando...</div>';
+    api('GET', '/datasets').then(function(data) {
+      renderDatasets(getList(data));
+    }).catch(function(e) {
+      document.getElementById('dsList').innerHTML = '<div class="empty" style="color:var(--danger)"><i class="fas fa-exclamation-triangle"></i>' + esc(e.message) + '</div>';
+    });
+  }
+
+  function renderDatasets(list) {
+    if (!list.length) {
+      document.getElementById('dsList').innerHTML = '<div class="empty"><i class="fas fa-table"></i>Nenhum dataset. Clique em +</div>';
+      return;
+    }
+    document.getElementById('dsList').innerHTML = list.map(function(d) {
+      var isActive = state.activeDs && String(state.activeDs.id) === String(d.id);
+      var exec = d.last_execution;
+      return '<div class="s-list-item' + (isActive ? ' active' : '') + '" data-did="' + d.id + '">' +
+        '<div class="s-list-item-name">' +
+        '<div class="name">' + esc(d.name) + '</div>' +
+        '<div class="meta">' + esc(d.connection_name || '') + ' · ' +
+        (exec ? '<span class="badge badge-ok">Executado</span>' : '<span class="badge badge-warn">Não executado</span>') + '</div>' +
+        '</div>' +
+        '<div class="s-list-actions">' +
+        '<button class="btn btn-success btn-icon btn-ds-usar" data-id="' + d.id + '" data-name="' + esc(d.name) + '" data-exec="' + (exec ? '1' : '0') + '" title="Usar este dataset"><i class="fas fa-play"></i></button>' +
+        '<button class="btn btn-ghost btn-icon btn-ds-edit" data-id="' + d.id + '" title="Editar"><i class="fas fa-pen"></i></button>' +
+        '<button class="btn btn-ghost btn-icon btn-ds-preview" data-id="' + d.id + '" title="Preview dados"><i class="fas fa-eye"></i></button>' +
+        '<button class="btn btn-warning btn-icon btn-ds-exec" data-id="' + d.id + '" data-name="' + esc(d.name) + '" title="Executar query"><i class="fas fa-bolt"></i></button>' +
+        '<button class="btn btn-danger btn-icon btn-ds-del" data-id="' + d.id + '" data-name="' + esc(d.name) + '" title="Excluir"><i class="fas fa-trash"></i></button>' +
+        '</div></div>';
+    }).join('');
+
+    /* Usar */
+    document.getElementById('dsList').querySelectorAll('.btn-ds-usar').forEach(function(btn) {
+      btn.onclick = function() {
+        var id = btn.getAttribute('data-id');
+        var name = btn.getAttribute('data-name');
+        var exec = btn.getAttribute('data-exec') === '1';
+        selectDataset(id, name, exec);
+      };
+    });
+    /* Editar */
+    document.getElementById('dsList').querySelectorAll('.btn-ds-edit').forEach(function(btn) {
+      btn.onclick = function() { openDsModal(btn.getAttribute('data-id')); };
+    });
+    /* Preview */
+    document.getElementById('dsList').querySelectorAll('.btn-ds-preview').forEach(function(btn) {
+      btn.onclick = function() { previewDatasetById(btn.getAttribute('data-id')); };
+    });
+    /* Executar */
+    document.getElementById('dsList').querySelectorAll('.btn-ds-exec').forEach(function(btn) {
+      btn.onclick = function() {
+        var id = btn.getAttribute('data-id');
+        var name = btn.getAttribute('data-name');
+        if (!confirm('Executar query de "' + name + '" e salvar no PostgreSQL?')) return;
+        btn.disabled = true;
+        showLoading('Executando dataset...');
+        api('POST', '/datasets/' + id + '/execute')
+          .then(function(data) {
+            var rows = (data.data && data.data.rowsCount) || 0;
+            toast('Executado: ' + rows + ' linhas.', 'ok');
+            if (state.activeDs && String(state.activeDs.id) === String(id)) {
+              state.activeDs.executed = true;
+              state.lastData = [];
+              updateChatDsInfo();
+            }
+            loadDatasets();
+          })
+          .catch(function(e) { toast(e.message, 'err'); })
+          .finally(function() { btn.disabled = false; hideLoading(); });
+      };
+    });
+    /* Excluir */
+    document.getElementById('dsList').querySelectorAll('.btn-ds-del').forEach(function(btn) {
+      btn.onclick = function() {
+        var name = btn.getAttribute('data-name');
+        if (!confirm('Excluir o dataset "' + name + '"? Isso não exclui o dashboard.')) return;
+        api('DELETE', '/datasets/' + btn.getAttribute('data-id'))
+          .then(function() { toast('Dataset excluído.'); loadDatasets(); })
+          .catch(function(e) { toast(e.message, 'err'); });
+      };
+    });
+  }
+
+  function selectDataset(id, name, executed) {
+    state.activeDs = { id: id, name: name, executed: executed };
+    state.lastHtml = '';
+    state.lastData = [];
+    state.chatMessages = [];
+    updateChatDsInfo();
+    document.getElementById('activeDsBadge').style.display = 'inline-flex';
+    document.getElementById('activeDsName').textContent = name;
+    document.getElementById('previewTitle').textContent = name;
+    document.getElementById('previewMeta').style.display = 'flex';
+    document.getElementById('previewDsLabel').textContent = name;
+    /* reset preview */
+    document.getElementById('previewPlaceholder').style.display = 'flex';
+    document.getElementById('previewIframeWrap').classList.remove('visible');
+    document.getElementById('editorWrap').classList.remove('visible');
+    hideEditorMode();
+    /* highlight lista */
+    loadDatasets();
+    addMsg('Dataset <b>' + esc(name) + '</b> selecionado.' + (executed ? ' Descreva o dashboard abaixo.' : ' <b>Execute o dataset</b> antes de gerar o dashboard.'), 'bot');
+  }
+
+  function updateChatDsInfo() {
+    var el = document.getElementById('chatDsInfo');
+    if (!state.activeDs) {
+      el.innerHTML = '<i class="fas fa-info-circle mr-1"></i>Selecione um dataset acima e clique em <strong>Usar</strong>.';
+      return;
+    }
+    if (!state.activeDs.executed) {
+      el.innerHTML = '<i class="fas fa-exclamation-triangle mr-1" style="color:var(--warning)"></i>Execute o dataset <strong>' + esc(state.activeDs.name) + '</strong> antes de gerar.';
+      return;
+    }
+    el.innerHTML = '<i class="fas fa-check-circle mr-1" style="color:var(--success)"></i>Dataset: <strong>' + esc(state.activeDs.name) + '</strong>';
+  }
+
+  /* ── Preview rápido (in-modal dentro do modal de dataset) ── */
+  function previewDatasetById(id) {
+    document.getElementById('dsPreviewArea').style.display = 'block';
+    document.getElementById('dsPreviewContent').innerHTML = '<div class="empty"><i class="fas fa-circle-notch fa-spin"></i>Carregando...</div>';
+    /* abre o modal de dataset em modo só-leitura se não estiver aberto */
+    if (!document.getElementById('modalDs').classList.contains('open')) {
+      /* preview standalone — usar modal diferente seria ideal, aqui reutilizamos */
+      openDsModal(id);
+    }
+    api('GET', '/datasets/' + id + '/preview?limit=100')
+      .then(function(data) { renderPreviewTable(document.getElementById('dsPreviewContent'), data.data || data); })
+      .catch(function(e) { document.getElementById('dsPreviewContent').innerHTML = '<div class="empty" style="color:var(--danger)">' + esc(e.message) + '</div>'; });
+  }
+
+  function renderPreviewTable(container, data) {
+    if (!data || !data.rows || !data.rows.length) {
+      container.innerHTML = '<div class="empty">Nenhum dado retornado.</div>'; return;
+    }
+    var cols = (data.columns && data.columns.length) ? data.columns.map(function(c) { return c.name; }) : Object.keys(data.rows[0] || {});
+    var html = '<table class="preview-table"><thead><tr>' + cols.map(function(c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>';
+    data.rows.slice(0, 100).forEach(function(row) {
+      html += '<tr>' + cols.map(function(col) { return '<td>' + esc(row[col] != null ? String(row[col]) : '') + '</td>'; }).join('') + '</tr>';
+    });
+    html += '</tbody></table><div style="font-size:11px;color:var(--muted);margin-top:6px">' + Math.min(data.rows.length, 100) + ' de ' + data.rows.length + ' linhas.</div>';
+    container.innerHTML = html;
+  }
+
+  /* ── Modal Dataset ── */
+  function openDsModal(editId) {
+    document.getElementById('dsId').value = editId || '';
+    document.getElementById('dsName').value = '';
+    document.getElementById('dsSql').value = '';
+    document.getElementById('dsPreviewArea').style.display = 'none';
+    /* carregar conexões no select */
+    api('GET', '/connections').then(function(data) {
+      var opts = '<option value="">Selecione...</option>' + getList(data).map(function(c) {
+        return '<option value="' + c.id + '">' + esc(c.name) + '</option>';
+      }).join('');
+      document.getElementById('dsConnId').innerHTML = opts;
+      if (editId) {
+        api('GET', '/datasets/' + editId).then(function(d) {
+          var ds = d.data || d;
+          document.getElementById('modalDsTitle').textContent = 'Editar dataset';
+          document.getElementById('dsName').value = ds.name || '';
+          document.getElementById('dsSql').value = ds.sql_original || '';
+          document.getElementById('dsConnId').value = ds.oracle_connection_id || '';
+        });
+      } else {
+        document.getElementById('modalDsTitle').textContent = 'Novo dataset';
+      }
+    });
+    document.getElementById('modalDs').classList.add('open');
+  }
+  function closeDsModal() { document.getElementById('modalDs').classList.remove('open'); }
+
+  document.getElementById('btnNewDs').onclick = function() { openDsModal(null); };
+  document.getElementById('btnCloseDs').onclick = closeDsModal;
+  document.getElementById('modalDs').onclick = function(e) { if (e.target === this) closeDsModal(); };
+
+  document.getElementById('btnSaveDs').onclick = function() {
+    var id = document.getElementById('dsId').value;
+    var payload = {
+      name: document.getElementById('dsName').value.trim(),
+      sql_original: document.getElementById('dsSql').value.trim(),
+      oracle_connection_id: document.getElementById('dsConnId').value
+    };
+    if (!payload.name || !payload.sql_original || !payload.oracle_connection_id) {
+      toast('Preencha nome, conexão e SQL.', 'err'); return;
+    }
+    var method = id ? 'PUT' : 'POST';
+    var path = id ? '/datasets/' + id : '/datasets';
+    document.getElementById('btnSaveDs').disabled = true;
+    api(method, path, payload)
+      .then(function(data) {
+        toast(id ? 'Dataset atualizado.' : 'Dataset salvo.');
+        /* se não tinha id, atualiza com o novo */
+        if (!id && data.data && data.data.id) {
+          document.getElementById('dsId').value = data.data.id;
+        }
+        loadDatasets();
+      })
+      .catch(function(e) { toast(e.message, 'err'); })
+      .finally(function() { document.getElementById('btnSaveDs').disabled = false; });
+  };
+
+  document.getElementById('btnPreviewDs').onclick = function() {
+    var id = document.getElementById('dsId').value;
+    var connId = document.getElementById('dsConnId').value;
+    var sql = document.getElementById('dsSql').value.trim();
+    document.getElementById('dsPreviewArea').style.display = 'block';
+    document.getElementById('dsPreviewContent').innerHTML = '<div class="empty"><i class="fas fa-circle-notch fa-spin"></i>Executando...</div>';
+    if (id) {
+      api('GET', '/datasets/' + id + '/preview?limit=100')
+        .then(function(data) { renderPreviewTable(document.getElementById('dsPreviewContent'), data.data || data); })
+        .catch(function(e) { document.getElementById('dsPreviewContent').innerHTML = '<div class="empty" style="color:var(--danger)">' + esc(e.message) + '</div>'; });
+    } else {
+      if (!connId || !sql) { document.getElementById('dsPreviewContent').innerHTML = '<div class="empty" style="color:var(--warning)">Selecione a conexão e informe a query.</div>'; return; }
+      api('POST', '/datasets/preview', { oracle_connection_id: connId, sql_original: sql, limit: 100 })
+        .then(function(data) { renderPreviewTable(document.getElementById('dsPreviewContent'), data.data || data); })
+        .catch(function(e) { document.getElementById('dsPreviewContent').innerHTML = '<div class="empty" style="color:var(--danger)">' + esc(e.message) + '</div>'; });
+    }
+  };
+
+  document.getElementById('btnExecuteDs').onclick = function() {
+    var id = document.getElementById('dsId').value;
+    if (!id) { toast('Salve o dataset antes de executar.', 'err'); return; }
+    if (!confirm('Executar a query e salvar no PostgreSQL?')) return;
+    document.getElementById('btnExecuteDs').disabled = true;
+    showLoading('Executando dataset...');
+    api('POST', '/datasets/' + id + '/execute')
+      .then(function(data) {
+        var rows = (data.data && data.data.rowsCount) || 0;
+        toast('Executado: ' + rows + ' linhas.', 'ok');
+        if (state.activeDs && String(state.activeDs.id) === String(id)) {
+          state.activeDs.executed = true;
+          state.lastData = [];
+          updateChatDsInfo();
+        }
+        loadDatasets();
+      })
+      .catch(function(e) { toast(e.message, 'err'); })
+      .finally(function() { document.getElementById('btnExecuteDs').disabled = false; hideLoading(); });
+  };
+
+  /* ═══════════════════════════════
+     Chat / Assistente
+  ══════════════════════════════ */
+  function addMsg(html, role) {
+    var history = document.getElementById('chatHistory');
+    var div = document.createElement('div');
+    div.className = 'chat-msg ' + role;
+    if (role === 'bot') {
+      div.innerHTML = '<div class="chat-avatar bot"><i class="fas fa-robot"></i></div><div class="chat-bubble">' + html + '</div>';
+    } else {
+      div.innerHTML = '<div class="chat-bubble">' + esc(html) + '</div><div class="chat-avatar user"><i class="fas fa-user"></i></div>';
+    }
+    history.appendChild(div);
+    history.scrollTop = history.scrollHeight;
+  }
+
+  function sendPrompt() {
+    var prompt = (document.getElementById('promptInput').value || '').trim();
+    if (!prompt) return;
+    if (!state.activeDs) { addMsg('Selecione um dataset (botão <b>Usar</b>) primeiro.', 'bot'); return; }
+    if (!state.activeDs.executed) { addMsg('Execute o dataset antes de gerar o dashboard.', 'bot'); return; }
+
+    addMsg(prompt, 'user');
+    state.chatMessages.push({ role: 'user', content: prompt });
+    document.getElementById('promptInput').value = '';
+    showLoading('Gerando dashboard com IA...');
+
+    api('POST', '/chat', {
+      datasetId: state.activeDs.id,
+      messages: state.chatMessages,
+      currentHtml: state.lastHtml || null
+    }).then(function(data) {
+      var result = data.data || data;
+      var reply = result.reply || 'Pronto.';
+      var html = (typeof result.html === 'string' && result.html.trim()) ? result.html.trim() : '';
+      state.chatMessages.push({ role: 'model', content: reply });
+      addMsg(reply, 'bot');
+
+      if (html) {
+        if (!state.lastData.length) {
+          showLoading('Carregando dados...');
+          api('GET', '/datasets/' + state.activeDs.id + '/data')
+            .then(function(d) { state.lastData = getList(d) || []; renderDashboard(html); })
+            .catch(function() { state.lastData = []; renderDashboard(html); })
+            .finally(hideLoading);
+        } else {
+          renderDashboard(html);
+          hideLoading();
+        }
+      } else {
+        /* fallback: html padrão */
+        api('GET', '/datasets/' + state.activeDs.id + '/default-html')
+          .then(function(d) {
+            var h = (d.data && d.data.html) ? d.data.html : (d.html || '');
+            if (h) {
+              if (!state.lastData.length) {
+                api('GET', '/datasets/' + state.activeDs.id + '/data')
+                  .then(function(dd) { state.lastData = getList(dd) || []; renderDashboard(h); })
+                  .catch(function() { state.lastData = []; renderDashboard(h); })
+                  .finally(hideLoading);
+              } else { renderDashboard(h); hideLoading(); }
+            } else hideLoading();
+          })
+          .catch(function() { hideLoading(); });
+      }
+    }).catch(function(e) {
+      hideLoading();
+      addMsg('Erro: ' + esc(e.message), 'bot');
+      state.chatMessages.pop();
+    });
+  }
+
+  document.getElementById('btnSend').onclick = sendPrompt;
+  document.getElementById('promptInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPrompt(); }
+  });
+
+  /* ═══════════════════════════════
+     Renderizar dashboard no iframe
+  ══════════════════════════════ */
+  function buildIframeDoc(html) {
+    var bodyContent = html || '';
+    /* se html completo, extrai só o body */
+    var bi = bodyContent.indexOf('<body');
+    if (bi !== -1) {
+      var bs = bodyContent.indexOf('>', bi) + 1;
+      var be = bodyContent.lastIndexOf('</body>');
+      if (be > bs) bodyContent = bodyContent.slice(bs, be).trim();
+    }
+    /* fecha scripts abertos sem fechar */
+    var openCount = (bodyContent.match(/<script[\s>]/gi) || []).length;
+    var closeCount = bodyContent.split('</' + 'script>').length - 1;
+    if (openCount > closeCount) bodyContent += '</' + 'script>';
+
+    var sc = '<' + '/script>';
+    var dataStr = JSON.stringify(state.lastData || []);
+    return '<!DOCTYPE html><html lang="pt-BR"><head>' +
+      '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<script src="https://cdn.tailwindcss.com">' + sc +
+      '<script src="https://cdn.jsdelivr.net/npm/chart.js">' + sc +
+      '<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">' + sc +
+      '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">' +
+      '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">' +
+      '</head><body>' +
+      '<script>window.DASHBOARD_DATA = ' + dataStr + ';' + sc +
+      bodyContent +
+      '</body></html>';
+  }
+
+  function renderDashboard(html) {
+    if (!html || !html.trim()) return;
+    state.lastHtml = html.trim();
+    document.getElementById('htmlEditor').value = state.lastHtml;
+    document.getElementById('btnSaveDashboard').disabled = false;
+    document.getElementById('btnToggleEditor').style.display = 'inline-flex';
+
+    /* mostra iframe */
+    document.getElementById('previewPlaceholder').style.display = 'none';
+    document.getElementById('previewIframeWrap').classList.add('visible');
+    document.getElementById('editorWrap').classList.remove('visible');
+    state.editorVisible = false;
+    document.getElementById('toggleEditorLabel').textContent = 'Ver HTML';
+    document.getElementById('btnApplyEditor').style.display = 'none';
+
+    var iframe = document.getElementById('previewIframe');
+    var doc = iframe.contentDocument || iframe.contentWindow.document;
+    var docStr = buildIframeDoc(state.lastHtml);
+    requestAnimationFrame(function() {
+      doc.open(); doc.write(docStr); doc.close();
+    });
+  }
+
+  /* ═══════════════════════════════
+     Editor HTML
+  ══════════════════════════════ */
+  function hideEditorMode() {
+    state.editorVisible = false;
+    document.getElementById('toggleEditorLabel').textContent = 'Ver HTML';
+    document.getElementById('btnApplyEditor').style.display = 'none';
+    document.getElementById('editorWrap').classList.remove('visible');
+    document.getElementById('btnToggleEditor').style.display = 'none';
+  }
+
+  document.getElementById('btnToggleEditor').onclick = function() {
+    state.editorVisible = !state.editorVisible;
+    if (state.editorVisible) {
+      document.getElementById('toggleEditorLabel').textContent = 'Ver preview';
+      document.getElementById('btnApplyEditor').style.display = 'inline-flex';
+      document.getElementById('editorWrap').classList.add('visible');
+      document.getElementById('previewIframeWrap').classList.remove('visible');
+    } else {
+      document.getElementById('toggleEditorLabel').textContent = 'Ver HTML';
+      document.getElementById('btnApplyEditor').style.display = 'none';
+      document.getElementById('editorWrap').classList.remove('visible');
+      if (state.lastHtml) document.getElementById('previewIframeWrap').classList.add('visible');
+      else document.getElementById('previewPlaceholder').style.display = 'flex';
+    }
+  };
+
+  document.getElementById('btnApplyEditor').onclick = function() {
+    var raw = (document.getElementById('htmlEditor').value || '').trim();
+    if (!raw) { toast('Editor vazio.', 'err'); return; }
+    renderDashboard(raw);
+  };
+
+  /* ═══════════════════════════════
+     Salvar dashboard
+  ══════════════════════════════ */
+  document.getElementById('btnSaveDashboard').onclick = function() {
+    if (!state.activeDs) { toast('Selecione um dataset e gere o dashboard.', 'err'); return; }
+    var html = state.editorVisible ? (document.getElementById('htmlEditor').value || '').trim() : state.lastHtml;
+    if (!html) { toast('Gere o dashboard antes de salvar.', 'err'); return; }
+    var name = (document.getElementById('dashboardNameInput').value || '').trim() || state.activeDs.name || 'Dashboard';
+    document.getElementById('btnSaveDashboard').disabled = true;
+    showLoading('Salvando dashboard...');
+    api('POST', '/dashboards', { name: name, dataset_id: state.activeDs.id, config_json: {}, html_content: html })
+      .then(function(data) {
+        var id = data.data && data.data.id;
+        toast('Dashboard salvo!', 'ok');
+        hideLoading();
+        if (id) {
+          setTimeout(function() { window.location.href = '/ai-dashboard/' + id; }, 800);
+        }
+      })
+      .catch(function(e) { toast(e.message, 'err'); document.getElementById('btnSaveDashboard').disabled = false; hideLoading(); });
+  };
+
+  /* ═══════════════════════════════
+     Dashboards salvos
+  ══════════════════════════════ */
+  function loadSavedDashboards() {
+    document.getElementById('savedDashboardsList').innerHTML = '<div class="empty"><i class="fas fa-circle-notch fa-spin"></i>Carregando...</div>';
+    api('GET', '/dashboards').then(function(data) {
+      var list = getList(data);
+      if (!list.length) {
+        document.getElementById('savedDashboardsList').innerHTML = '<div class="empty"><i class="fas fa-chart-bar"></i>Nenhum dashboard salvo.</div>';
+        return;
+      }
+      document.getElementById('savedDashboardsList').innerHTML = list.map(function(d) {
+        var ds = d.dataset_name ? '<span class="saved-badge">' + esc(d.dataset_name) + '</span>' : '';
+        return '<div class="s-list-item">' +
+          '<div class="s-list-item-name"><div class="name">' + esc(d.name) + ' ' + ds + '</div>' +
+          '<div class="meta">' + (d.created_at ? new Date(d.created_at).toLocaleDateString('pt-BR') : '') + '</div></div>' +
+          '<div class="s-list-actions">' +
+          '<a href="/ai-dashboard/' + d.id + '" class="btn btn-ghost btn-icon" title="Abrir" target="_blank"><i class="fas fa-external-link-alt"></i></a>' +
+          '<button class="btn btn-ghost btn-icon btn-load-db" data-id="' + d.id + '" title="Carregar no editor"><i class="fas fa-download"></i></button>' +
+          '<button class="btn btn-danger btn-icon btn-del-db" data-id="' + d.id + '" data-name="' + esc(d.name) + '" title="Excluir"><i class="fas fa-trash"></i></button>' +
+          '</div></div>';
+      }).join('');
+
+      document.getElementById('savedDashboardsList').querySelectorAll('.btn-load-db').forEach(function(btn) {
+        btn.onclick = function() { loadDashboardIntoEditor(btn.getAttribute('data-id')); };
+      });
+      document.getElementById('savedDashboardsList').querySelectorAll('.btn-del-db').forEach(function(btn) {
+        btn.onclick = function() {
+          if (!confirm('Excluir "' + btn.getAttribute('data-name') + '"?')) return;
+          api('DELETE', '/dashboards/' + btn.getAttribute('data-id'))
+            .then(function() { toast('Dashboard excluído.'); loadSavedDashboards(); })
+            .catch(function(e) { toast(e.message, 'err'); });
+        };
+      });
+    }).catch(function(e) {
+      document.getElementById('savedDashboardsList').innerHTML = '<div class="empty" style="color:var(--danger)">' + esc(e.message) + '</div>';
+    });
+  }
+
+  function loadDashboardIntoEditor(id) {
+    showLoading('Carregando dashboard...');
+    Promise.all([
+      api('GET', '/dashboards/' + id),
+      api('GET', '/dashboards/' + id + '/data')
+    ]).then(function(results) {
+      var meta = results[0].data || results[0];
+      var data = getList(results[1]) || [];
+      state.lastData = data;
+      state.lastHtml = meta.html_content || '';
+      document.getElementById('previewTitle').textContent = meta.name || 'Dashboard';
+      document.getElementById('btnSaveDashboard').disabled = false;
+      document.getElementById('btnToggleEditor').style.display = 'inline-flex';
+      if (state.lastHtml) renderDashboard(state.lastHtml);
+      /* trocar para tab data para mostrar preview */
+      document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+      document.querySelector('[data-tab="tab-data"]').classList.add('active');
+      document.getElementById('tab-data').classList.add('active');
+      toast('Dashboard carregado no editor.', 'ok');
+    }).catch(function(e) { toast(e.message, 'err'); })
+    .finally(hideLoading);
+  }
+
+  document.getElementById('btnReloadDashboards').onclick = loadSavedDashboards;
+
+  /* ═══════════════════════════════
+     Init
+  ══════════════════════════════ */
+  addMsg('Olá! Cadastre uma conexão Oracle e crie um dataset. Clique em <b>Usar</b> no dataset desejado, depois descreva o dashboard aqui.', 'bot');
+
+  function init() {
+    loadConnections();
+    loadDatasets();
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    init();
+  } else {
+    document.addEventListener('DOMContentLoaded', init);
+  }
+  window.addEventListener('load', function() {
+    /* garante que carregou mesmo que DOMContentLoaded já tenha disparado */
+    var connEl = document.getElementById('connList');
+    if (connEl && connEl.querySelector('.fa-spin')) init();
+  });
+})();
+</script>

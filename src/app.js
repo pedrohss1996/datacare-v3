@@ -26,6 +26,7 @@ const rotaAdmin = require('./routes/admin.routes');
 // ---- Criador de Pagina IA ----
 const analyticsRoutes = require('./routes/analytics.routes');
 const queryMetadadosRoutes = require('./routes/queryMetadados.routes');
+const aiDashboardModule = require('./modules/ai-dashboard/ai-dashboard.module');
 // Inicializa o app
 const app = express();
 
@@ -81,6 +82,7 @@ app.use('/', rotasPessoas);
 app.use('/', rotaIndicadores);
 app.use('/', analyticsRoutes);  // Analytics Builder com IA (Construtor IA)
 app.use('/', queryMetadadosRoutes); // Gerenciador de Metadados de Queries (Engine IA)
+app.use('/', aiDashboardModule.routes); // Módulo AI Dashboard (datasets + dashboards com IA)
 app.use('/', rotaConsultorios); // Módulo de Consultórios
 app.use('/', rotaStaff);       // Módulo Staff (Escalas)
 app.use('/', rotaGuia);         // Smart - Abertura Zero Toque (upload guia)

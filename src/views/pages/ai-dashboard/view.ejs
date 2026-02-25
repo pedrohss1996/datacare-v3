@@ -1,0 +1,75 @@
+<div class="max-w-7xl mx-auto px-4 py-6">
+  <div class="flex justify-between items-center mb-6 flex-wrap gap-2">
+    <h1 class="text-2xl font-bold text-slate-800" id="dashboardTitle">Dashboard</h1>
+    <div class="flex items-center gap-2">
+      <a href="/ai-dashboards" class="px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Voltar</a>
+    </div>
+  </div>
+  <div id="dashboard-renderer" class="min-h-[400px] bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <div class="flex items-center justify-center text-slate-400 py-12">
+      <i class="fas fa-chart-pie text-4xl mr-2"></i>
+      Carregando...
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+(function() {
+  var dashboardId = '<%= dashboardId %>';
+  var API = '/api/ai-dashboard';
+  var container = document.getElementById('dashboard-renderer');
+
+  Promise.all([
+    axios.get(API + '/dashboards/' + dashboardId),
+    axios.get(API + '/dashboards/' + dashboardId + '/data')
+  ]).then(function(res) {
+    var meta = res[0].data.data;
+    var data = res[1].data.data || [];
+    document.getElementById('dashboardTitle').textContent = meta.name || 'Dashboard';
+
+    if (meta.html_content && meta.html_content.trim()) {
+      var html = meta.html_content.trim();
+      var bodyStart = html.indexOf('<body');
+      var bodyEnd = html.lastIndexOf('</body>');
+      var bodyContent = (bodyStart >= 0 && bodyEnd > bodyStart)
+        ? html.slice(html.indexOf('>', bodyStart) + 1, bodyEnd).trim()
+        : html;
+      var openScripts = (bodyContent.match(/<script[\s>]/gi) || []).length;
+      var closeScripts = bodyContent.split('</' + 'script>').length - 1;
+      if (openScripts > closeScripts) bodyContent += '</' + 'script>';
+      var sc = '<' + '/script>';
+      var dataStr = JSON.stringify(data);
+      var headLibs = '<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+        '<script src="https://cdn.tailwindcss.com">' + sc +
+        '<script src="https://cdn.jsdelivr.net/npm/chart.js">' + sc +
+        '<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">' + sc +
+        '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">' +
+        '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">';
+      var fullDoc = '<!DOCTYPE html><html lang="pt-BR"><head>' + headLibs +
+        '</head><body><script>window.DASHBOARD_DATA = ' + dataStr + ';' + sc +
+        bodyContent +
+        '</body></html>';
+      container.innerHTML = '';
+      var iframe = document.createElement('iframe');
+      iframe.setAttribute('title', 'Dashboard');
+      iframe.style.width = '100%';
+      iframe.style.height = '800px';
+      iframe.style.border = 'none';
+      container.appendChild(iframe);
+      try {
+        var doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open();
+        doc.write(fullDoc);
+        doc.close();
+      } catch (e) {
+        container.innerHTML = '<p class="p-6 text-red-500">Erro ao renderizar: ' + e.message + '</p>';
+      }
+    } else {
+      container.innerHTML = '<div class="p-6 text-slate-500">Este dashboard não tem conteúdo HTML. Crie um novo em AI Dashboards usando o assistente.</div>';
+    }
+  }).catch(function(e) {
+    container.innerHTML = '<p class="p-6 text-red-500">Erro: ' + (e.response && e.response.data && e.response.data.message || e.message) + '</p>';
+  });
+})();
+</script>
