@@ -982,6 +982,10 @@ video {
   display: table;
 }
 
+.\!grid {
+  display: grid !important;
+}
+
 .grid {
   display: grid;
 }
@@ -1153,10 +1157,6 @@ video {
 
 .min-h-\[200px\] {
   min-height: 200px;
-}
-
-.min-h-\[400px\] {
-  min-height: 400px;
 }
 
 .min-h-\[450px\] {
@@ -3155,6 +3155,11 @@ video {
 
 .italic {
   font-style: italic;
+}
+
+.tabular-nums {
+  --tw-numeric-spacing: tabular-nums;
+  font-variant-numeric: var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction);
 }
 
 .leading-5 {

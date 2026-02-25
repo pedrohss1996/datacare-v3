@@ -1,63 +1,82 @@
 /**
  * AI Engine - Assistente de dashboards via Gemini.
- * Gera HTML conectado aos dados do dataset (window.DASHBOARD_DATA).
- * Se o Gemini não retornar HTML, usamos um HTML padrão gerado aqui.
+ * Retorna configuração JSON (config) para renderização nativa no frontend.
+ * Não gera mais HTML completo — o DashboardRenderer no frontend cuida da renderização.
  */
 const axios = require('axios');
 const datasetService = require('../datasets/dataset.service');
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-const DASHBOARD_EXAMPLE_REFERENCE = `
-Crie um dashboard BI COMPLETO e BONITO (HTML5, lang pt-BR). Os dados já estão em window.DASHBOARD_DATA (array de objetos).
-
-ESTRUTURA OBRIGATÓRIA:
-1. Loading spinner (div#loading-screen, position:fixed, z-index:99, esconde quando dados carregam)
-2. div#app (display:none até carregar), padding:20px 24px:
-   a) HEADER: h1 título grande + p com "N registros · M colunas · Atualizado agora"
-   b) GRID DE 4 A 6 KPI CARDS (grid auto-fit minmax(180px,1fr), gap:16px):
-      - Card Total de Registros (borda azul #3b82f6), ícone emoji, label uppercase 11px, valor 30px bold, subtítulo muted
-      - Card Soma da coluna numérica principal (borda verde #10b981)
-      - Card Média de outra coluna numérica (borda roxa #8b5cf6)
-      - Card Contagem de categorias únicas da col categórica principal (borda laranja #f59e0b)
-      - Card Valor Máximo da numérica (borda vermelha #ef4444)
-      - Card Valor Mínimo da numérica (borda cyan #06b6d4)
-   c) CARD DE FILTROS (background branco, borda, border-radius:12px):
-      - Selects para colunas categóricas com 2-80 valores únicos (label + select estilizado)
-      - Inputs type=date para colunas de data (De / Até)
-      - Botão "✕ Limpar" que reseta tudo
-   d) GRID DE 4 GRÁFICOS Chart.js (grid 2 colunas, gap:16px):
-      1. Bar chart (vertical): Top 10 por coluna categórica principal vs numérica, borderRadius:6, cores COLORS[]
-      2. Doughnut chart: Distribuição por categoria, cutout:'65%', legenda embaixo
-      3. Bar horizontal (indexAxis:'y'): Ranking Top 10 por 2ª categoria ou por data
-      4. PolarArea: Área polar com categorias vs numérico, cores semitransparentes
-      Cada gráfico em card branco, borda, border-radius:12px, título com ícone emoji, canvas height:250px
-   e) CARD DE TABELA COMPLETA:
-      - Título "📋 Dados Completos" + input search (placeholder "🔍 Pesquisar...")
-      - Tabela: thead sticky (background:#f8fafc, sort ↑↓ ao clicar), tbody zebrado (hover:#f1f9ff)
-      - Células numéricas: text-align:right, font-variant-numeric:tabular-nums
-      - Paginação: info "Mostrando X–Y de Z registros" + botões Anterior/números/Próximo
-
-SCRIPT (OBRIGATÓRIO):
-- var DATA = window.DASHBOARD_DATA || [];
-- Detectar colunas numéricas, categóricas e de data dos COLS (array de {name, type})
-- Ao filtrar: recalcular filtered, atualizar todos os 4 gráficos (destroy + new Chart), atualizar tabela, atualizar KPI total
-- Chart.js: Chart.defaults.font.family = 'Inter, sans-serif'; type bar + horizontalBar (indexAxis y) + doughnut + polarArea
-- Tabela paginada (15/página), sortável (clique no header), pesquisável (search-inp)
-- Usar nomes EXATOS das colunas do schema. NÃO inventar colunas.
-- Formato de números: toLocaleString('pt-BR'), abreviar 1K/1M para KPIs
-`;
-
 function buildSchemaText(columns) {
   return columns.map((c) => `${c.name} (${c.type})`).join(', ');
 }
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+/**
+ * Detecta tipos de colunas a partir do schema (sem precisar dos dados).
+ */
+function detectColumnTypes(colDefs) {
+  const numCols = [], catCols = [], dateCols = [];
+  colDefs.forEach((col) => {
+    const t = (col.type || '').toLowerCase();
+    if (t.includes('date') || t.includes('timestamp') || t.includes('time')) {
+      dateCols.push(col.name);
+    } else if (
+      t.includes('int') || t.includes('float') || t.includes('double') ||
+      t.includes('decimal') || t.includes('numeric') || t.includes('number') ||
+      t.includes('real') || t.includes('money')
+    ) {
+      numCols.push(col.name);
+    } else {
+      catCols.push(col.name);
+    }
+  });
+  return { numCols, catCols, dateCols };
+}
+
+/**
+ * Gera configuração JSON do dashboard (sem HTML).
+ * O DashboardRenderer no frontend usa este objeto para renderizar nativamente.
+ */
+function buildDefaultDashboardConfig(columns) {
+  const colDefs = columns.filter((c) => c.name !== '_row_id');
+  const { numCols, catCols, dateCols } = detectColumnTypes(colDefs);
+  const n0 = numCols[0], n1 = numCols[1], c0 = catCols[0], c1 = catCols[1];
+
+  const kpis = [{ type: 'total', label: 'Total de Registros', sub: 'registros na base' }];
+  if (n0) kpis.push({ type: 'sum', col: n0, label: 'Total ' + n0, sub: 'soma acumulada' });
+  const ncAvg = n1 || n0;
+  if (ncAvg) kpis.push({ type: 'avg', col: ncAvg, label: 'Média ' + ncAvg, sub: 'média aritmética' });
+  if (c0) kpis.push({ type: 'unique', col: c0, label: c0 + ' únicos', sub: 'categorias distintas' });
+  if (n0) kpis.push({ type: 'max', col: n0, label: 'Máximo ' + n0, sub: 'maior valor' });
+  if (n0 && kpis.length < 6) kpis.push({ type: 'min', col: n0, label: 'Mínimo ' + n0, sub: 'menor valor' });
+
+  const charts = [];
+  if (c0) charts.push({ id: 'ch1', title: 'Top 10 — ' + c0, type: 'bar', catCol: c0, numCol: n0 || null, icon: '📊' });
+  if (c0) charts.push({ id: 'ch2', title: 'Distribuição — ' + c0, type: 'doughnut', catCol: c0, numCol: n0 || null, icon: '🍩' });
+  if (c1) {
+    charts.push({ id: 'ch3', title: 'Ranking — ' + c1, type: 'horizontalBar', catCol: c1, numCol: n0 || null, icon: '📉' });
+  } else if (n1) {
+    charts.push({ id: 'ch3', title: n0 + ' vs ' + n1, type: 'scatter', numCol: n0, numCol2: n1, icon: '⚡' });
+  } else if (c0) {
+    charts.push({ id: 'ch3', title: 'Ranking — ' + c0, type: 'horizontalBar', catCol: c0, numCol: n0 || null, icon: '📉' });
+  }
+  const cp = c1 || c0;
+  if (cp && n0) charts.push({ id: 'ch4', title: 'Área Polar — ' + cp, type: 'polarArea', catCol: cp, numCol: n0, icon: '🎯' });
+
+  const filters = [];
+  catCols.slice(0, 3).forEach((col) => filters.push({ col, type: 'select' }));
+  if (dateCols.length) filters.push({ col: dateCols[0], type: 'daterange' });
+
+  return {
+    version: 2,
+    title: 'Dashboard Analítico',
+    columns: colDefs,
+    detectedTypes: { numCols, catCols, dateCols },
+    kpis: kpis.slice(0, 6),
+    charts: charts.slice(0, 4),
+    filters,
+  };
 }
 
 /**
@@ -704,30 +723,37 @@ function buildDefaultDashboardHtml(columns) {
 
 /**
  * Chat: usuário pede criação/alteração do dashboard.
- * Retorna { reply: string, html: string | null }.
- * Em caso de erro ou Gemini sem HTML, retorna sempre o HTML padrão na primeira vez.
+ * Retorna { reply: string, config: object }.
+ * O config é um objeto JSON com version:2 que o DashboardRenderer renderiza nativamente.
  */
-async function chatDashboard(datasetId, messages, currentHtml, modelId = 'gemini-2.0-flash') {
+async function chatDashboard(datasetId, messages, currentConfig = null, modelId = 'gemini-2.0-flash') {
   const columns = await datasetService.getDatasetStructure(datasetId);
   if (!columns.length) throw new Error('Dataset sem estrutura. Execute o dataset primeiro.');
 
-  const defaultHtml = buildDefaultDashboardHtml(columns);
+  const defaultConfig = buildDefaultDashboardConfig(columns);
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return { reply: 'Dashboard gerado. Configure GEMINI_API_KEY para usar o assistente de IA.', html: defaultHtml };
+    return { reply: 'Dashboard gerado. Configure GEMINI_API_KEY para usar o assistente de IA.', config: defaultConfig };
   }
 
   const schemaText = buildSchemaText(columns);
-  const htmlContext = currentHtml && String(currentHtml).trim()
-    ? `HTML atual do dashboard:\n\`\`\`html\n${String(currentHtml).slice(0, 30000)}\n\`\`\``
-    : 'Ainda não há HTML. Crie o dashboard completo do zero seguindo a referência.';
+  const configContext = currentConfig && typeof currentConfig === 'object' && currentConfig.version === 2
+    ? `Config atual do dashboard:\n\`\`\`json\n${JSON.stringify(currentConfig, null, 2).slice(0, 6000)}\n\`\`\``
+    : 'Ainda não há config. Crie o dashboard do zero baseado nas colunas disponíveis.';
 
-  const systemInstruction = `Você gera dashboards BI completos em HTML. Responda SEMPRE com um único JSON: { "reply": "mensagem em português ao usuário", "html": "HTML completo do fragmento de body (sem <html>/<head>/<body>): inclua <style> com @keyframes, divs de loading/app, grid de 4-6 KPIs, card de filtros, grid de 4 gráficos Chart.js (bar vertical, doughnut, bar horizontal indexAxis:y, polarArea), tabela paginada com search e sort)" }.
-Os dados estão em window.DASHBOARD_DATA (array de objetos). Use os nomes EXATOS das colunas do schema. Não invente colunas. Chart.js e Tailwind já estarão carregados. Retorne apenas o JSON, sem markdown.`;
+  const systemInstruction = `Você customiza configurações de dashboard BI em JSON. Responda SEMPRE com um único JSON válido:
+{ "reply": "mensagem em português ao usuário", "config": { "version": 2, "title": "Título", "kpis": [...], "charts": [...], "filters": [...] } }
+
+Estrutura do config:
+- kpis: array de até 6 objetos com { type: "total"|"sum"|"avg"|"unique"|"max"|"min", col?: "nome_exato_coluna", label: "label UI", sub: "subtítulo" }
+- charts: array de até 4 objetos com { id: "ch1"|"ch2"|"ch3"|"ch4", title: "título", type: "bar"|"doughnut"|"horizontalBar"|"polarArea"|"scatter", catCol?: "col_categórica", numCol?: "col_numérica", numCol2?: "segunda_col_numérica", icon: "emoji" }
+- filters: array de { col: "nome_coluna", type: "select"|"daterange" }
+
+Use APENAS os nomes exatos das colunas do schema. Não invente colunas. Retorne apenas o JSON, sem markdown.`;
 
   const contents = [];
-  const context = `Referência obrigatória de estrutura:\n${DASHBOARD_EXAMPLE_REFERENCE}\n\nColunas do dataset (use estes nomes exatos): ${schemaText}\n\n${htmlContext}\n\nConversa:`;
+  const context = `Colunas do dataset (use estes nomes exatos): ${schemaText}\n\n${configContext}\n\nConversa:`;
   for (let i = 0; i < messages.length; i++) {
     const m = messages[i];
     const role = m.role === 'user' ? 'user' : 'model';
@@ -741,12 +767,12 @@ Os dados estão em window.DASHBOARD_DATA (array de objetos). Use os nomes EXATOS
     const url = `${GEMINI_URL}/${modelId}:generateContent?key=${apiKey}`;
     const payload = {
       contents,
-      generationConfig: { temperature: 0.3, maxOutputTokens: 32768, responseMimeType: 'application/json' },
+      generationConfig: { temperature: 0.3, maxOutputTokens: 8192, responseMimeType: 'application/json' },
       systemInstruction: { parts: [{ text: systemInstruction }] },
     };
-    const response = await axios.post(url, payload, { headers: { 'Content-Type': 'application/json' }, timeout: 90000 });
+    const response = await axios.post(url, payload, { headers: { 'Content-Type': 'application/json' }, timeout: 60000 });
     const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return { reply: 'Dashboard gerado.', html: defaultHtml };
+    if (!text) return { reply: 'Dashboard gerado.', config: defaultConfig };
 
     let cleaned = String(text).trim().replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
@@ -756,23 +782,31 @@ Os dados estão em window.DASHBOARD_DATA (array de objetos). Use os nomes EXATOS
     try {
       parsed = JSON.parse(cleaned);
     } catch (e) {
-      return { reply: 'Dashboard gerado.', html: defaultHtml };
+      return { reply: 'Dashboard gerado.', config: defaultConfig };
     }
 
     const reply = typeof parsed.reply === 'string' ? parsed.reply : 'Dashboard gerado.';
-    let html = (typeof parsed.html === 'string' ? parsed.html : null) || (typeof parsed.dashboard_html === 'string' ? parsed.dashboard_html : null) || null;
-    if (html && typeof html === 'string') {
-      html = html.trim().replace(/^```(?:html)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-      if (!html) html = null;
+    let config = (parsed.config && typeof parsed.config === 'object') ? parsed.config : null;
+
+    if (config && config.version === 2 && Array.isArray(config.kpis) && Array.isArray(config.charts)) {
+      if (!config.columns || !config.columns.length) config.columns = defaultConfig.columns;
+      if (!config.detectedTypes) config.detectedTypes = defaultConfig.detectedTypes;
+      if (!Array.isArray(config.filters)) config.filters = defaultConfig.filters;
     } else {
-      html = null;
+      config = defaultConfig;
     }
-    if (!html && !currentHtml) html = defaultHtml;
-    return { reply, html: html || defaultHtml };
+
+    return { reply, config };
   } catch (err) {
     console.error('[ai-dashboard] chatDashboard Gemini:', err.message);
-    return { reply: 'Dashboard gerado. (Assistente temporariamente indisponível.)', html: defaultHtml };
+    return { reply: 'Dashboard gerado. (Assistente temporariamente indisponível.)', config: defaultConfig };
   }
+}
+
+async function getDefaultDashboardConfig(datasetId) {
+  const columns = await datasetService.getDatasetStructure(datasetId);
+  if (!columns.length) throw new Error('Dataset sem estrutura. Execute o dataset primeiro.');
+  return buildDefaultDashboardConfig(columns);
 }
 
 async function getDefaultDashboardHtml(datasetId) {
@@ -781,4 +815,11 @@ async function getDefaultDashboardHtml(datasetId) {
   return buildDefaultDashboardHtml(columns);
 }
 
-module.exports = { chatDashboard, getDefaultDashboardHtml, buildDefaultDashboardHtml, buildSchemaText };
+module.exports = {
+  chatDashboard,
+  getDefaultDashboardConfig,
+  buildDefaultDashboardConfig,
+  getDefaultDashboardHtml,
+  buildDefaultDashboardHtml,
+  buildSchemaText,
+};

@@ -7,11 +7,11 @@ const aiService = require('../ai/ai.service');
 
 async function chat(req, res) {
   try {
-    const { datasetId, messages, currentHtml, modelId } = req.body;
+    const { datasetId, messages, currentConfig, modelId } = req.body;
     if (!datasetId || !Array.isArray(messages)) {
       return res.status(400).json({ success: false, message: 'datasetId e messages (array) são obrigatórios.' });
     }
-    const result = await aiService.chatDashboard(datasetId, messages, currentHtml || null, modelId);
+    const result = await aiService.chatDashboard(datasetId, messages, currentConfig || null, modelId);
     return res.json({ success: true, data: result });
   } catch (err) {
     console.error('[ai-dashboard] chat', err);
@@ -102,6 +102,18 @@ async function getData(req, res) {
   }
 }
 
+async function getDefaultConfig(req, res) {
+  try {
+    const datasetId = req.params.datasetId || req.params.id;
+    if (!datasetId) return res.status(400).json({ success: false, message: 'datasetId é obrigatório.' });
+    const config = await aiService.getDefaultDashboardConfig(datasetId);
+    return res.json({ success: true, data: { config } });
+  } catch (err) {
+    console.error('[ai-dashboard] get default config', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
+
 async function getDefaultHtml(req, res) {
   try {
     const datasetId = req.params.datasetId || req.params.id;
@@ -114,4 +126,4 @@ async function getDefaultHtml(req, res) {
   }
 }
 
-module.exports = { list, create, update, remove, getById, getData, getDefaultHtml, chat };
+module.exports = { list, create, update, remove, getById, getData, getDefaultConfig, getDefaultHtml, chat };

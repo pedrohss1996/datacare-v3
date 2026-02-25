@@ -35,6 +35,7 @@ router.put('/api/ai-dashboard/datasets/:id', datasetController.update);
 router.delete('/api/ai-dashboard/datasets/:id', datasetController.remove);
 router.get('/api/ai-dashboard/datasets/:id', datasetController.getById);
 router.get('/api/ai-dashboard/datasets/:id/data', datasetController.getData);
+router.get('/api/ai-dashboard/datasets/:id/default-config', dashboardsController.getDefaultConfig);
 router.get('/api/ai-dashboard/datasets/:id/default-html', dashboardsController.getDefaultHtml);
 router.get('/api/ai-dashboard/datasets/:id/preview', datasetController.previewById);
 router.post('/api/ai-dashboard/datasets/:id/execute', datasetController.execute);
