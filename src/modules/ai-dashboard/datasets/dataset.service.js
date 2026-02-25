@@ -88,6 +88,7 @@ async function createTableAndInsert(datasetId, rows, columns) {
 
 /**
  * Executa dataset: busca dataset, valida SQL, conecta Oracle, executa, persiste no PG.
+ * A SQL é executada EXATAMENTE como cadastrada — nenhuma modificação é feita.
  */
 async function executeDataset(datasetId) {
   const dataset = await db('ai_datasets').where({ id: datasetId }).first();
@@ -99,8 +100,13 @@ async function executeDataset(datasetId) {
   const conn = await db('ai_oracle_connections').where({ id: dataset.oracle_connection_id }).first();
   if (!conn) throw new Error('Conexão Oracle não encontrada.');
 
+  console.log(`[AI-Dataset] Executando SQL no Oracle (dataset="${dataset.name}", id=${datasetId})`);
+  console.log(`[AI-Dataset] SQL exata:\n${dataset.sql_original}`);
+
   const { rows, meta } = await oracleService.executeQuery(conn, dataset.sql_original, 0);
   if (!meta.columns || meta.columns.length === 0) throw new Error('Nenhuma coluna retornada pela query.');
+
+  console.log(`[AI-Dataset] Oracle retornou: ${rows.length} registros, ${meta.columns.length} colunas`);
 
   const columns = meta.columns.map((c) => ({ name: c.name, type: c.type || 'string' }));
 
@@ -110,7 +116,9 @@ async function executeDataset(datasetId) {
     last_execution: db.fn.now(),
   });
 
-  return { rowsCount: rows.length, tableName: tableName(datasetId) };
+  console.log(`[AI-Dataset] Armazenados no PostgreSQL: ${rows.length} registros → tabela "${tableName(datasetId)}"`);
+
+  return { rowsCount: rows.length, tableName: tableName(datasetId), oracleRows: rows.length };
 }
 
 /**

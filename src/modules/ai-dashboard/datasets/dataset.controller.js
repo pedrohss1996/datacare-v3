@@ -80,7 +80,15 @@ async function getById(req, res) {
 async function execute(req, res) {
   try {
     const result = await datasetService.executeDataset(req.params.id);
-    return res.json({ success: true, data: result });
+    return res.json({
+      success: true,
+      data: {
+        rowsCount: result.rowsCount,
+        oracleRows: result.oracleRows,
+        tableName: result.tableName,
+        message: `${result.rowsCount} registros buscados do Oracle e armazenados.`,
+      },
+    });
   } catch (err) {
     console.error('[ai-dashboard] execute dataset', err);
     return res.status(500).json({ success: false, message: err.message });

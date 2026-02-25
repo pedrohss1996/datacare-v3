@@ -1132,7 +1132,7 @@ var DashboardRenderer = (function() {
         api('POST', '/datasets/' + id + '/execute')
           .then(function(data) {
             var rows = (data.data && data.data.rowsCount) || 0;
-            toast('Executado: ' + rows + ' linhas.', 'ok');
+            toast('✅ ' + rows.toLocaleString('pt-BR') + ' registros buscados do Oracle e armazenados.', 'ok');
             if (state.activeDs && String(state.activeDs.id) === String(id)) {
               state.activeDs.executed = true;
               state.lastData = [];
@@ -1303,7 +1303,7 @@ var DashboardRenderer = (function() {
     api('POST', '/datasets/' + id + '/execute')
       .then(function(data) {
         var rows = (data.data && data.data.rowsCount) || 0;
-        toast('Executado: ' + rows + ' linhas.', 'ok');
+        toast('✅ ' + rows.toLocaleString('pt-BR') + ' registros buscados do Oracle e armazenados.', 'ok');
         if (state.activeDs && String(state.activeDs.id) === String(id)) {
           state.activeDs.executed = true;
           state.lastData = [];
